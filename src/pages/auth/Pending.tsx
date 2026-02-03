@@ -1,10 +1,85 @@
+import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { AuthLayout } from '@/components/layout/AuthLayout';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
-import { Clock, LogOut, RefreshCw } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+import { Clock, LogOut, RefreshCw, Loader2 } from 'lucide-react';
 
 export default function PendingPage() {
-  const { signOut, refreshProfile, profile } = useAuth();
+  const { signOut, refreshProfile, profile, user, isApproved, isActive, isLoading } = useAuth();
+  const navigate = useNavigate();
+  const { toast } = useToast();
+  
+  const [isChecking, setIsChecking] = useState(false);
+  const [isSigningOut, setIsSigningOut] = useState(false);
+
+  // Redirect if user is not logged in
+  useEffect(() => {
+    if (!isLoading && !user) {
+      navigate('/auth/login', { replace: true });
+    }
+  }, [user, isLoading, navigate]);
+
+  // Redirect if user is approved and active
+  useEffect(() => {
+    if (!isLoading && isApproved && isActive) {
+      navigate('/app/dashboard', { replace: true });
+    }
+  }, [isApproved, isActive, isLoading, navigate]);
+
+  const handleCheckStatus = async () => {
+    setIsChecking(true);
+    try {
+      await refreshProfile();
+      
+      // After refresh, check if still pending (the useEffect will handle redirect if approved)
+      // We need a small delay to let the state update
+      setTimeout(() => {
+        setIsChecking(false);
+        // If we're still on this page after state update, show toast
+        if (!isApproved || !isActive) {
+          toast({
+            title: "Estado verificado",
+            description: "Tu cuenta aún está pendiente de aprobación.",
+          });
+        }
+      }, 500);
+    } catch (error) {
+      setIsChecking(false);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "No se pudo verificar el estado. Intenta de nuevo.",
+      });
+    }
+  };
+
+  const handleSignOut = async () => {
+    setIsSigningOut(true);
+    try {
+      await signOut();
+      // The useEffect will handle redirect when user becomes null
+    } catch (error) {
+      setIsSigningOut(false);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "No se pudo cerrar sesión. Intenta de nuevo.",
+      });
+    }
+  };
+
+  // Show loading while checking auth state
+  if (isLoading) {
+    return (
+      <AuthLayout title="Cargando..." subtitle="">
+        <div className="flex justify-center py-8">
+          <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+        </div>
+      </AuthLayout>
+    );
+  }
 
   return (
     <AuthLayout
@@ -37,14 +112,34 @@ export default function PendingPage() {
         )}
 
         <div className="flex flex-col gap-2">
-          <Button variant="outline" onClick={refreshProfile} className="w-full">
-            <RefreshCw className="w-4 h-4 mr-2" />
-            Verificar estado
+          <Button 
+            type="button"
+            variant="outline" 
+            onClick={handleCheckStatus} 
+            disabled={isChecking || isSigningOut}
+            className="w-full"
+          >
+            {isChecking ? (
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+            ) : (
+              <RefreshCw className="w-4 h-4 mr-2" />
+            )}
+            {isChecking ? 'Verificando...' : 'Verificar estado'}
           </Button>
           
-          <Button variant="ghost" onClick={signOut} className="w-full text-muted-foreground">
-            <LogOut className="w-4 h-4 mr-2" />
-            Cerrar sesión
+          <Button 
+            type="button"
+            variant="ghost" 
+            onClick={handleSignOut} 
+            disabled={isChecking || isSigningOut}
+            className="w-full text-muted-foreground"
+          >
+            {isSigningOut ? (
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+            ) : (
+              <LogOut className="w-4 h-4 mr-2" />
+            )}
+            {isSigningOut ? 'Cerrando sesión...' : 'Cerrar sesión'}
           </Button>
         </div>
       </div>

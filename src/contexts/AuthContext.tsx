@@ -90,8 +90,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const refreshProfile = async () => {
+    // If user is already in state, use it
     if (user) {
       await Promise.all([fetchProfile(user.id), fetchRoles(user.id)]);
+      return;
+    }
+    
+    // If user is not in state yet, try to get it from Supabase session
+    // This handles race conditions during initial hydration
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        setUser(session.user);
+        setSession(session);
+        await Promise.all([fetchProfile(session.user.id), fetchRoles(session.user.id)]);
+      }
+    } catch (error) {
+      console.error('Error refreshing profile:', error);
     }
   };
 
