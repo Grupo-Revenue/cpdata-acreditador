@@ -14,16 +14,141 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      profiles: {
+        Row: {
+          apellido: string
+          approval_status: Database["public"]["Enums"]["approval_status"]
+          created_at: string
+          email: string
+          foto_url: string | null
+          id: string
+          is_active: boolean
+          nombre: string
+          referencia_contacto: string | null
+          rut: string
+          telefono: string | null
+          updated_at: string
+        }
+        Insert: {
+          apellido: string
+          approval_status?: Database["public"]["Enums"]["approval_status"]
+          created_at?: string
+          email: string
+          foto_url?: string | null
+          id: string
+          is_active?: boolean
+          nombre: string
+          referencia_contacto?: string | null
+          rut: string
+          telefono?: string | null
+          updated_at?: string
+        }
+        Update: {
+          apellido?: string
+          approval_status?: Database["public"]["Enums"]["approval_status"]
+          created_at?: string
+          email?: string
+          foto_url?: string | null
+          id?: string
+          is_active?: boolean
+          nombre?: string
+          referencia_contacto?: string | null
+          rut?: string
+          telefono?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      roles: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          name: Database["public"]["Enums"]["app_role"]
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: Database["public"]["Enums"]["app_role"]
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: Database["public"]["Enums"]["app_role"]
+        }
+        Relationships: []
+      }
+      settings: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          key: string
+          updated_at: string
+          value: string | null
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          key: string
+          updated_at?: string
+          value?: string | null
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          key?: string
+          updated_at?: string
+          value?: string | null
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_user_roles: {
+        Args: { _user_id: string }
+        Returns: Database["public"]["Enums"]["app_role"][]
+      }
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
+      is_admin: { Args: { _user_id: string }; Returns: boolean }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "superadmin" | "administracion" | "supervisor" | "acreditador"
+      approval_status: "pending" | "preapproved" | "approved"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +275,9 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["superadmin", "administracion", "supervisor", "acreditador"],
+      approval_status: ["pending", "preapproved", "approved"],
+    },
   },
 } as const
