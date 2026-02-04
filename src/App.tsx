@@ -29,6 +29,7 @@ import ReimbursementsPage from "@/pages/app/Reimbursements";
 import SupportPage from "@/pages/app/Support";
 import RankingPage from "@/pages/app/Ranking";
 import SettingsPage from "@/pages/app/Settings";
+import ProfilePage from "@/pages/app/Profile";
 
 import NotFound from "@/pages/NotFound";
 
@@ -135,6 +136,12 @@ const App = () => (
             <Route path="/app/settings" element={
               <ProtectedRoute requiredRoles={['superadmin']}>
                 <SettingsPage />
+              </ProtectedRoute>
+            } />
+
+            <Route path="/app/profile" element={
+              <ProtectedRoute>
+                <ProfilePage />
               </ProtectedRoute>
             } />
 
