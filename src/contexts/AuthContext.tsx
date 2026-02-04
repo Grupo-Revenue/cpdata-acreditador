@@ -204,33 +204,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signUp = async (data: SignUpData) => {
     try {
-      const { data: authData, error: authError } = await supabase.auth.signUp({
+      const { error } = await supabase.auth.signUp({
         email: data.email,
         password: data.password,
         options: {
           emailRedirectTo: window.location.origin,
-        },
-      });
-
-      if (authError) throw authError;
-
-      if (authData.user) {
-        // Crear perfil
-        const { error: profileError } = await supabase
-          .from('profiles')
-          .insert({
-            id: authData.user.id,
+          data: {
             rut: data.rut,
             nombre: data.nombre,
             apellido: data.apellido,
-            email: data.email,
             telefono: data.telefono || null,
             referencia_contacto: data.referencia_contacto || null,
-          });
+          },
+        },
+      });
 
-        if (profileError) throw profileError;
-      }
-
+      if (error) throw error;
+      // El perfil se crea automáticamente por el trigger en la base de datos
       return { error: null };
     } catch (error) {
       return { error: error as Error };
