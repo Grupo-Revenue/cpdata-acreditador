@@ -43,6 +43,8 @@ export default function UsersPage() {
   // Dialog states
   const [editingUser, setEditingUser] = useState<UserWithRoles | null>(null);
   const [managingRolesUser, setManagingRolesUser] = useState<UserWithRoles | null>(null);
+  const [deletingUser, setDeletingUser] = useState<UserWithRoles | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   
   const { toast } = useToast();
 
@@ -192,6 +194,46 @@ export default function UsersPage() {
     }
   };
 
+  const handleDeleteUser = async () => {
+    if (!deletingUser) return;
+    
+    setIsDeleting(true);
+    try {
+      // First delete user roles
+      const { error: rolesError } = await supabase
+        .from('user_roles')
+        .delete()
+        .eq('user_id', deletingUser.id);
+
+      if (rolesError) throw rolesError;
+
+      // Then delete the profile
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .delete()
+        .eq('id', deletingUser.id);
+
+      if (profileError) throw profileError;
+
+      toast({
+        title: 'Usuario eliminado',
+        description: `${deletingUser.nombre || deletingUser.email} ha sido eliminado.`,
+      });
+
+      handleRefresh();
+    } catch (error) {
+      console.error('Error deleting user:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'No se pudo eliminar el usuario.',
+      });
+    } finally {
+      setIsDeleting(false);
+      setDeletingUser(null);
+    }
+  };
+
   const PendingUsersContent = () => (
     <Card>
       <CardHeader>
@@ -303,6 +345,7 @@ export default function UsersPage() {
             users={allUsers}
             onEdit={(user) => setEditingUser(user)}
             onManageRoles={(user) => setManagingRolesUser(user)}
+            onDelete={(user) => setDeletingUser(user)}
           />
         )}
       </CardContent>
@@ -389,6 +432,17 @@ export default function UsersPage() {
         open={!!managingRolesUser}
         onOpenChange={(open) => !open && setManagingRolesUser(null)}
         onSuccess={handleRefresh}
+      />
+
+      <ConfirmDialog
+        open={!!deletingUser}
+        onOpenChange={(open) => !open && setDeletingUser(null)}
+        title="Eliminar usuario"
+        description={`¿Estás seguro de eliminar a ${deletingUser?.nombre || deletingUser?.email}? Esta acción no se puede deshacer.`}
+        confirmLabel="Eliminar"
+        variant="destructive"
+        onConfirm={handleDeleteUser}
+        isLoading={isDeleting}
       />
     </AppShell>
   );
