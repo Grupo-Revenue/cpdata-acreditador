@@ -1,74 +1,136 @@
 
-## Objetivo
 
-Mostrar el rol del usuario junto al botón de notificaciones en la barra superior (Topbar), para que sea visible inmediatamente al ingresar al sistema.
+## Plan: Arreglar el Loading Infinito en Login
 
-## Cambio Propuesto
+### Problema Identificado
 
-### Archivo: `src/components/layout/Topbar.tsx`
+El `AuthContext` tiene una **race condition** (condición de carrera) entre:
+1. La inicialización manual (`initializeAuth` con `getSession()`)  
+2. El listener `onAuthStateChange` (que Supabase dispara automáticamente)
 
-Agregar un badge/etiqueta con el rol principal del usuario entre el botón de notificaciones y el avatar del usuario.
+Esto causa que `isLoading` quede en `true` indefinidamente en ciertos casos, especialmente cuando no hay sesión activa.
 
-**Lógica para mostrar el rol:**
-- Si el usuario tiene múltiples roles, mostrar el rol de mayor jerarquía (superadmin > administracion > supervisor > acreditador)
-- Usar el mismo mapeo `roleLabels` que ya existe para mostrar el nombre legible
+### Causa Raíz
 
-**Diseño visual:**
-- Badge con fondo suave y texto del color primario
-- Tamaño pequeño para no ocupar demasiado espacio
-- Responsive: visible en todos los tamaños de pantalla
+El flujo actual tiene estos problemas:
 
-## Código a Agregar
+1. **Doble ejecución**: Cuando no hay sesión, `onAuthStateChange` se dispara con `newSession = null`, pero no siempre llega a `setIsLoading(false)` antes de que otros componentes evalúen el estado.
 
-```tsx
-// Obtener el rol principal (el de mayor jerarquía)
-const getPrimaryRole = () => {
-  const hierarchy: AppRole[] = ['superadmin', 'administracion', 'supervisor', 'acreditador'];
-  for (const role of hierarchy) {
-    if (roles.includes(role)) {
-      return roleLabels[role] || role;
+2. **Deadlock potencial**: Si `loadUserData()` falla silenciosamente o tarda demasiado, `isLoading` nunca se vuelve `false`.
+
+3. **Orden incorrecto**: Según la documentación de Supabase, el listener debe configurarse **antes** de `getSession()`, pero las operaciones async dentro del callback pueden causar problemas.
+
+### Solución Propuesta
+
+Refactorizar el `useEffect` en `AuthContext.tsx` con un patrón más robusto:
+
+1. **Separar responsabilidades**: 
+   - El listener solo actualiza estado sincronizado (session, user)
+   - Una función aparte carga datos adicionales (profile, roles)
+   - Loading se maneja de forma explícita
+
+2. **Usar `setTimeout(..., 0)`** en el callback de `onAuthStateChange` para evitar deadlocks (patrón recomendado por Supabase)
+
+3. **Garantizar que `isLoading = false`** siempre se ejecute, incluso si hay errores
+
+### Código del Cambio
+
+```typescript
+useEffect(() => {
+  let isMounted = true;
+
+  const loadUserData = async (userId: string) => {
+    await Promise.all([fetchProfile(userId), fetchRoles(userId)]);
+  };
+
+  // Configurar listener PRIMERO (recomendación de Supabase)
+  const { data: { subscription } } = supabase.auth.onAuthStateChange(
+    (event, newSession) => {
+      if (!isMounted) return;
+
+      // Actualizar estado de sesión de forma síncrona
+      setSession(newSession);
+      setUser(newSession?.user ?? null);
+
+      if (event === 'SIGNED_OUT') {
+        setProfile(null);
+        setRoles([]);
+        setIsLoading(false);
+        return;
+      }
+
+      // Para otros eventos, cargar datos en setTimeout para evitar deadlock
+      if (newSession?.user) {
+        setTimeout(async () => {
+          if (!isMounted) return;
+          await loadUserData(newSession.user.id);
+          if (isMounted) setIsLoading(false);
+        }, 0);
+      } else {
+        // No hay usuario - ya podemos dejar de cargar
+        setProfile(null);
+        setRoles([]);
+        setIsLoading(false);
+      }
     }
-  }
-  return null;
-};
+  );
 
-const primaryRole = getPrimaryRole();
+  // Luego hacer la carga inicial
+  const initializeAuth = async () => {
+    try {
+      const { data: { session: initialSession } } = await supabase.auth.getSession();
+      if (!isMounted) return;
+
+      // Si no hay sesión, marcar como no loading inmediatamente
+      if (!initialSession?.user) {
+        setSession(null);
+        setUser(null);
+        setProfile(null);
+        setRoles([]);
+        setIsLoading(false);
+        return;
+      }
+
+      // Si hay sesión, el onAuthStateChange ya la manejará
+      // pero por seguridad también la procesamos aquí
+      setSession(initialSession);
+      setUser(initialSession.user);
+      await loadUserData(initialSession.user.id);
+    } catch (error) {
+      console.error('Error initializing auth:', error);
+      // En caso de error, igual dejar de cargar para no quedar atascados
+      setProfile(null);
+      setRoles([]);
+    } finally {
+      if (isMounted) setIsLoading(false);
+    }
+  };
+
+  initializeAuth();
+
+  return () => {
+    isMounted = false;
+    subscription.unsubscribe();
+  };
+}, []);
 ```
 
-Y en el JSX, entre el botón de notificaciones y el menú de usuario:
+### Cambios Clave
 
-```tsx
-{/* Right side */}
-<div className="flex items-center gap-2">
-  {/* Notifications */}
-  <Button variant="ghost" size="icon" className="relative">
-    <Bell className="w-5 h-5" />
-    <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-destructive rounded-full" />
-  </Button>
+| Antes | Después |
+|-------|---------|
+| `onAuthStateChange` hace `await` directamente | Usa `setTimeout(..., 0)` para async |
+| No hay manejo explícito del caso "sin sesión" | Se marca `isLoading = false` inmediatamente si no hay usuario |
+| `finally` puede competir con el listener | El flujo es más predecible |
+| Errores pueden dejar loading infinito | Try/catch con fallback a `isLoading = false` |
 
-  {/* Role badge - NUEVO */}
-  {primaryRole && (
-    <span className="hidden sm:inline-flex text-xs bg-primary/10 text-primary px-3 py-1.5 rounded-full font-medium">
-      {primaryRole}
-    </span>
-  )}
+### Archivo a Modificar
 
-  {/* User menu */}
-  ...
-</div>
-```
+- `src/contexts/AuthContext.tsx` (líneas 113-167)
 
-## Resultado Esperado
+### Resultado Esperado
 
-| Rol del Usuario | Texto Mostrado |
-|-----------------|----------------|
-| superadmin | Super Admin |
-| administracion | Administración |
-| supervisor | Supervisor |
-| acreditador | Acreditador |
+1. Si **no hay sesión**: El login se muestra inmediatamente (sin loading infinito)
+2. Si **hay sesión**: Se carga el perfil y roles, luego se redirige al dashboard
+3. **Sin race conditions**: El flujo es determinístico y no depende del orden de eventos
 
-## Notas Adicionales
-
-- El badge se oculta en pantallas muy pequeñas (móvil) usando `hidden sm:inline-flex` para mantener el diseño limpio
-- Si el usuario tiene múltiples roles, solo se muestra el principal en la barra; los demás siguen visibles en el menú desplegable del avatar
-- El import de `AppRole` ya está disponible desde `@/contexts/AuthContext`
