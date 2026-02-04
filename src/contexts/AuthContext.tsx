@@ -3,7 +3,7 @@ import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
-export type ApprovalStatus = 'pending' | 'preapproved' | 'approved';
+export type ApprovalStatus = 'pending' | 'rejected' | 'approved';
 export type AppRole = 'superadmin' | 'administracion' | 'supervisor' | 'acreditador';
 
 export interface Profile {

@@ -4,7 +4,7 @@ import { AuthLayout } from '@/components/layout/AuthLayout';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
-import { Clock, LogOut, RefreshCw, Loader2 } from 'lucide-react';
+import { Clock, LogOut, RefreshCw, Loader2, XCircle } from 'lucide-react';
 
 export default function PendingPage() {
   const { signOut, refreshProfile, profile, user, isApproved, isActive, isLoading } = useAuth();
@@ -76,6 +76,58 @@ export default function PendingPage() {
       <AuthLayout title="Cargando..." subtitle="">
         <div className="flex justify-center py-8">
           <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+        </div>
+      </AuthLayout>
+    );
+  }
+
+  const isRejected = profile?.approval_status === 'rejected';
+
+  if (isRejected) {
+    return (
+      <AuthLayout
+        title="Cuenta rechazada"
+        subtitle="No tienes acceso al sistema"
+      >
+        <div className="text-center space-y-6">
+          <div className="inline-flex p-4 rounded-full bg-destructive/10">
+            <XCircle className="w-12 h-12 text-destructive" />
+          </div>
+
+          <div className="space-y-2">
+            <p className="text-muted-foreground">
+              Tu solicitud de acceso ha sido rechazada.
+            </p>
+            <p className="text-sm text-muted-foreground">
+              Si crees que esto es un error, contacta al administrador del sistema.
+            </p>
+          </div>
+
+          {profile && (
+            <div className="bg-muted rounded-lg p-4 text-left">
+              <p className="text-sm font-medium">Datos de tu registro:</p>
+              <ul className="text-sm text-muted-foreground mt-2 space-y-1">
+                <li><span className="font-medium">Nombre:</span> {profile.nombre} {profile.apellido}</li>
+                <li><span className="font-medium">RUT:</span> {profile.rut}</li>
+                <li><span className="font-medium">Email:</span> {profile.email}</li>
+              </ul>
+            </div>
+          )}
+
+          <Button 
+            type="button"
+            variant="ghost" 
+            onClick={handleSignOut} 
+            disabled={isSigningOut}
+            className="w-full text-muted-foreground"
+          >
+            {isSigningOut ? (
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+            ) : (
+              <LogOut className="w-4 h-4 mr-2" />
+            )}
+            {isSigningOut ? 'Cerrando sesión...' : 'Cerrar sesión'}
+          </Button>
         </div>
       </AuthLayout>
     );

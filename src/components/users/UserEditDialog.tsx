@@ -160,7 +160,7 @@ export function UserEditDialog({ user, open, onOpenChange, onSuccess }: UserEdit
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="pending">Pendiente</SelectItem>
-                  <SelectItem value="preapproved">Pre-aprobado</SelectItem>
+                  <SelectItem value="rejected">Rechazado</SelectItem>
                   <SelectItem value="approved">Aprobado</SelectItem>
                 </SelectContent>
               </Select>
