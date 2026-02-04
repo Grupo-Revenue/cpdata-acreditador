@@ -117,42 +117,64 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await Promise.all([fetchProfile(userId), fetchRoles(userId)]);
     };
 
-    // Listener para cambios de auth
+    // Configurar listener PRIMERO (recomendación de Supabase)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, newSession) => {
+      (event, newSession) => {
         if (!isMounted) return;
 
+        // Actualizar estado de sesión de forma síncrona
         setSession(newSession);
         setUser(newSession?.user ?? null);
-
-        if (newSession?.user) {
-          await loadUserData(newSession.user.id);
-        } else {
-          setProfile(null);
-          setRoles([]);
-        }
 
         if (event === 'SIGNED_OUT') {
           setProfile(null);
           setRoles([]);
+          setIsLoading(false);
+          return;
         }
 
-        if (isMounted) setIsLoading(false);
+        // Para otros eventos, cargar datos en setTimeout para evitar deadlock
+        if (newSession?.user) {
+          setTimeout(async () => {
+            if (!isMounted) return;
+            await loadUserData(newSession.user.id);
+            if (isMounted) setIsLoading(false);
+          }, 0);
+        } else {
+          // No hay usuario - ya podemos dejar de cargar
+          setProfile(null);
+          setRoles([]);
+          setIsLoading(false);
+        }
       }
     );
 
-    // Carga inicial
+    // Luego hacer la carga inicial
     const initializeAuth = async () => {
       try {
         const { data: { session: initialSession } } = await supabase.auth.getSession();
         if (!isMounted) return;
 
-        setSession(initialSession);
-        setUser(initialSession?.user ?? null);
-
-        if (initialSession?.user) {
-          await loadUserData(initialSession.user.id);
+        // Si no hay sesión, marcar como no loading inmediatamente
+        if (!initialSession?.user) {
+          setSession(null);
+          setUser(null);
+          setProfile(null);
+          setRoles([]);
+          setIsLoading(false);
+          return;
         }
+
+        // Si hay sesión, el onAuthStateChange ya la manejará
+        // pero por seguridad también la procesamos aquí
+        setSession(initialSession);
+        setUser(initialSession.user);
+        await loadUserData(initialSession.user.id);
+      } catch (error) {
+        console.error('Error initializing auth:', error);
+        // En caso de error, igual dejar de cargar para no quedar atascados
+        setProfile(null);
+        setRoles([]);
       } finally {
         if (isMounted) setIsLoading(false);
       }
