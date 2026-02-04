@@ -20,7 +20,7 @@ const registerSchema = z.object({
   nombre: z.string().min(2, 'El nombre debe tener al menos 2 caracteres'),
   apellido: z.string().min(2, 'El apellido debe tener al menos 2 caracteres'),
   email: z.string().email('Email inválido'),
-  telefono: z.string().optional(),
+  telefono: z.string().min(1, 'El teléfono es requerido'),
   referencia_contacto: z.string().optional(),
   password: z.string().min(6, 'La contraseña debe tener al menos 6 caracteres'),
   confirmPassword: z.string(),
@@ -161,7 +161,7 @@ export default function RegisterPage() {
             name="telefono"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Teléfono (opcional)</FormLabel>
+                <FormLabel>Teléfono</FormLabel>
                 <FormControl>
                   <div className="relative">
                     <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
