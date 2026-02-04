@@ -1,86 +1,102 @@
 
-## Plan: Agregar Botón "Crear Usuario" en Gestión de Usuarios
+## Plan: Página de Configuración de Perfil de Usuario
 
 ### Objetivo
-Permitir a los superadministradores crear nuevos usuarios directamente desde la página de gestión de usuarios, sin que estos necesiten registrarse ellos mismos.
+Permitir que cada usuario autenticado pueda ver y editar su propia información de perfil desde una nueva página accesible para todos los roles.
 
 ---
 
 ### Arquitectura de la Solución
 
-Crear un usuario desde el panel de administración requiere:
-1. **Edge Function**: Usar la Admin API de Supabase (requiere `service_role` key) para crear el usuario en `auth.users`
-2. **Componente Dialog**: Formulario para capturar los datos del nuevo usuario
-3. **Integración UI**: Botón en el PageHeader para abrir el diálogo
-
 ```text
-+-------------------+     +------------------------+     +------------------+
-|   UserCreateDialog |---->|  Edge Function         |---->|  Supabase Auth   |
-|   (Frontend Form)  |     |  create-user           |     |  Admin API       |
-+-------------------+     +------------------------+     +------------------+
-                                      |
-                                      v
-                          +------------------+
-                          |   profiles table |
-                          |   (auto-trigger) |
-                          +------------------+
++------------------+     +-------------------+     +------------------+
+|   Topbar Menu    |---->|  /app/profile     |---->|  Supabase        |
+|   "Mi Perfil"    |     |  ProfilePage      |     |  profiles table  |
++------------------+     +-------------------+     +------------------+
+                                  |
+                                  v
+                         +------------------+
+                         |  Storage Bucket  |
+                         |  avatars         |
+                         +------------------+
 ```
 
 ---
 
 ### Cambios Necesarios
 
-#### 1. Nueva Edge Function: `create-user`
-**Archivo**: `supabase/functions/create-user/index.ts`
+#### 1. Crear Storage Bucket para Avatares
+Crear un bucket `avatars` en Supabase Storage con políticas RLS:
+- Los usuarios pueden subir/actualizar su propio avatar
+- Los avatares son públicos para lectura (necesario para mostrar en la UI)
+
+#### 2. Nueva Página: Mi Perfil
+**Archivo**: `src/pages/app/Profile.tsx`
 
 Funcionalidad:
-- Recibe datos del usuario (email, password, rut, nombre, apellido, telefono, referencia_contacto)
-- Opcionalmente recibe roles iniciales y estado de aprobación
-- Usa `supabase.auth.admin.createUser()` para crear el usuario
-- El trigger existente en la BD crea automáticamente el perfil
-- Opcionalmente asigna roles si se especifican
+- Muestra la foto de perfil actual (o avatar por defecto)
+- Permite subir/cambiar foto de perfil
+- Formulario editable con:
+  - RUT (solo lectura - referencia)
+  - Email (solo lectura - no se puede cambiar)
+  - Nombre (editable)
+  - Apellido (editable)
+  - Teléfono (editable)
+  - Referencia de contacto (editable)
+- Botón para guardar cambios
+- Opción para cambiar contraseña (enlace a flujo de reset)
 
-Campos del formulario:
-- RUT (requerido)
-- Nombre (requerido)
-- Apellido (requerido)
-- Email (requerido)
-- Teléfono (requerido)
-- Referencia de contacto (opcional)
-- Contraseña temporal (requerida)
-- Estado inicial (approved/pending - por defecto approved)
-- Roles iniciales (checkbox múltiple)
+#### 3. Agregar Ruta en App.tsx
+**Archivo**: `src/App.tsx`
 
-#### 2. Nuevo Componente: `UserCreateDialog`
-**Archivo**: `src/components/users/UserCreateDialog.tsx`
+Nueva ruta protegida accesible para todos los usuarios:
+```tsx
+<Route path="/app/profile" element={
+  <ProtectedRoute>
+    <ProfilePage />
+  </ProtectedRoute>
+} />
+```
 
-Similar al formulario de registro pero:
-- Incluye campo de contraseña temporal
-- Permite seleccionar estado inicial (approved por defecto para usuarios creados por admin)
-- Permite asignar roles iniciales
-- Llama a la edge function en lugar de `signUp`
+#### 4. Agregar Enlace en el Menú de Usuario (Topbar)
+**Archivo**: `src/components/layout/Topbar.tsx`
 
-#### 3. Actualizar Página de Usuarios
-**Archivo**: `src/pages/app/Users.tsx`
+Agregar opción "Mi Perfil" en el DropdownMenu del usuario:
+```tsx
+<DropdownMenuItem asChild>
+  <Link to="/app/profile">Mi Perfil</Link>
+</DropdownMenuItem>
+```
 
-Cambios:
-- Agregar estado para controlar el diálogo de creación
-- Agregar botón "Crear Usuario" junto al botón "Actualizar" en el PageHeader
-- Importar y renderizar `UserCreateDialog`
+#### 5. Actualizar AuthContext para Refrescar Perfil
+**Archivo**: `src/contexts/AuthContext.tsx`
+
+Agregar función `updateProfile` para actualizar el perfil del usuario actual sin requerir edge function (el usuario puede editar su propio perfil por RLS).
 
 ---
 
-### Flujo de Creación
+### Campos del Perfil
 
-| Paso | Acción | Resultado |
-|------|--------|-----------|
-| 1 | Superadmin hace clic en "Crear Usuario" | Se abre el diálogo |
-| 2 | Completa el formulario con datos del usuario | Validación client-side |
-| 3 | Hace clic en "Crear" | Se llama a la edge function |
-| 4 | Edge function crea usuario en auth.users | Trigger crea perfil automáticamente |
-| 5 | Edge function actualiza approval_status si es necesario | Usuario queda approved |
-| 6 | Edge function asigna roles seleccionados | Roles insertados en user_roles |
-| 7 | Se cierra el diálogo y se refresca la tabla | Usuario visible en la lista |
+| Campo | Editable | Descripción |
+|-------|----------|-------------|
+| RUT | No | Identificador único, solo referencia |
+| Email | No | Asociado a auth, no se puede cambiar |
+| Nombre | Sí | Nombre del usuario |
+| Apellido | Sí | Apellido del usuario |
+| Teléfono | Sí | Número de contacto |
+| Referencia | Sí | Referencia de contacto |
+| Foto | Sí | Imagen de perfil (avatar) |
+
+---
+
+### Diseño de la Página
+
+La página tendrá:
+1. **Header con avatar grande**: Foto circular con botón de cambiar
+2. **Información básica**: RUT y email (badges informativos)
+3. **Formulario editable**: Nombre, apellido, teléfono, referencia
+4. **Sección de seguridad**: Enlace para cambiar contraseña
+5. **Botón guardar**: Al final del formulario
 
 ---
 
@@ -88,16 +104,28 @@ Cambios:
 
 | Archivo | Tipo |
 |---------|------|
-| `supabase/functions/create-user/index.ts` | Nuevo - Edge function |
-| `src/components/users/UserCreateDialog.tsx` | Nuevo - Componente diálogo |
-| `src/pages/app/Users.tsx` | Modificar - Agregar botón y diálogo |
+| Nueva migración SQL (Storage bucket) | Nuevo |
+| `src/pages/app/Profile.tsx` | Nuevo |
+| `src/App.tsx` | Modificar - agregar ruta |
+| `src/components/layout/Topbar.tsx` | Modificar - agregar enlace |
 
 ---
 
-### Consideraciones de Seguridad
+### Políticas RLS para Storage
 
-- La edge function debe validar que el usuario que hace la petición sea superadmin
-- Se usa el service_role key solo en el backend (edge function)
-- Validación de RUT única antes de crear
-- Validación de email único (Supabase lo maneja automáticamente)
-- Contraseña temporal que el usuario debería cambiar al primer login
+El bucket `avatars` tendrá las siguientes políticas:
+- **SELECT (público)**: Cualquiera puede ver los avatares
+- **INSERT**: El usuario puede subir su avatar (path: `{user_id}/avatar.*`)
+- **UPDATE**: El usuario puede actualizar su avatar
+- **DELETE**: El usuario puede eliminar su avatar
+
+---
+
+### Flujo de Usuario
+
+1. El usuario hace clic en su avatar en el Topbar
+2. Selecciona "Mi Perfil" del menú desplegable
+3. Ve su información actual y puede editarla
+4. Al cambiar la foto, se sube automáticamente al storage
+5. Al hacer clic en "Guardar", se actualizan los datos en `profiles`
+6. El contexto se refresca y la UI refleja los cambios
