@@ -1,104 +1,101 @@
 
 
-## Plan: Agregar Botón de Eliminar Usuario
+## Plan: Corregir Trigger de Creación de Perfiles
 
-### Objetivo
-Permitir a los superadmins eliminar usuarios desde la tabla de gestión de usuarios.
+### Problema Identificado
+
+El trigger `on_auth_user_created` que debería crear automáticamente un perfil cuando un usuario se registra **NO EXISTE** en la base de datos.
+
+**Razón**: La migración intentó crear un trigger en `auth.users`, pero Supabase **no permite** crear triggers en schemas reservados (auth, storage, etc.) a través de migraciones regulares. La migración falló silenciosamente.
+
+### Estado Actual
+
+| Componente | Estado |
+|------------|--------|
+| Función `handle_new_user()` | Existe |
+| Trigger `on_auth_user_created` | **NO EXISTE** |
+| Usuario `test@test.cl` en auth.users | Existe |
+| Perfil de `test@test.cl` | **NO EXISTE** |
 
 ---
 
-### Cambios Necesarios
+### Solución
 
-#### 1. Agregar política RLS para DELETE en `profiles`
+#### Paso 1: Crear el trigger manualmente en Supabase Dashboard
 
-Actualmente la tabla `profiles` no permite operaciones DELETE. Necesitamos agregar una política:
+Debes ir al **SQL Editor** de Supabase y ejecutar este SQL:
 
 ```sql
-CREATE POLICY "Admins can delete profiles"
-ON public.profiles
-FOR DELETE
-TO authenticated
-USING (is_admin(auth.uid()));
+-- Crear el trigger en auth.users
+CREATE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
 ```
 
-Esta política permitirá que solo usuarios con rol `superadmin` o `administracion` puedan eliminar perfiles.
+**Enlace directo**: https://supabase.com/dashboard/project/wodzysrgdsforiuliejo/sql/new
 
 ---
 
-#### 2. Modificar `UsersTable.tsx`
+#### Paso 2: Crear perfil para el usuario existente
 
-- Agregar prop `onDelete` para manejar la eliminación
-- Agregar botón con icono `Trash2` en la columna de acciones
-- Estilo destructivo para indicar acción peligrosa
+Una vez que el trigger esté activo, los nuevos usuarios funcionarán. Para el usuario `test@test.cl` que ya existe, necesitamos crear su perfil manualmente.
 
-```tsx
-interface UsersTableProps {
-  users: UserWithRoles[];
-  onEdit: (user: UserWithRoles) => void;
-  onManageRoles: (user: UserWithRoles) => void;
-  onDelete: (user: UserWithRoles) => void;  // Nueva prop
-}
+Ejecutar en el SQL Editor:
+
+```sql
+-- Primero, verificar el ID del usuario en auth.users
+SELECT id, email, raw_user_meta_data FROM auth.users WHERE email = 'test@test.cl';
+
+-- Luego, insertar el perfil con los datos del metadata
+INSERT INTO public.profiles (id, email, rut, nombre, apellido, telefono, referencia_contacto)
+SELECT 
+  id,
+  email,
+  COALESCE(raw_user_meta_data->>'rut', ''),
+  COALESCE(raw_user_meta_data->>'nombre', ''),
+  COALESCE(raw_user_meta_data->>'apellido', ''),
+  raw_user_meta_data->>'telefono',
+  raw_user_meta_data->>'referencia_contacto'
+FROM auth.users 
+WHERE email = 'test@test.cl'
+ON CONFLICT (id) DO NOTHING;
 ```
 
 ---
 
-#### 3. Modificar `Users.tsx`
-
-- Agregar estado para usuario a eliminar: `deletingUser`
-- Agregar función `handleDelete` que:
-  1. Elimina los roles del usuario de `user_roles`
-  2. Elimina el perfil de `profiles`
-- Agregar un nuevo `ConfirmDialog` para confirmar la eliminación
-- Pasar `onDelete` al componente `UsersTable`
-
----
-
-### Flujo de Eliminación
+### Flujo de Solución
 
 ```text
-Usuario clickea botón Eliminar
+1. Ir a Supabase SQL Editor
          │
          ▼
-Mostrar ConfirmDialog
+2. Crear trigger en auth.users
          │
          ▼
-Usuario confirma ────────────┐
-         │                   │
-        Sí                  No
-         │                   │
-         ▼                   ▼
-DELETE user_roles        Cerrar dialog
-WHERE user_id = X
+3. Crear perfil para test@test.cl
          │
          ▼
-DELETE profiles
-WHERE id = X
+4. Verificar en /app/users que aparece
          │
          ▼
-Toast de éxito + refrescar lista
+5. Probar registro de nuevo usuario
 ```
 
 ---
 
-### Consideraciones de Seguridad
+### Cambios en Código
 
-- Solo superadmins/admins pueden ver la tabla de todos los usuarios
-- La política RLS verificará en el servidor que el usuario tiene permisos
-- Se eliminan primero los roles para evitar referencias huérfanas
-- Se muestra confirmación antes de eliminar
+**No se requieren cambios en el código**. El problema es puramente de base de datos.
+
+### Limpieza Opcional
+
+Eliminar la migración que falló (no es crítico pero mantiene orden):
+- `supabase/migrations/20260204170920_791d01c8-7b4d-4e93-a1f3-cfadd5eac004.sql`
 
 ---
 
-### Archivos a Modificar
+### Acciones Requeridas del Usuario
 
-| Archivo | Cambio |
-|---------|--------|
-| `src/components/users/UsersTable.tsx` | Agregar botón de eliminar y prop `onDelete` |
-| `src/pages/app/Users.tsx` | Agregar estado, handler y ConfirmDialog para eliminación |
-
-### Base de Datos
-
-| Cambio | Descripción |
-|--------|-------------|
-| Nueva política RLS | Permitir DELETE en `profiles` para admins |
+1. **Ejecutar SQL en el Dashboard** para crear el trigger (no puede hacerse desde Lovable)
+2. **Crear perfil manualmente** para el usuario test@test.cl
 
