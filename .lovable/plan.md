@@ -1,58 +1,91 @@
 
-## Plan: Corregir Usuario con Datos Faltantes
 
-### Problema Identificado
+## Plan: Agregar Botón de Eliminar Usuario
 
-El usuario `test@test.cl` **SÍ existe** en la tabla `profiles`, pero tiene los campos `nombre`, `apellido` y `rut` **vacíos**:
-
-| Campo | Valor actual |
-|-------|-------------|
-| email | test@test.cl |
-| nombre | (vacío) |
-| apellido | (vacío) |
-| rut | (vacío) |
-| approval_status | approved |
-| is_active | true |
-
-Esto ocurrió porque el usuario fue registrado antes de que el sistema de metadatos funcionara correctamente con el trigger.
+### Objetivo
+Permitir a los superadmins eliminar usuarios desde la tabla de gestión de usuarios.
 
 ---
 
-### Solución en 2 Partes
+### Cambios Necesarios
 
-#### Parte 1: Actualizar datos del usuario existente (SQL)
+#### 1. Agregar política RLS para DELETE en `profiles`
 
-Ejecutar una actualización manual para agregar los datos que debería tener:
+Actualmente la tabla `profiles` no permite operaciones DELETE. Necesitamos agregar una política:
 
 ```sql
-UPDATE profiles 
-SET 
-  nombre = 'Test',
-  apellido = 'Usuario',
-  rut = '12.345.678-9'
-WHERE email = 'test@test.cl';
+CREATE POLICY "Admins can delete profiles"
+ON public.profiles
+FOR DELETE
+TO authenticated
+USING (is_admin(auth.uid()));
 ```
 
-O puedes usar el diálogo de edición que ya implementamos para actualizar sus datos desde la interfaz.
+Esta política permitirá que solo usuarios con rol `superadmin` o `administracion` puedan eliminar perfiles.
 
 ---
 
-#### Parte 2: Mejorar la tabla para manejar datos vacíos
+#### 2. Modificar `UsersTable.tsx`
 
-Modificar `UsersTable.tsx` para mostrar el email cuando el nombre está vacío, evitando filas "invisibles":
+- Agregar prop `onDelete` para manejar la eliminación
+- Agregar botón con icono `Trash2` en la columna de acciones
+- Estilo destructivo para indicar acción peligrosa
 
-**Cambio en la columna Nombre:**
 ```tsx
-<TableCell className="font-medium">
-  {user.nombre || user.apellido 
-    ? `${user.nombre} ${user.apellido}`.trim()
-    : <span className="text-muted-foreground italic">{user.email}</span>
-  }
-  {!user.is_active && (
-    <Badge variant="secondary" className="ml-2">Inactivo</Badge>
-  )}
-</TableCell>
+interface UsersTableProps {
+  users: UserWithRoles[];
+  onEdit: (user: UserWithRoles) => void;
+  onManageRoles: (user: UserWithRoles) => void;
+  onDelete: (user: UserWithRoles) => void;  // Nueva prop
+}
 ```
+
+---
+
+#### 3. Modificar `Users.tsx`
+
+- Agregar estado para usuario a eliminar: `deletingUser`
+- Agregar función `handleDelete` que:
+  1. Elimina los roles del usuario de `user_roles`
+  2. Elimina el perfil de `profiles`
+- Agregar un nuevo `ConfirmDialog` para confirmar la eliminación
+- Pasar `onDelete` al componente `UsersTable`
+
+---
+
+### Flujo de Eliminación
+
+```text
+Usuario clickea botón Eliminar
+         │
+         ▼
+Mostrar ConfirmDialog
+         │
+         ▼
+Usuario confirma ────────────┐
+         │                   │
+        Sí                  No
+         │                   │
+         ▼                   ▼
+DELETE user_roles        Cerrar dialog
+WHERE user_id = X
+         │
+         ▼
+DELETE profiles
+WHERE id = X
+         │
+         ▼
+Toast de éxito + refrescar lista
+```
+
+---
+
+### Consideraciones de Seguridad
+
+- Solo superadmins/admins pueden ver la tabla de todos los usuarios
+- La política RLS verificará en el servidor que el usuario tiene permisos
+- Se eliminan primero los roles para evitar referencias huérfanas
+- Se muestra confirmación antes de eliminar
 
 ---
 
@@ -60,8 +93,12 @@ Modificar `UsersTable.tsx` para mostrar el email cuando el nombre está vacío, 
 
 | Archivo | Cambio |
 |---------|--------|
-| `src/components/users/UsersTable.tsx` | Mostrar email cuando nombre está vacío |
+| `src/components/users/UsersTable.tsx` | Agregar botón de eliminar y prop `onDelete` |
+| `src/pages/app/Users.tsx` | Agregar estado, handler y ConfirmDialog para eliminación |
 
-### Acción Opcional
+### Base de Datos
 
-Ejecutar SQL para corregir los datos del usuario test@test.cl
+| Cambio | Descripción |
+|--------|-------------|
+| Nueva política RLS | Permitir DELETE en `profiles` para admins |
+
