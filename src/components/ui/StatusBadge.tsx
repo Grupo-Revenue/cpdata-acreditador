@@ -3,7 +3,6 @@ import { cn } from '@/lib/utils';
 
 type StatusType = 
   | 'pending' 
-  | 'preapproved' 
   | 'approved' 
   | 'rejected'
   | 'active'
@@ -24,10 +23,6 @@ const statusConfig: Record<StatusType, { label: string; className: string }> = {
   pending: {
     label: 'Pendiente',
     className: 'bg-warning/10 text-warning border-warning/20 hover:bg-warning/20',
-  },
-  preapproved: {
-    label: 'Pre-aprobado',
-    className: 'bg-accent/10 text-accent border-accent/20 hover:bg-accent/20',
   },
   approved: {
     label: 'Aprobado',
