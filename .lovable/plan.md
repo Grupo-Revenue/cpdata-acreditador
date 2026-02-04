@@ -1,118 +1,103 @@
 
-
-## Plan: Cambiar "Preaprobado" por "Rechazado"
+## Plan: Agregar Botón "Crear Usuario" en Gestión de Usuarios
 
 ### Objetivo
-Reemplazar el estado `preapproved` por `rejected` en el sistema. Un usuario rechazado:
-- No podrá acceder al sistema
-- No podrá registrarse nuevamente con el mismo email (Supabase bloquea emails duplicados en `auth.users`)
-- Solo un superadmin podrá cambiarlo a `approved` para desbloquear el acceso
+Permitir a los superadministradores crear nuevos usuarios directamente desde la página de gestión de usuarios, sin que estos necesiten registrarse ellos mismos.
+
+---
+
+### Arquitectura de la Solución
+
+Crear un usuario desde el panel de administración requiere:
+1. **Edge Function**: Usar la Admin API de Supabase (requiere `service_role` key) para crear el usuario en `auth.users`
+2. **Componente Dialog**: Formulario para capturar los datos del nuevo usuario
+3. **Integración UI**: Botón en el PageHeader para abrir el diálogo
+
+```text
++-------------------+     +------------------------+     +------------------+
+|   UserCreateDialog |---->|  Edge Function         |---->|  Supabase Auth   |
+|   (Frontend Form)  |     |  create-user           |     |  Admin API       |
++-------------------+     +------------------------+     +------------------+
+                                      |
+                                      v
+                          +------------------+
+                          |   profiles table |
+                          |   (auto-trigger) |
+                          +------------------+
+```
 
 ---
 
 ### Cambios Necesarios
 
-#### 1. Migración de Base de Datos (nuevo archivo)
-Actualizar el enum `approval_status` para reemplazar `preapproved` por `rejected`:
+#### 1. Nueva Edge Function: `create-user`
+**Archivo**: `supabase/functions/create-user/index.ts`
 
-```sql
--- Actualizar registros existentes de preapproved a pending
-UPDATE public.profiles 
-SET approval_status = 'pending' 
-WHERE approval_status = 'preapproved';
+Funcionalidad:
+- Recibe datos del usuario (email, password, rut, nombre, apellido, telefono, referencia_contacto)
+- Opcionalmente recibe roles iniciales y estado de aprobación
+- Usa `supabase.auth.admin.createUser()` para crear el usuario
+- El trigger existente en la BD crea automáticamente el perfil
+- Opcionalmente asigna roles si se especifican
 
--- Recrear el enum con el nuevo valor
-ALTER TYPE approval_status RENAME TO approval_status_old;
+Campos del formulario:
+- RUT (requerido)
+- Nombre (requerido)
+- Apellido (requerido)
+- Email (requerido)
+- Teléfono (requerido)
+- Referencia de contacto (opcional)
+- Contraseña temporal (requerida)
+- Estado inicial (approved/pending - por defecto approved)
+- Roles iniciales (checkbox múltiple)
 
-CREATE TYPE approval_status AS ENUM ('pending', 'rejected', 'approved');
+#### 2. Nuevo Componente: `UserCreateDialog`
+**Archivo**: `src/components/users/UserCreateDialog.tsx`
 
-ALTER TABLE public.profiles 
-  ALTER COLUMN approval_status TYPE approval_status 
-  USING approval_status::text::approval_status;
+Similar al formulario de registro pero:
+- Incluye campo de contraseña temporal
+- Permite seleccionar estado inicial (approved por defecto para usuarios creados por admin)
+- Permite asignar roles iniciales
+- Llama a la edge function en lugar de `signUp`
 
-DROP TYPE approval_status_old;
-```
+#### 3. Actualizar Página de Usuarios
+**Archivo**: `src/pages/app/Users.tsx`
 
-#### 2. Actualizar Tipos TypeScript
-**Archivo**: `src/integrations/supabase/types.ts`
-
-Cambiar el enum:
-```typescript
-approval_status: "pending" | "rejected" | "approved"
-```
-
-Y en Constants:
-```typescript
-approval_status: ["pending", "rejected", "approved"]
-```
-
-#### 3. Actualizar AuthContext
-**Archivo**: `src/contexts/AuthContext.tsx`
-
-Cambiar el tipo:
-```typescript
-export type ApprovalStatus = 'pending' | 'rejected' | 'approved';
-```
-
-#### 4. Actualizar Diálogo de Edición de Usuario
-**Archivo**: `src/components/users/UserEditDialog.tsx`
-
-Cambiar las opciones del select:
-```tsx
-<SelectItem value="pending">Pendiente</SelectItem>
-<SelectItem value="rejected">Rechazado</SelectItem>
-<SelectItem value="approved">Aprobado</SelectItem>
-```
-
-#### 5. Actualizar StatusBadge
-**Archivo**: `src/components/ui/StatusBadge.tsx`
-
-Eliminar `preapproved` del tipo (ya tiene `rejected` configurado correctamente con estilo rojo/destructivo).
-
-#### 6. Actualizar Página Pending (opcional pero recomendado)
-**Archivo**: `src/pages/auth/Pending.tsx`
-
-Agregar lógica para mostrar mensaje diferente si el usuario fue rechazado:
-```tsx
-// Si el perfil tiene estado rejected, mostrar mensaje de rechazo
-if (profile?.approval_status === 'rejected') {
-  return (
-    <AuthLayout title="Cuenta rechazada" subtitle="">
-      {/* Mostrar mensaje indicando que la cuenta fue rechazada */}
-    </AuthLayout>
-  );
-}
-```
+Cambios:
+- Agregar estado para controlar el diálogo de creación
+- Agregar botón "Crear Usuario" junto al botón "Actualizar" en el PageHeader
+- Importar y renderizar `UserCreateDialog`
 
 ---
 
-### Flujo de Estados Final
+### Flujo de Creación
 
-| Estado | Descripción | ¿Puede acceder? |
-|--------|-------------|-----------------|
-| `pending` | Registro nuevo, esperando revisión | No |
-| `rejected` | Rechazado por superadmin, bloqueado | No |
-| `approved` | Aprobado, acceso permitido | Sí |
-
----
-
-### Comportamiento de Bloqueo
-
-El bloqueo funciona automáticamente porque:
-1. Al registrarse, se crea un usuario en `auth.users` con el email
-2. Si alguien intenta registrarse con el mismo email, Supabase devuelve error "User already registered"
-3. El único que puede cambiar `rejected` → `approved` es un superadmin desde la gestión de usuarios
+| Paso | Acción | Resultado |
+|------|--------|-----------|
+| 1 | Superadmin hace clic en "Crear Usuario" | Se abre el diálogo |
+| 2 | Completa el formulario con datos del usuario | Validación client-side |
+| 3 | Hace clic en "Crear" | Se llama a la edge function |
+| 4 | Edge function crea usuario en auth.users | Trigger crea perfil automáticamente |
+| 5 | Edge function actualiza approval_status si es necesario | Usuario queda approved |
+| 6 | Edge function asigna roles seleccionados | Roles insertados en user_roles |
+| 7 | Se cierra el diálogo y se refresca la tabla | Usuario visible en la lista |
 
 ---
 
-### Archivos a Modificar
+### Archivos a Crear/Modificar
 
-| Archivo | Tipo de cambio |
-|---------|----------------|
-| Nueva migración SQL | Cambio de enum en BD |
-| `src/integrations/supabase/types.ts` | Actualizar tipo enum |
-| `src/contexts/AuthContext.tsx` | Actualizar tipo TypeScript |
-| `src/components/users/UserEditDialog.tsx` | Cambiar opciones del select |
-| `src/components/ui/StatusBadge.tsx` | Limpiar tipo (remover preapproved) |
-| `src/pages/auth/Pending.tsx` | Agregar UI para estado rechazado |
+| Archivo | Tipo |
+|---------|------|
+| `supabase/functions/create-user/index.ts` | Nuevo - Edge function |
+| `src/components/users/UserCreateDialog.tsx` | Nuevo - Componente diálogo |
+| `src/pages/app/Users.tsx` | Modificar - Agregar botón y diálogo |
 
+---
+
+### Consideraciones de Seguridad
+
+- La edge function debe validar que el usuario que hace la petición sea superadmin
+- Se usa el service_role key solo en el backend (edge function)
+- Validación de RUT única antes de crear
+- Validación de email único (Supabase lo maneja automáticamente)
+- Contraseña temporal que el usuario debería cambiar al primer login
