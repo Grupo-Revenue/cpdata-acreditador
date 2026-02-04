@@ -43,7 +43,11 @@ export function UsersTable({ users, onEdit, onManageRoles }: UsersTableProps) {
           {users.map((user) => (
             <TableRow key={user.id}>
               <TableCell className="font-medium">
-                {user.nombre} {user.apellido}
+                {user.nombre || user.apellido ? (
+                  `${user.nombre} ${user.apellido}`.trim()
+                ) : (
+                  <span className="text-muted-foreground italic">{user.email}</span>
+                )}
                 {!user.is_active && (
                   <Badge variant="secondary" className="ml-2">
                     Inactivo
