@@ -105,6 +105,15 @@ export function UserEditDialog({ user, open, onOpenChange, onSuccess }: UserEdit
         <form onSubmit={handleSubmit}>
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
+              <Label htmlFor="rut">RUT</Label>
+              <Input
+                id="rut"
+                value={user?.rut || ''}
+                disabled
+                className="bg-muted"
+              />
+            </div>
+            <div className="grid gap-2">
               <Label htmlFor="nombre">Nombre</Label>
               <Input
                 id="nombre"
