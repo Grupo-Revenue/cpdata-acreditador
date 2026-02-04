@@ -10,12 +10,13 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { UserWithRoles } from './types';
-import { Edit, Shield } from 'lucide-react';
+import { Edit, Shield, Trash2 } from 'lucide-react';
 
 interface UsersTableProps {
   users: UserWithRoles[];
   onEdit: (user: UserWithRoles) => void;
   onManageRoles: (user: UserWithRoles) => void;
+  onDelete: (user: UserWithRoles) => void;
 }
 
 const roleLabels: Record<string, string> = {
@@ -25,7 +26,7 @@ const roleLabels: Record<string, string> = {
   acreditador: 'Acreditador',
 };
 
-export function UsersTable({ users, onEdit, onManageRoles }: UsersTableProps) {
+export function UsersTable({ users, onEdit, onManageRoles, onDelete }: UsersTableProps) {
   return (
     <div className="rounded-md border">
       <Table>
@@ -81,6 +82,15 @@ export function UsersTable({ users, onEdit, onManageRoles }: UsersTableProps) {
                   <Button variant="ghost" size="sm" onClick={() => onManageRoles(user)}>
                     <Shield className="h-4 w-4" />
                     <span className="sr-only">Gestionar roles</span>
+                  </Button>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                    onClick={() => onDelete(user)}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                    <span className="sr-only">Eliminar</span>
                   </Button>
                 </div>
               </TableCell>
