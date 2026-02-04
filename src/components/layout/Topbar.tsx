@@ -1,6 +1,6 @@
 import { Bell, Menu } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth, type AppRole } from '@/contexts/AuthContext';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -30,6 +30,19 @@ export function Topbar({ onMenuClick, sidebarCollapsed }: TopbarProps) {
     acreditador: 'Acreditador',
   };
 
+  // Obtener el rol principal (el de mayor jerarquía)
+  const getPrimaryRole = () => {
+    const hierarchy: AppRole[] = ['superadmin', 'administracion', 'supervisor', 'acreditador'];
+    for (const role of hierarchy) {
+      if (roles.includes(role)) {
+        return roleLabels[role] || role;
+      }
+    }
+    return null;
+  };
+
+  const primaryRole = getPrimaryRole();
+
   return (
     <header className="sticky top-0 z-30 h-16 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="flex h-full items-center justify-between px-4">
@@ -52,6 +65,13 @@ export function Topbar({ onMenuClick, sidebarCollapsed }: TopbarProps) {
             <Bell className="w-5 h-5" />
             <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-destructive rounded-full" />
           </Button>
+
+          {/* Role badge */}
+          {primaryRole && (
+            <span className="hidden sm:inline-flex text-xs bg-primary/10 text-primary px-3 py-1.5 rounded-full font-medium">
+              {primaryRole}
+            </span>
+          )}
 
           {/* User menu */}
           <DropdownMenu>
