@@ -7,9 +7,15 @@ import { StatusBadge } from '@/components/ui/StatusBadge';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { LoadingState } from '@/components/ui/LoadingState';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth, AppRole } from '@/contexts/AuthContext';
 import { Users, Check, X, RefreshCw } from 'lucide-react';
+import { UsersTable } from '@/components/users/UsersTable';
+import { UserEditDialog } from '@/components/users/UserEditDialog';
+import { UserRolesDialog } from '@/components/users/UserRolesDialog';
+import { UserWithRoles } from '@/components/users/types';
 
 interface PendingUser {
   id: string;
@@ -23,11 +29,21 @@ interface PendingUser {
 }
 
 export default function UsersPage() {
+  const { hasRole } = useAuth();
+  const isSuperadmin = hasRole('superadmin');
+
   const [pendingUsers, setPendingUsers] = useState<PendingUser[]>([]);
+  const [allUsers, setAllUsers] = useState<UserWithRoles[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingAll, setIsLoadingAll] = useState(false);
   const [selectedUser, setSelectedUser] = useState<PendingUser | null>(null);
   const [actionType, setActionType] = useState<'approve' | 'reject' | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  
+  // Dialog states
+  const [editingUser, setEditingUser] = useState<UserWithRoles | null>(null);
+  const [managingRolesUser, setManagingRolesUser] = useState<UserWithRoles | null>(null);
+  
   const { toast } = useToast();
 
   const fetchPendingUsers = async () => {
@@ -53,16 +69,64 @@ export default function UsersPage() {
     }
   };
 
+  const fetchAllUsers = async () => {
+    if (!isSuperadmin) return;
+    
+    setIsLoadingAll(true);
+    try {
+      // Fetch all profiles
+      const { data: profiles, error: profilesError } = await supabase
+        .from('profiles')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (profilesError) throw profilesError;
+
+      // Fetch all user roles
+      const { data: userRoles, error: rolesError } = await supabase
+        .from('user_roles')
+        .select('user_id, role');
+
+      if (rolesError) throw rolesError;
+
+      // Combine profiles with roles
+      const usersWithRoles: UserWithRoles[] = (profiles || []).map((profile) => ({
+        ...profile,
+        roles: (userRoles?.filter((r) => r.user_id === profile.id).map((r) => r.role) || []) as AppRole[],
+      }));
+
+      setAllUsers(usersWithRoles);
+    } catch (error) {
+      console.error('Error fetching all users:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'No se pudieron cargar los usuarios.',
+      });
+    } finally {
+      setIsLoadingAll(false);
+    }
+  };
+
   useEffect(() => {
     fetchPendingUsers();
-  }, []);
+    if (isSuperadmin) {
+      fetchAllUsers();
+    }
+  }, [isSuperadmin]);
+
+  const handleRefresh = () => {
+    fetchPendingUsers();
+    if (isSuperadmin) {
+      fetchAllUsers();
+    }
+  };
 
   const handleApprove = async () => {
     if (!selectedUser) return;
     
     setIsProcessing(true);
     try {
-      // Actualizar estado del perfil
       const { error: profileError } = await supabase
         .from('profiles')
         .update({ approval_status: 'approved' })
@@ -70,7 +134,6 @@ export default function UsersPage() {
 
       if (profileError) throw profileError;
 
-      // Asignar rol de acreditador por defecto
       const { error: roleError } = await supabase
         .from('user_roles')
         .insert({ user_id: selectedUser.id, role: 'acreditador' });
@@ -82,7 +145,7 @@ export default function UsersPage() {
         description: `${selectedUser.nombre} ${selectedUser.apellido} ha sido aprobado.`,
       });
 
-      fetchPendingUsers();
+      handleRefresh();
     } catch (error) {
       console.error('Error approving user:', error);
       toast({
@@ -114,7 +177,7 @@ export default function UsersPage() {
         description: `${selectedUser.nombre} ${selectedUser.apellido} ha sido rechazado.`,
       });
 
-      fetchPendingUsers();
+      handleRefresh();
     } catch (error) {
       console.error('Error rejecting user:', error);
       toast({
@@ -129,6 +192,123 @@ export default function UsersPage() {
     }
   };
 
+  const PendingUsersContent = () => (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Users className="w-5 h-5" />
+          Usuarios Pendientes de Aprobación
+          {pendingUsers.length > 0 && (
+            <span className="text-sm font-normal text-muted-foreground">
+              ({pendingUsers.length})
+            </span>
+          )}
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        {isLoading ? (
+          <LoadingState text="Cargando usuarios..." />
+        ) : pendingUsers.length === 0 ? (
+          <EmptyState
+            icon={Users}
+            title="Sin usuarios pendientes"
+            description="No hay usuarios esperando aprobación."
+          />
+        ) : (
+          <div className="space-y-4">
+            {pendingUsers.map((user) => (
+              <div
+                key={user.id}
+                className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-lg border bg-muted/30"
+              >
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <p className="font-medium">
+                      {user.nombre} {user.apellido}
+                    </p>
+                    <StatusBadge status="pending" />
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    RUT: {user.rut} • {user.email}
+                  </p>
+                  {user.telefono && (
+                    <p className="text-sm text-muted-foreground">Tel: {user.telefono}</p>
+                  )}
+                  {user.referencia_contacto && (
+                    <p className="text-sm text-muted-foreground">
+                      Ref: {user.referencia_contacto}
+                    </p>
+                  )}
+                  <p className="text-xs text-muted-foreground">
+                    Registrado: {new Date(user.created_at).toLocaleDateString('es-CL')}
+                  </p>
+                </div>
+
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    onClick={() => {
+                      setSelectedUser(user);
+                      setActionType('approve');
+                    }}
+                  >
+                    <Check className="w-4 h-4 mr-1" />
+                    Aprobar
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="text-destructive hover:bg-destructive/10"
+                    onClick={() => {
+                      setSelectedUser(user);
+                      setActionType('reject');
+                    }}
+                  >
+                    <X className="w-4 h-4 mr-1" />
+                    Rechazar
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+
+  const AllUsersContent = () => (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Users className="w-5 h-5" />
+          Todos los Usuarios
+          {allUsers.length > 0 && (
+            <span className="text-sm font-normal text-muted-foreground">
+              ({allUsers.length})
+            </span>
+          )}
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        {isLoadingAll ? (
+          <LoadingState text="Cargando usuarios..." />
+        ) : allUsers.length === 0 ? (
+          <EmptyState
+            icon={Users}
+            title="Sin usuarios"
+            description="No hay usuarios en el sistema."
+          />
+        ) : (
+          <UsersTable
+            users={allUsers}
+            onEdit={(user) => setEditingUser(user)}
+            onManageRoles={(user) => setManagingRolesUser(user)}
+          />
+        )}
+      </CardContent>
+    </Card>
+  );
+
   return (
     <AppShell>
       <PageHeader
@@ -139,96 +319,36 @@ export default function UsersPage() {
           { label: 'Usuarios' },
         ]}
         actions={
-          <Button variant="outline" onClick={fetchPendingUsers} disabled={isLoading}>
-            <RefreshCw className={`w-4 h-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+          <Button variant="outline" onClick={handleRefresh} disabled={isLoading || isLoadingAll}>
+            <RefreshCw className={`w-4 h-4 mr-2 ${isLoading || isLoadingAll ? 'animate-spin' : ''}`} />
             Actualizar
           </Button>
         }
       />
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Users className="w-5 h-5" />
-            Usuarios Pendientes de Aprobación
-            {pendingUsers.length > 0 && (
-              <span className="text-sm font-normal text-muted-foreground">
-                ({pendingUsers.length})
-              </span>
-            )}
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <LoadingState text="Cargando usuarios..." />
-          ) : pendingUsers.length === 0 ? (
-            <EmptyState
-              icon={Users}
-              title="Sin usuarios pendientes"
-              description="No hay usuarios esperando aprobación."
-            />
-          ) : (
-            <div className="space-y-4">
-              {pendingUsers.map(user => (
-                <div
-                  key={user.id}
-                  className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-lg border bg-muted/30"
-                >
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2">
-                      <p className="font-medium">
-                        {user.nombre} {user.apellido}
-                      </p>
-                      <StatusBadge status="pending" />
-                    </div>
-                    <p className="text-sm text-muted-foreground">
-                      RUT: {user.rut} • {user.email}
-                    </p>
-                    {user.telefono && (
-                      <p className="text-sm text-muted-foreground">
-                        Tel: {user.telefono}
-                      </p>
-                    )}
-                    {user.referencia_contacto && (
-                      <p className="text-sm text-muted-foreground">
-                        Ref: {user.referencia_contacto}
-                      </p>
-                    )}
-                    <p className="text-xs text-muted-foreground">
-                      Registrado: {new Date(user.created_at).toLocaleDateString('es-CL')}
-                    </p>
-                  </div>
-
-                  <div className="flex gap-2">
-                    <Button
-                      size="sm"
-                      onClick={() => {
-                        setSelectedUser(user);
-                        setActionType('approve');
-                      }}
-                    >
-                      <Check className="w-4 h-4 mr-1" />
-                      Aprobar
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="text-destructive hover:bg-destructive/10"
-                      onClick={() => {
-                        setSelectedUser(user);
-                        setActionType('reject');
-                      }}
-                    >
-                      <X className="w-4 h-4 mr-1" />
-                      Rechazar
-                    </Button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      {isSuperadmin ? (
+        <Tabs defaultValue="pending" className="space-y-4">
+          <TabsList>
+            <TabsTrigger value="pending">
+              Pendientes
+              {pendingUsers.length > 0 && (
+                <span className="ml-2 rounded-full bg-primary px-2 py-0.5 text-xs text-primary-foreground">
+                  {pendingUsers.length}
+                </span>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="all">Todos los Usuarios</TabsTrigger>
+          </TabsList>
+          <TabsContent value="pending">
+            <PendingUsersContent />
+          </TabsContent>
+          <TabsContent value="all">
+            <AllUsersContent />
+          </TabsContent>
+        </Tabs>
+      ) : (
+        <PendingUsersContent />
+      )}
 
       <ConfirmDialog
         open={actionType === 'approve' && !!selectedUser}
@@ -255,6 +375,20 @@ export default function UsersPage() {
         variant="destructive"
         onConfirm={handleReject}
         isLoading={isProcessing}
+      />
+
+      <UserEditDialog
+        user={editingUser}
+        open={!!editingUser}
+        onOpenChange={(open) => !open && setEditingUser(null)}
+        onSuccess={handleRefresh}
+      />
+
+      <UserRolesDialog
+        user={managingRolesUser}
+        open={!!managingRolesUser}
+        onOpenChange={(open) => !open && setManagingRolesUser(null)}
+        onSuccess={handleRefresh}
       />
     </AppShell>
   );
