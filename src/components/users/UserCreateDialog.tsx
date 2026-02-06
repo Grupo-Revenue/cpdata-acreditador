@@ -24,6 +24,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { getRUTError, cleanRUT } from '@/lib/rut';
 import { AppRole } from '@/contexts/AuthContext';
 import { Loader2 } from 'lucide-react';
+import { useRoles } from '@/hooks/useRoles';
 
 interface UserCreateDialogProps {
   open: boolean;
@@ -31,16 +32,10 @@ interface UserCreateDialogProps {
   onSuccess: () => void;
 }
 
-const AVAILABLE_ROLES: { value: AppRole; label: string }[] = [
-  { value: 'superadmin', label: 'Superadmin' },
-  { value: 'administracion', label: 'Administración' },
-  { value: 'supervisor', label: 'Supervisor' },
-  { value: 'acreditador', label: 'Acreditador' },
-];
-
 export function UserCreateDialog({ open, onOpenChange, onSuccess }: UserCreateDialogProps) {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
+  const { data: roles } = useRoles();
   
   // Form state
   const [rut, setRut] = useState('');
@@ -282,19 +277,19 @@ export function UserCreateDialog({ open, onOpenChange, onSuccess }: UserCreateDi
           <div className="space-y-2">
             <Label>Roles iniciales</Label>
             <div className="grid grid-cols-2 gap-2">
-              {AVAILABLE_ROLES.map((role) => (
-                <div key={role.value} className="flex items-center space-x-2">
+              {roles?.map((role) => (
+                <div key={role.name} className="flex items-center space-x-2">
                   <Checkbox
-                    id={`role-${role.value}`}
-                    checked={selectedRoles.includes(role.value)}
-                    onCheckedChange={() => handleRoleToggle(role.value)}
+                    id={`role-${role.name}`}
+                    checked={selectedRoles.includes(role.name as AppRole)}
+                    onCheckedChange={() => handleRoleToggle(role.name as AppRole)}
                     disabled={isLoading}
                   />
                   <Label
-                    htmlFor={`role-${role.value}`}
+                    htmlFor={`role-${role.name}`}
                     className="text-sm font-normal cursor-pointer"
                   >
-                    {role.label}
+                    {role.name}
                   </Label>
                 </div>
               ))}
