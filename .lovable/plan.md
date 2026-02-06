@@ -1,99 +1,167 @@
 
 
-## Plan: Dashboard Superadmin con Datos Reales
+## Plan: Rediseño del Dashboard Superadmin
 
 ### Objetivo
-Actualizar el dashboard de superadmin para mostrar datos reales de usuarios pendientes, reemplazando los valores estáticos actuales con información en tiempo real desde la base de datos.
+Actualizar el dashboard de superadmin con las siguientes modificaciones:
+1. Mantener 4 cards de estadisticas: Eventos Hoy, Eventos Mes, Eventos Dia, Usuarios Pendientes
+2. Reemplazar la seccion de "Usuarios Pendientes de Aprobacion" por una tabla de ranking de acreditadores
+3. Actualizar accesos rapidos con: Cotizacion, Trello y Hubspot
+
+---
+
+### Requisitos Previos
+
+Actualmente NO existe una tabla de eventos en la base de datos. Para mostrar:
+- Eventos Hoy/Mes/Dia con datos reales
+- Ranking de acreditadores por eventos completados
+
+Se necesita crear la estructura de datos de eventos.
+
+---
+
+### Cambios en Base de Datos
+
+#### Nueva Tabla: `events`
+
+| Columna | Tipo | Descripcion |
+|---------|------|-------------|
+| id | uuid | Identificador unico |
+| name | text | Nombre del evento |
+| description | text | Descripcion opcional |
+| event_date | date | Fecha del evento |
+| location | text | Ubicacion del evento |
+| status | enum | Estado: pending, in_progress, completed, cancelled |
+| created_at | timestamp | Fecha de creacion |
+| updated_at | timestamp | Fecha de actualizacion |
+
+#### Nueva Tabla: `event_accreditors`
+
+| Columna | Tipo | Descripcion |
+|---------|------|-------------|
+| id | uuid | Identificador unico |
+| event_id | uuid | Referencia al evento |
+| user_id | uuid | Referencia al acreditador |
+| status | enum | Estado: assigned, completed |
+| created_at | timestamp | Fecha de asignacion |
+
+Esta estructura permitira:
+- Contar eventos por fecha (hoy, mes)
+- Calcular ranking por cantidad de eventos completados por acreditador
 
 ---
 
 ### Cambios en el Dashboard
 
-#### Estadísticas a Mostrar (Cards Superiores)
+#### Cards de Estadisticas (4 tarjetas superiores)
+
 | Card | Fuente de Datos |
 |------|-----------------|
-| Usuarios Pendientes | `profiles` donde `approval_status = 'pending'` |
-| Eventos Hoy | Placeholder: "0" (pendiente tabla de eventos) |
-| Eventos del Mes | Placeholder: "0" (pendiente tabla de eventos) |
-| Total Usuarios Activos | `profiles` donde `is_active = true` AND `approval_status = 'approved'` |
+| Eventos Hoy | COUNT de `events` donde `event_date = today` |
+| Eventos del Mes | COUNT de `events` donde `event_date` en mes actual |
+| Eventos del Dia | COUNT de `events` donde `event_date = today` (duplicado de Eventos Hoy, confirmar diferencia) |
+| Usuarios Pendientes | COUNT de `profiles` donde `approval_status = 'pending'` |
 
-#### Secciones Principales
-1. **Cards de Estadísticas**: 4 tarjetas con contadores en tiempo real
-2. **Lista de Usuarios Pendientes**: Reemplaza "Top Acreditadores" con la lista real de usuarios que requieren aprobación
-3. **Accesos Rápidos**: Enlace directo a gestión de usuarios
+#### Seccion Principal: Tabla de Ranking
+
+Reemplaza la lista de usuarios pendientes por una tabla que muestra:
+
+| Columna | Descripcion |
+|---------|-------------|
+| Posicion | Numero de ranking (1, 2, 3...) |
+| Acreditador | Nombre completo del usuario |
+| Eventos Completados | Cantidad de eventos donde participo |
+| Ultimo Evento | Fecha del ultimo evento completado |
+
+La tabla mostrara los top 10 acreditadores ordenados por eventos completados.
+
+#### Accesos Rapidos Actualizados
+
+| Boton | Accion |
+|-------|--------|
+| Cotizacion | Navega a `/app/quotes` (pagina interna) |
+| Trello | Abre enlace externo a Trello (configurable) |
+| Hubspot | Abre enlace externo a Hubspot (configurable) |
 
 ---
 
-### Implementación Técnica
+### Diseno Visual
 
-#### 1. Modificar SuperadminDashboard.tsx
-- Agregar hooks de React Query para obtener datos
-- Consultar `profiles` para contar usuarios pendientes y activos
-- Mostrar lista de usuarios pendientes con nombre, email y fecha de registro
-- Agregar botón de acción para ir a la página de gestión de usuarios
-
-#### 2. Consultas a Realizar
 ```text
-Usuarios pendientes:
-  SELECT * FROM profiles 
-  WHERE approval_status = 'pending' 
-  ORDER BY created_at DESC
-
-Conteo de usuarios activos:
-  SELECT count(*) FROM profiles 
-  WHERE is_active = true AND approval_status = 'approved'
++------------------------------------------------------------------+
+|  Dashboard Superadmin                                            |
++------------------------------------------------------------------+
+|  [Eventos Hoy]  [Eventos Mes]  [Eventos Dia]  [Pendientes]       |
+|       5              28            5              3              |
++------------------------------------------------------------------+
+|                                           |                      |
+|  Ranking de Acreditadores                 | Accesos Rapidos      |
+|  +-------------------------------------+  |                      |
+|  | #  | Nombre      | Eventos | Ultimo |  | [Cotizacion]         |
+|  |----|-------------|---------|--------|  | [Trello]             |
+|  | 1  | Juan Perez  |   45    | 05/02  |  | [Hubspot]            |
+|  | 2  | Maria Lopez |   38    | 04/02  |  |                      |
+|  | 3  | Pedro Diaz  |   32    | 03/02  |  |                      |
+|  +-------------------------------------+  |                      |
+|                                           |                      |
++-------------------------------------------+----------------------+
 ```
 
 ---
 
-### Diseño Visual
+### Archivos a Crear/Modificar
+
+| Archivo | Tipo | Descripcion |
+|---------|------|-------------|
+| Migracion SQL | Nuevo | Crear tablas events y event_accreditors |
+| `src/pages/dashboard/SuperadminDashboard.tsx` | Modificar | Implementar nuevo layout con ranking y accesos |
+| `src/components/dashboard/RankingTable.tsx` | Nuevo | Componente de tabla de ranking reutilizable |
+
+---
+
+### Consultas a Implementar
 
 ```text
-+--------------------------------------------------+
-|  Dashboard Superadmin                            |
-+--------------------------------------------------+
-|  [Eventos Hoy]  [Eventos Mes]  [Pendientes]  [Activos]
-|       0              0            5             12
-+--------------------------------------------------+
-|                                    |             |
-|  Usuarios Pendientes de            | Accesos     |
-|  Aprobación                        | Rápidos     |
-|  +--------------------------+      |             |
-|  | Test Tester              |      | [Usuarios]  |
-|  | test@test.cl             |      | [Eventos]   |
-|  | Hace 2 días              |      | [Config]    |
-|  | [Aprobar] [Rechazar]     |      |             |
-|  +--------------------------+      |             |
-|                                    |             |
-+------------------------------------+-------------+
+Eventos Hoy:
+  SELECT COUNT(*) FROM events 
+  WHERE event_date = CURRENT_DATE
+
+Eventos del Mes:
+  SELECT COUNT(*) FROM events 
+  WHERE EXTRACT(MONTH FROM event_date) = EXTRACT(MONTH FROM CURRENT_DATE)
+  AND EXTRACT(YEAR FROM event_date) = EXTRACT(YEAR FROM CURRENT_DATE)
+
+Ranking de Acreditadores:
+  SELECT 
+    p.id,
+    p.nombre,
+    p.apellido,
+    COUNT(ea.id) as eventos_completados,
+    MAX(e.event_date) as ultimo_evento
+  FROM profiles p
+  JOIN user_roles ur ON p.id = ur.user_id AND ur.role = 'acreditador'
+  LEFT JOIN event_accreditors ea ON p.id = ea.user_id AND ea.status = 'completed'
+  LEFT JOIN events e ON ea.event_id = e.id
+  GROUP BY p.id, p.nombre, p.apellido
+  ORDER BY eventos_completados DESC
+  LIMIT 10
 ```
 
 ---
 
-### Archivos a Modificar
+### URLs Externas
 
-| Archivo | Cambios |
-|---------|---------|
-| `src/pages/dashboard/SuperadminDashboard.tsx` | Agregar React Query, consultas a Supabase, lista de usuarios pendientes |
-
----
-
-### Funcionalidades
-
-1. **Contadores en tiempo real**: Se actualizan automáticamente con los datos de la BD
-2. **Lista de pendientes**: Muestra los últimos 5 usuarios pendientes con:
-   - Nombre completo (o email si no tiene nombre)
-   - Fecha de registro
-   - Botones de acción rápida
-3. **Navegación rápida**: Botón para ir a la página completa de gestión de usuarios
-4. **Estados de carga**: Skeletons mientras se cargan los datos
-5. **Manejo de vacíos**: Mensaje amigable si no hay usuarios pendientes
+Los enlaces a Trello y Hubspot se manejaran como:
+- URLs configurables en la tabla `settings` del sistema
+- O como constantes en el codigo (mas simple para empezar)
 
 ---
 
-### Próximos Pasos (Futuros)
+### Notas Importantes
 
-Los eventos se mostrarán como "0" hasta que se implemente la tabla de eventos. Una vez creada, se podrán agregar las consultas correspondientes:
-- Eventos de hoy: Filtrar por fecha del día actual
-- Eventos del mes: Filtrar por mes actual
+1. **Eventos Hoy vs Eventos Dia**: Parecen ser lo mismo. Si hay diferencia (ej: Eventos Dia = eventos donde el usuario actual participa), necesito aclaracion.
+
+2. **Datos Iniciales**: Como no hay eventos en la BD, el ranking mostrara todos los acreditadores con 0 eventos hasta que se agreguen datos.
+
+3. **Pagina de Cotizacion**: El boton de Cotizacion navegara a una ruta interna. Si la pagina no existe, se creara un placeholder.
 
