@@ -8,6 +8,8 @@ import {
   UserPlus,
   FileText,
   ExternalLink,
+  LayoutGrid,
+  MessageCircle,
 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -133,13 +135,13 @@ export default function SuperadminDashboard() {
     { 
       label: 'Trello', 
       href: TRELLO_URL, 
-      icon: ExternalLink,
+      icon: LayoutGrid,
       isExternal: true 
     },
     { 
       label: 'Hubspot', 
       href: HUBSPOT_URL, 
-      icon: ExternalLink,
+      icon: MessageCircle,
       isExternal: true 
     },
   ];
