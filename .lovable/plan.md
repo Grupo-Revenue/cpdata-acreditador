@@ -1,102 +1,116 @@
 
-## Plan: Página de Configuración de Perfil de Usuario
+
+## Plan: Configuración del Sidebar y Gestión Dinámica de Roles
 
 ### Objetivo
-Permitir que cada usuario autenticado pueda ver y editar su propia información de perfil desde una nueva página accesible para todos los roles.
+1. Asegurar que el botón "Configuración" en el Sidebar solo sea visible para superadmin (ya implementado)
+2. Implementar una interfaz en la página de Configuración para agregar y gestionar roles del sistema
 
 ---
 
-### Arquitectura de la Solución
+### Estado Actual
+
+El Sidebar ya tiene la restricción correcta en línea 36:
+```typescript
+{ icon: Settings, label: 'Configuración', href: '/app/settings', roles: ['superadmin'] }
+```
+
+Sin embargo, los roles están definidos como un `enum` de PostgreSQL (`app_role`), lo que limita la capacidad de agregar roles dinámicamente sin migraciones de base de datos.
+
+---
+
+### Arquitectura Propuesta
 
 ```text
-+------------------+     +-------------------+     +------------------+
-|   Topbar Menu    |---->|  /app/profile     |---->|  Supabase        |
-|   "Mi Perfil"    |     |  ProfilePage      |     |  profiles table  |
-+------------------+     +-------------------+     +------------------+
-                                  |
-                                  v
-                         +------------------+
-                         |  Storage Bucket  |
-                         |  avatars         |
-                         +------------------+
++-------------------+     +------------------+     +------------------+
+|  Settings Page    |---->|  Supabase        |---->|  app_role enum   |
+|  RolesManager     |     |  ALTER TYPE      |     |  (modificado)    |
++-------------------+     +------------------+     +------------------+
+        |                         |
+        v                         v
++-------------------+     +------------------+
+|  roles table      |     |  user_roles      |
+|  (metadatos)      |     |  (asignaciones)  |
++-------------------+     +------------------+
 ```
+
+---
+
+### Enfoque de Implementacion
+
+Para permitir agregar nuevos roles, se necesita:
+
+1. **Nueva Edge Function** para modificar el enum de PostgreSQL (requiere privilegios elevados)
+2. **Componente de UI** para gestionar roles en la pagina de Configuracion
+3. **Actualizacion del frontend** para cargar roles dinamicamente desde la base de datos
 
 ---
 
 ### Cambios Necesarios
 
-#### 1. Crear Storage Bucket para Avatares
-Crear un bucket `avatars` en Supabase Storage con políticas RLS:
-- Los usuarios pueden subir/actualizar su propio avatar
-- Los avatares son públicos para lectura (necesario para mostrar en la UI)
+#### 1. Nueva Edge Function: `manage-roles`
+**Archivo**: `supabase/functions/manage-roles/index.ts`
 
-#### 2. Nueva Página: Mi Perfil
-**Archivo**: `src/pages/app/Profile.tsx`
+Operaciones disponibles:
+- `add`: Agrega un nuevo rol al enum usando `ALTER TYPE app_role ADD VALUE`
+- `list`: Lista todos los roles desde la tabla `roles`
+- `update`: Actualiza descripcion de un rol existente
 
-Funcionalidad:
-- Muestra la foto de perfil actual (o avatar por defecto)
-- Permite subir/cambiar foto de perfil
-- Formulario editable con:
-  - RUT (solo lectura - referencia)
-  - Email (solo lectura - no se puede cambiar)
-  - Nombre (editable)
-  - Apellido (editable)
-  - Teléfono (editable)
-  - Referencia de contacto (editable)
-- Botón para guardar cambios
-- Opción para cambiar contraseña (enlace a flujo de reset)
+Restriccion: Solo superadmins pueden ejecutar esta funcion.
 
-#### 3. Agregar Ruta en App.tsx
-**Archivo**: `src/App.tsx`
+#### 2. Actualizar Pagina de Configuracion
+**Archivo**: `src/pages/app/Settings.tsx`
 
-Nueva ruta protegida accesible para todos los usuarios:
-```tsx
-<Route path="/app/profile" element={
-  <ProtectedRoute>
-    <ProfilePage />
-  </ProtectedRoute>
-} />
-```
+Agregar seccion de gestion de roles:
+- Lista de roles existentes con nombre y descripcion
+- Boton para agregar nuevo rol
+- Dialogo para crear rol con nombre (slug) y descripcion
+- Edicion de descripcion de roles existentes
 
-#### 4. Agregar Enlace en el Menú de Usuario (Topbar)
-**Archivo**: `src/components/layout/Topbar.tsx`
+#### 3. Nuevo Componente: RolesManager
+**Archivo**: `src/components/settings/RolesManager.tsx`
 
-Agregar opción "Mi Perfil" en el DropdownMenu del usuario:
-```tsx
-<DropdownMenuItem asChild>
-  <Link to="/app/profile">Mi Perfil</Link>
-</DropdownMenuItem>
-```
+Funcionalidades:
+- Mostrar tabla de roles existentes
+- Formulario para agregar nuevo rol
+- Editar descripcion de roles
 
-#### 5. Actualizar AuthContext para Refrescar Perfil
-**Archivo**: `src/contexts/AuthContext.tsx`
+#### 4. Actualizar Componentes que Usan Roles
+**Archivos**:
+- `src/components/users/UserRolesDialog.tsx`
+- `src/components/users/UserCreateDialog.tsx`
 
-Agregar función `updateProfile` para actualizar el perfil del usuario actual sin requerir edge function (el usuario puede editar su propio perfil por RLS).
+Cambiar de lista estatica `ALL_ROLES` a carga dinamica desde la tabla `roles`.
 
 ---
 
-### Campos del Perfil
+### Diseño de la Interfaz de Roles
 
-| Campo | Editable | Descripción |
-|-------|----------|-------------|
-| RUT | No | Identificador único, solo referencia |
-| Email | No | Asociado a auth, no se puede cambiar |
-| Nombre | Sí | Nombre del usuario |
-| Apellido | Sí | Apellido del usuario |
-| Teléfono | Sí | Número de contacto |
-| Referencia | Sí | Referencia de contacto |
-| Foto | Sí | Imagen de perfil (avatar) |
+| Seccion | Contenido |
+|---------|-----------|
+| Encabezado | "Gestion de Roles" con icono y boton "Agregar Rol" |
+| Tabla | Nombre, Descripcion, Fecha creacion, Acciones |
+| Dialogo Crear | Campo nombre (solo letras minusculas y guiones), Campo descripcion |
+| Restricciones | Los 4 roles base no se pueden eliminar, solo editar descripcion |
 
 ---
 
-### Diseño de la Página
+### Validaciones para Nuevos Roles
 
-La página tendrá:
-1. **Header con avatar grande**: Foto circular con botón de cambiar
-2. **Información básica**: RUT y email (badges informativos)
-3. **Formulario editable**: Nombre, apellido, teléfono, referencia
-4. **Sección de seguridad**: Enlace para cambiar contraseña
-5. **Botón guardar**: Al final del formulario
+- **Nombre**: Solo letras minusculas y guiones (ej: `auditor`, `coordinador-zona`)
+- **Unicidad**: No puede duplicar un nombre existente
+- **Descripcion**: Opcional pero recomendada
+
+---
+
+### Flujo de Creacion de Rol
+
+1. Superadmin hace clic en "Agregar Rol"
+2. Completa nombre y descripcion
+3. Se llama a la edge function `manage-roles`
+4. Edge function ejecuta `ALTER TYPE public.app_role ADD VALUE '{nombre}'`
+5. Edge function inserta registro en tabla `roles`
+6. Se refresca la lista en el frontend
 
 ---
 
@@ -104,28 +118,26 @@ La página tendrá:
 
 | Archivo | Tipo |
 |---------|------|
-| Nueva migración SQL (Storage bucket) | Nuevo |
-| `src/pages/app/Profile.tsx` | Nuevo |
-| `src/App.tsx` | Modificar - agregar ruta |
-| `src/components/layout/Topbar.tsx` | Modificar - agregar enlace |
+| `supabase/functions/manage-roles/index.ts` | Nuevo |
+| `src/components/settings/RolesManager.tsx` | Nuevo |
+| `src/components/settings/RoleCreateDialog.tsx` | Nuevo |
+| `src/pages/app/Settings.tsx` | Modificar |
+| `src/components/users/UserRolesDialog.tsx` | Modificar |
+| `src/components/users/UserCreateDialog.tsx` | Modificar |
 
 ---
 
-### Políticas RLS para Storage
+### Consideraciones Tecnicas
 
-El bucket `avatars` tendrá las siguientes políticas:
-- **SELECT (público)**: Cualquiera puede ver los avatares
-- **INSERT**: El usuario puede subir su avatar (path: `{user_id}/avatar.*`)
-- **UPDATE**: El usuario puede actualizar su avatar
-- **DELETE**: El usuario puede eliminar su avatar
+- **Enum de PostgreSQL**: Agregar valores es irreversible sin recrear el tipo. Los roles agregados no se pueden eliminar facilmente, solo desactivar.
+- **Sincronizacion Frontend**: El tipo `AppRole` en TypeScript se volvera dinamico, cargando los valores desde la base de datos.
+- **Cache**: Los roles se cargaran una vez al iniciar y se almacenaran en contexto o React Query.
 
 ---
 
-### Flujo de Usuario
+### Limitaciones
 
-1. El usuario hace clic en su avatar en el Topbar
-2. Selecciona "Mi Perfil" del menú desplegable
-3. Ve su información actual y puede editarla
-4. Al cambiar la foto, se sube automáticamente al storage
-5. Al hacer clic en "Guardar", se actualizan los datos en `profiles`
-6. El contexto se refresca y la UI refleja los cambios
+- Los roles base (superadmin, administracion, supervisor, acreditador) no se pueden eliminar
+- Los nombres de rol son permanentes una vez creados (limitacion de PostgreSQL enums)
+- Para "eliminar" un rol, se podria agregar un campo `is_active` a la tabla roles
+
