@@ -14,6 +14,71 @@ export type Database = {
   }
   public: {
     Tables: {
+      event_accreditors: {
+        Row: {
+          created_at: string
+          event_id: string
+          id: string
+          status: Database["public"]["Enums"]["accreditor_assignment_status"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          event_id: string
+          id?: string
+          status?: Database["public"]["Enums"]["accreditor_assignment_status"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          event_id?: string
+          id?: string
+          status?: Database["public"]["Enums"]["accreditor_assignment_status"]
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_accreditors_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      events: {
+        Row: {
+          created_at: string
+          description: string | null
+          event_date: string
+          id: string
+          location: string | null
+          name: string
+          status: Database["public"]["Enums"]["event_status"]
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          event_date: string
+          id?: string
+          location?: string | null
+          name: string
+          status?: Database["public"]["Enums"]["event_status"]
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          event_date?: string
+          id?: string
+          location?: string | null
+          name?: string
+          status?: Database["public"]["Enums"]["event_status"]
+          updated_at?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           apellido: string
@@ -147,8 +212,10 @@ export type Database = {
       is_admin: { Args: { _user_id: string }; Returns: boolean }
     }
     Enums: {
+      accreditor_assignment_status: "assigned" | "completed"
       app_role: "superadmin" | "administracion" | "supervisor" | "acreditador"
       approval_status: "pending" | "rejected" | "approved"
+      event_status: "pending" | "in_progress" | "completed" | "cancelled"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -276,8 +343,10 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      accreditor_assignment_status: ["assigned", "completed"],
       app_role: ["superadmin", "administracion", "supervisor", "acreditador"],
       approval_status: ["pending", "rejected", "approved"],
+      event_status: ["pending", "in_progress", "completed", "cancelled"],
     },
   },
 } as const

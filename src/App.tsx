@@ -28,6 +28,7 @@ import InvoicesPage from "@/pages/app/Invoices";
 import ReimbursementsPage from "@/pages/app/Reimbursements";
 import SupportPage from "@/pages/app/Support";
 import RankingPage from "@/pages/app/Ranking";
+import QuotesPage from "@/pages/app/Quotes";
 import SettingsPage from "@/pages/app/Settings";
 import ProfilePage from "@/pages/app/Profile";
 
@@ -130,6 +131,12 @@ const App = () => (
             <Route path="/app/ranking" element={
               <ProtectedRoute>
                 <RankingPage />
+              </ProtectedRoute>
+            } />
+
+            <Route path="/app/quotes" element={
+              <ProtectedRoute requiredRoles={['superadmin', 'administracion']}>
+                <QuotesPage />
               </ProtectedRoute>
             } />
 
