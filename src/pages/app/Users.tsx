@@ -11,11 +11,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth, AppRole } from '@/contexts/AuthContext';
-import { Users, Check, X, RefreshCw, UserPlus } from 'lucide-react';
+import { Users, Check, X, RefreshCw, UserPlus, Upload } from 'lucide-react';
 import { UsersTable } from '@/components/users/UsersTable';
 import { UserEditDialog } from '@/components/users/UserEditDialog';
 import { UserRolesDialog } from '@/components/users/UserRolesDialog';
 import { UserCreateDialog } from '@/components/users/UserCreateDialog';
+import { UserBulkUploadDialog } from '@/components/users/UserBulkUploadDialog';
 import { UserWithRoles } from '@/components/users/types';
 
 interface PendingUser {
@@ -47,6 +48,7 @@ export default function UsersPage() {
   const [deletingUser, setDeletingUser] = useState<UserWithRoles | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [isBulkUploadDialogOpen, setIsBulkUploadDialogOpen] = useState(false);
   
   const { toast } = useToast();
 
@@ -366,10 +368,16 @@ export default function UsersPage() {
         actions={
           <div className="flex gap-2">
             {isSuperadmin && (
-              <Button onClick={() => setIsCreateDialogOpen(true)}>
-                <UserPlus className="w-4 h-4 mr-2" />
-                Crear Usuario
-              </Button>
+              <>
+                <Button variant="outline" onClick={() => setIsBulkUploadDialogOpen(true)}>
+                  <Upload className="w-4 h-4 mr-2" />
+                  Cargar Usuarios
+                </Button>
+                <Button onClick={() => setIsCreateDialogOpen(true)}>
+                  <UserPlus className="w-4 h-4 mr-2" />
+                  Crear Usuario
+                </Button>
+              </>
             )}
             <Button variant="outline" onClick={handleRefresh} disabled={isLoading || isLoadingAll}>
               <RefreshCw className={`w-4 h-4 mr-2 ${isLoading || isLoadingAll ? 'animate-spin' : ''}`} />
@@ -458,6 +466,12 @@ export default function UsersPage() {
       <UserCreateDialog
         open={isCreateDialogOpen}
         onOpenChange={setIsCreateDialogOpen}
+        onSuccess={handleRefresh}
+      />
+
+      <UserBulkUploadDialog
+        open={isBulkUploadDialogOpen}
+        onOpenChange={setIsBulkUploadDialogOpen}
         onSuccess={handleRefresh}
       />
     </AppShell>
