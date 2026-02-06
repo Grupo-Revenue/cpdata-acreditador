@@ -5,104 +5,151 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { 
   Calendar, 
-  Users,
-  UserCheck,
-  Clock,
+  UserPlus,
+  FileText,
   ExternalLink,
-  UserPlus
 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
-import { formatDistanceToNow } from 'date-fns';
-import { es } from 'date-fns/locale';
+import { RankingTable } from '@/components/dashboard/RankingTable';
 
 export default function SuperadminDashboard() {
   const navigate = useNavigate();
 
   // Query para usuarios pendientes
-  const { data: pendingUsers, isLoading: loadingPending } = useQuery({
-    queryKey: ['pending-users'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('approval_status', 'pending')
-        .order('created_at', { ascending: false });
-      
-      if (error) throw error;
-      return data;
-    }
-  });
-
-  // Query para contar usuarios activos
-  const { data: activeUsersCount, isLoading: loadingActive } = useQuery({
-    queryKey: ['active-users-count'],
+  const { data: pendingCount, isLoading: loadingPending } = useQuery({
+    queryKey: ['pending-users-count'],
     queryFn: async () => {
       const { count, error } = await supabase
         .from('profiles')
         .select('*', { count: 'exact', head: true })
-        .eq('is_active', true)
-        .eq('approval_status', 'approved');
+        .eq('approval_status', 'pending');
       
       if (error) throw error;
       return count || 0;
     }
   });
 
-  const pendingCount = pendingUsers?.length || 0;
+  // Query para eventos de hoy
+  const { data: eventsTodayCount, isLoading: loadingEventsToday } = useQuery({
+    queryKey: ['events-today-count'],
+    queryFn: async () => {
+      const today = new Date().toISOString().split('T')[0];
+      const { count, error } = await supabase
+        .from('events')
+        .select('*', { count: 'exact', head: true })
+        .eq('event_date', today);
+      
+      if (error) throw error;
+      return count || 0;
+    }
+  });
+
+  // Query para eventos del mes
+  const { data: eventsMonthCount, isLoading: loadingEventsMonth } = useQuery({
+    queryKey: ['events-month-count'],
+    queryFn: async () => {
+      const now = new Date();
+      const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+      const lastDayOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
+      
+      const { count, error } = await supabase
+        .from('events')
+        .select('*', { count: 'exact', head: true })
+        .gte('event_date', firstDayOfMonth)
+        .lte('event_date', lastDayOfMonth);
+      
+      if (error) throw error;
+      return count || 0;
+    }
+  });
+
+  // Query para eventos del día (igual que hoy, pero podría diferir si se define de otra manera)
+  const { data: eventsDayCount, isLoading: loadingEventsDay } = useQuery({
+    queryKey: ['events-day-count'],
+    queryFn: async () => {
+      const today = new Date().toISOString().split('T')[0];
+      const { count, error } = await supabase
+        .from('events')
+        .select('*', { count: 'exact', head: true })
+        .eq('event_date', today);
+      
+      if (error) throw error;
+      return count || 0;
+    }
+  });
 
   const stats = [
     {
       title: 'Eventos Hoy',
-      value: '0',
+      value: eventsTodayCount?.toString() || '0',
       icon: Calendar,
-      trend: 'Próximamente',
+      trend: 'Programados para hoy',
       color: 'text-primary',
       bgColor: 'bg-primary/10',
-      isLoading: false,
+      isLoading: loadingEventsToday,
     },
     {
       title: 'Eventos del Mes',
-      value: '0',
+      value: eventsMonthCount?.toString() || '0',
       icon: Calendar,
-      trend: 'Próximamente',
+      trend: 'En este mes',
       color: 'text-accent',
       bgColor: 'bg-accent/10',
-      isLoading: false,
+      isLoading: loadingEventsMonth,
+    },
+    {
+      title: 'Eventos del Día',
+      value: eventsDayCount?.toString() || '0',
+      icon: Calendar,
+      trend: 'En curso hoy',
+      color: 'text-success',
+      bgColor: 'bg-success/10',
+      isLoading: loadingEventsDay,
     },
     {
       title: 'Usuarios Pendientes',
-      value: pendingCount.toString(),
+      value: pendingCount?.toString() || '0',
       icon: UserPlus,
-      trend: pendingCount > 0 ? 'Requieren aprobación' : 'Todo al día',
+      trend: (pendingCount || 0) > 0 ? 'Requieren aprobación' : 'Todo al día',
       color: 'text-warning',
       bgColor: 'bg-warning/10',
       isLoading: loadingPending,
     },
-    {
-      title: 'Usuarios Activos',
-      value: activeUsersCount?.toString() || '0',
-      icon: UserCheck,
-      trend: 'Aprobados y activos',
-      color: 'text-success',
-      bgColor: 'bg-success/10',
-      isLoading: loadingActive,
+  ];
+
+  // External URLs - can be made configurable via settings table later
+  const TRELLO_URL = 'https://trello.com';
+  const HUBSPOT_URL = 'https://app.hubspot.com';
+
+  const quickLinks = [
+    { 
+      label: 'Cotización', 
+      href: '/app/quotes', 
+      icon: FileText,
+      isExternal: false 
+    },
+    { 
+      label: 'Trello', 
+      href: TRELLO_URL, 
+      icon: ExternalLink,
+      isExternal: true 
+    },
+    { 
+      label: 'Hubspot', 
+      href: HUBSPOT_URL, 
+      icon: ExternalLink,
+      isExternal: true 
     },
   ];
 
-  const quickLinks = [
-    { label: 'Gestionar Usuarios', href: '/app/users', icon: Users },
-    { label: 'Ver Eventos', href: '/app/events', icon: Calendar },
-    { label: 'Configuración', href: '/app/settings', icon: ExternalLink },
-  ];
-
-  const getDisplayName = (user: typeof pendingUsers extends (infer U)[] | null ? U : never) => {
-    if (user.nombre && user.apellido) {
-      return `${user.nombre} ${user.apellido}`;
+  const handleQuickLinkClick = (link: typeof quickLinks[0]) => {
+    if (link.isExternal) {
+      window.open(link.href, '_blank', 'noopener,noreferrer');
+    } else {
+      navigate(link.href);
     }
-    if (user.nombre) return user.nombre;
-    return user.email;
   };
 
   return (
@@ -113,14 +160,6 @@ export default function SuperadminDashboard() {
         breadcrumbs={[
           { label: 'Dashboard' },
         ]}
-        actions={
-          pendingCount > 0 ? (
-            <Button onClick={() => navigate('/app/users')}>
-              <Users className="w-4 h-4 mr-2" />
-              Aprobar usuarios ({pendingCount})
-            </Button>
-          ) : null
-        }
       />
 
       {/* Stats Grid */}
@@ -148,77 +187,8 @@ export default function SuperadminDashboard() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Usuarios Pendientes */}
-        <Card className="lg:col-span-2 animate-fade-in-up animation-delay-200">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <UserPlus className="w-5 h-5 text-warning" />
-              Usuarios Pendientes de Aprobación
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {loadingPending ? (
-              <div className="space-y-4">
-                {[1, 2, 3].map((i) => (
-                  <div key={i} className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
-                    <div className="flex items-center gap-3">
-                      <Skeleton className="w-10 h-10 rounded-full" />
-                      <div>
-                        <Skeleton className="h-4 w-32 mb-2" />
-                        <Skeleton className="h-3 w-24" />
-                      </div>
-                    </div>
-                    <Skeleton className="h-8 w-20" />
-                  </div>
-                ))}
-              </div>
-            ) : pendingUsers && pendingUsers.length > 0 ? (
-              <div className="space-y-4">
-                {pendingUsers.slice(0, 5).map((user) => (
-                  <div 
-                    key={user.id}
-                    className="flex items-center justify-between p-3 rounded-lg bg-muted/50 hover:bg-muted smooth-transition"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="flex items-center justify-center w-10 h-10 rounded-full bg-warning/20 text-warning font-bold text-sm">
-                        {user.nombre?.[0]?.toUpperCase() || user.email[0].toUpperCase()}
-                      </div>
-                      <div>
-                        <p className="font-medium">{getDisplayName(user)}</p>
-                        <p className="text-sm text-muted-foreground">{user.email}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <Clock className="w-4 h-4" />
-                      {formatDistanceToNow(new Date(user.created_at), { 
-                        addSuffix: true, 
-                        locale: es 
-                      })}
-                    </div>
-                  </div>
-                ))}
-                {pendingUsers.length > 5 && (
-                  <p className="text-sm text-muted-foreground text-center pt-2">
-                    Y {pendingUsers.length - 5} usuarios más...
-                  </p>
-                )}
-                <Button 
-                  className="w-full mt-4" 
-                  variant="outline"
-                  onClick={() => navigate('/app/users')}
-                >
-                  Ver todos los usuarios pendientes
-                </Button>
-              </div>
-            ) : (
-              <div className="text-center py-8">
-                <UserCheck className="w-12 h-12 mx-auto text-success mb-3" />
-                <p className="text-muted-foreground">No hay usuarios pendientes de aprobación</p>
-                <p className="text-sm text-muted-foreground mt-1">¡Todo está al día!</p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+        {/* Ranking Table */}
+        <RankingTable />
 
         {/* Accesos Rápidos */}
         <div className="space-y-6">
@@ -235,12 +205,15 @@ export default function SuperadminDashboard() {
                   key={index}
                   variant="outline"
                   className="w-full justify-between"
-                  onClick={() => navigate(link.href)}
+                  onClick={() => handleQuickLinkClick(link)}
                 >
                   <span className="flex items-center gap-2">
                     <link.icon className="w-4 h-4" />
                     {link.label}
                   </span>
+                  {link.isExternal && (
+                    <ExternalLink className="w-3 h-3 text-muted-foreground" />
+                  )}
                 </Button>
               ))}
             </CardContent>
