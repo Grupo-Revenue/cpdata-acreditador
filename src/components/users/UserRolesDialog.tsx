@@ -15,6 +15,8 @@ import { useToast } from '@/hooks/use-toast';
 import { UserWithRoles } from './types';
 import { AppRole } from '@/contexts/AuthContext';
 import { Shield } from 'lucide-react';
+import { useRoles } from '@/hooks/useRoles';
+import { LoadingState } from '@/components/ui/LoadingState';
 
 interface UserRolesDialogProps {
   user: UserWithRoles | null;
@@ -23,17 +25,11 @@ interface UserRolesDialogProps {
   onSuccess: () => void;
 }
 
-const ALL_ROLES: { value: AppRole; label: string; description: string }[] = [
-  { value: 'superadmin', label: 'Superadmin', description: 'Acceso total al sistema' },
-  { value: 'administracion', label: 'Administración', description: 'Gestión administrativa' },
-  { value: 'supervisor', label: 'Supervisor', description: 'Supervisión de operaciones' },
-  { value: 'acreditador', label: 'Acreditador', description: 'Gestión de acreditaciones' },
-];
-
 export function UserRolesDialog({ user, open, onOpenChange, onSuccess }: UserRolesDialogProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [selectedRoles, setSelectedRoles] = useState<AppRole[]>([]);
   const { toast } = useToast();
+  const { data: roles, isLoading: rolesLoading } = useRoles();
 
   useEffect(() => {
     if (user) {
@@ -109,31 +105,37 @@ export function UserRolesDialog({ user, open, onOpenChange, onSuccess }: UserRol
           </DialogDescription>
         </DialogHeader>
         <div className="py-4">
-          <div className="space-y-4">
-            {ALL_ROLES.map((role) => (
-              <div
-                key={role.value}
-                className="flex items-start space-x-3 rounded-lg border p-3"
-              >
-                <Checkbox
-                  id={role.value}
-                  checked={selectedRoles.includes(role.value)}
-                  onCheckedChange={(checked) =>
-                    handleRoleToggle(role.value, checked as boolean)
-                  }
-                />
-                <div className="grid gap-1.5 leading-none">
-                  <Label
-                    htmlFor={role.value}
-                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                  >
-                    {role.label}
-                  </Label>
-                  <p className="text-sm text-muted-foreground">{role.description}</p>
+          {rolesLoading ? (
+            <LoadingState text="Cargando roles..." size="sm" />
+          ) : (
+            <div className="space-y-4">
+              {roles?.map((role) => (
+                <div
+                  key={role.name}
+                  className="flex items-start space-x-3 rounded-lg border p-3"
+                >
+                  <Checkbox
+                    id={role.name}
+                    checked={selectedRoles.includes(role.name as AppRole)}
+                    onCheckedChange={(checked) =>
+                      handleRoleToggle(role.name as AppRole, checked as boolean)
+                    }
+                  />
+                  <div className="grid gap-1.5 leading-none">
+                    <Label
+                      htmlFor={role.name}
+                      className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                    >
+                      {role.name}
+                    </Label>
+                    <p className="text-sm text-muted-foreground">
+                      {role.description || 'Sin descripción'}
+                    </p>
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
         <DialogFooter>
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
