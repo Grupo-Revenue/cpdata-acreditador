@@ -1,143 +1,99 @@
 
 
-## Plan: Configuración del Sidebar y Gestión Dinámica de Roles
+## Plan: Dashboard Superadmin con Datos Reales
 
 ### Objetivo
-1. Asegurar que el botón "Configuración" en el Sidebar solo sea visible para superadmin (ya implementado)
-2. Implementar una interfaz en la página de Configuración para agregar y gestionar roles del sistema
+Actualizar el dashboard de superadmin para mostrar datos reales de usuarios pendientes, reemplazando los valores estáticos actuales con información en tiempo real desde la base de datos.
 
 ---
 
-### Estado Actual
+### Cambios en el Dashboard
 
-El Sidebar ya tiene la restricción correcta en línea 36:
-```typescript
-{ icon: Settings, label: 'Configuración', href: '/app/settings', roles: ['superadmin'] }
+#### Estadísticas a Mostrar (Cards Superiores)
+| Card | Fuente de Datos |
+|------|-----------------|
+| Usuarios Pendientes | `profiles` donde `approval_status = 'pending'` |
+| Eventos Hoy | Placeholder: "0" (pendiente tabla de eventos) |
+| Eventos del Mes | Placeholder: "0" (pendiente tabla de eventos) |
+| Total Usuarios Activos | `profiles` donde `is_active = true` AND `approval_status = 'approved'` |
+
+#### Secciones Principales
+1. **Cards de Estadísticas**: 4 tarjetas con contadores en tiempo real
+2. **Lista de Usuarios Pendientes**: Reemplaza "Top Acreditadores" con la lista real de usuarios que requieren aprobación
+3. **Accesos Rápidos**: Enlace directo a gestión de usuarios
+
+---
+
+### Implementación Técnica
+
+#### 1. Modificar SuperadminDashboard.tsx
+- Agregar hooks de React Query para obtener datos
+- Consultar `profiles` para contar usuarios pendientes y activos
+- Mostrar lista de usuarios pendientes con nombre, email y fecha de registro
+- Agregar botón de acción para ir a la página de gestión de usuarios
+
+#### 2. Consultas a Realizar
+```text
+Usuarios pendientes:
+  SELECT * FROM profiles 
+  WHERE approval_status = 'pending' 
+  ORDER BY created_at DESC
+
+Conteo de usuarios activos:
+  SELECT count(*) FROM profiles 
+  WHERE is_active = true AND approval_status = 'approved'
 ```
 
-Sin embargo, los roles están definidos como un `enum` de PostgreSQL (`app_role`), lo que limita la capacidad de agregar roles dinámicamente sin migraciones de base de datos.
-
 ---
 
-### Arquitectura Propuesta
+### Diseño Visual
 
 ```text
-+-------------------+     +------------------+     +------------------+
-|  Settings Page    |---->|  Supabase        |---->|  app_role enum   |
-|  RolesManager     |     |  ALTER TYPE      |     |  (modificado)    |
-+-------------------+     +------------------+     +------------------+
-        |                         |
-        v                         v
-+-------------------+     +------------------+
-|  roles table      |     |  user_roles      |
-|  (metadatos)      |     |  (asignaciones)  |
-+-------------------+     +------------------+
++--------------------------------------------------+
+|  Dashboard Superadmin                            |
++--------------------------------------------------+
+|  [Eventos Hoy]  [Eventos Mes]  [Pendientes]  [Activos]
+|       0              0            5             12
++--------------------------------------------------+
+|                                    |             |
+|  Usuarios Pendientes de            | Accesos     |
+|  Aprobación                        | Rápidos     |
+|  +--------------------------+      |             |
+|  | Test Tester              |      | [Usuarios]  |
+|  | test@test.cl             |      | [Eventos]   |
+|  | Hace 2 días              |      | [Config]    |
+|  | [Aprobar] [Rechazar]     |      |             |
+|  +--------------------------+      |             |
+|                                    |             |
++------------------------------------+-------------+
 ```
 
 ---
 
-### Enfoque de Implementacion
+### Archivos a Modificar
 
-Para permitir agregar nuevos roles, se necesita:
-
-1. **Nueva Edge Function** para modificar el enum de PostgreSQL (requiere privilegios elevados)
-2. **Componente de UI** para gestionar roles en la pagina de Configuracion
-3. **Actualizacion del frontend** para cargar roles dinamicamente desde la base de datos
+| Archivo | Cambios |
+|---------|---------|
+| `src/pages/dashboard/SuperadminDashboard.tsx` | Agregar React Query, consultas a Supabase, lista de usuarios pendientes |
 
 ---
 
-### Cambios Necesarios
+### Funcionalidades
 
-#### 1. Nueva Edge Function: `manage-roles`
-**Archivo**: `supabase/functions/manage-roles/index.ts`
-
-Operaciones disponibles:
-- `add`: Agrega un nuevo rol al enum usando `ALTER TYPE app_role ADD VALUE`
-- `list`: Lista todos los roles desde la tabla `roles`
-- `update`: Actualiza descripcion de un rol existente
-
-Restriccion: Solo superadmins pueden ejecutar esta funcion.
-
-#### 2. Actualizar Pagina de Configuracion
-**Archivo**: `src/pages/app/Settings.tsx`
-
-Agregar seccion de gestion de roles:
-- Lista de roles existentes con nombre y descripcion
-- Boton para agregar nuevo rol
-- Dialogo para crear rol con nombre (slug) y descripcion
-- Edicion de descripcion de roles existentes
-
-#### 3. Nuevo Componente: RolesManager
-**Archivo**: `src/components/settings/RolesManager.tsx`
-
-Funcionalidades:
-- Mostrar tabla de roles existentes
-- Formulario para agregar nuevo rol
-- Editar descripcion de roles
-
-#### 4. Actualizar Componentes que Usan Roles
-**Archivos**:
-- `src/components/users/UserRolesDialog.tsx`
-- `src/components/users/UserCreateDialog.tsx`
-
-Cambiar de lista estatica `ALL_ROLES` a carga dinamica desde la tabla `roles`.
+1. **Contadores en tiempo real**: Se actualizan automáticamente con los datos de la BD
+2. **Lista de pendientes**: Muestra los últimos 5 usuarios pendientes con:
+   - Nombre completo (o email si no tiene nombre)
+   - Fecha de registro
+   - Botones de acción rápida
+3. **Navegación rápida**: Botón para ir a la página completa de gestión de usuarios
+4. **Estados de carga**: Skeletons mientras se cargan los datos
+5. **Manejo de vacíos**: Mensaje amigable si no hay usuarios pendientes
 
 ---
 
-### Diseño de la Interfaz de Roles
+### Próximos Pasos (Futuros)
 
-| Seccion | Contenido |
-|---------|-----------|
-| Encabezado | "Gestion de Roles" con icono y boton "Agregar Rol" |
-| Tabla | Nombre, Descripcion, Fecha creacion, Acciones |
-| Dialogo Crear | Campo nombre (solo letras minusculas y guiones), Campo descripcion |
-| Restricciones | Los 4 roles base no se pueden eliminar, solo editar descripcion |
-
----
-
-### Validaciones para Nuevos Roles
-
-- **Nombre**: Solo letras minusculas y guiones (ej: `auditor`, `coordinador-zona`)
-- **Unicidad**: No puede duplicar un nombre existente
-- **Descripcion**: Opcional pero recomendada
-
----
-
-### Flujo de Creacion de Rol
-
-1. Superadmin hace clic en "Agregar Rol"
-2. Completa nombre y descripcion
-3. Se llama a la edge function `manage-roles`
-4. Edge function ejecuta `ALTER TYPE public.app_role ADD VALUE '{nombre}'`
-5. Edge function inserta registro en tabla `roles`
-6. Se refresca la lista en el frontend
-
----
-
-### Archivos a Crear/Modificar
-
-| Archivo | Tipo |
-|---------|------|
-| `supabase/functions/manage-roles/index.ts` | Nuevo |
-| `src/components/settings/RolesManager.tsx` | Nuevo |
-| `src/components/settings/RoleCreateDialog.tsx` | Nuevo |
-| `src/pages/app/Settings.tsx` | Modificar |
-| `src/components/users/UserRolesDialog.tsx` | Modificar |
-| `src/components/users/UserCreateDialog.tsx` | Modificar |
-
----
-
-### Consideraciones Tecnicas
-
-- **Enum de PostgreSQL**: Agregar valores es irreversible sin recrear el tipo. Los roles agregados no se pueden eliminar facilmente, solo desactivar.
-- **Sincronizacion Frontend**: El tipo `AppRole` en TypeScript se volvera dinamico, cargando los valores desde la base de datos.
-- **Cache**: Los roles se cargaran una vez al iniciar y se almacenaran en contexto o React Query.
-
----
-
-### Limitaciones
-
-- Los roles base (superadmin, administracion, supervisor, acreditador) no se pueden eliminar
-- Los nombres de rol son permanentes una vez creados (limitacion de PostgreSQL enums)
-- Para "eliminar" un rol, se podria agregar un campo `is_active` a la tabla roles
+Los eventos se mostrarán como "0" hasta que se implemente la tabla de eventos. Una vez creada, se podrán agregar las consultas correspondientes:
+- Eventos de hoy: Filtrar por fecha del día actual
+- Eventos del mes: Filtrar por mes actual
 
