@@ -1,36 +1,34 @@
 
 
-## Plan: Agregar columnas Teléfono, Email y Ranking a la tabla de Supervisores
+## Plan: Agregar filtros de Teléfono y Ranking en la pestaña de Supervisores
 
 ### Cambio en `src/components/events/EventTeamDialog.tsx`
 
-Actualmente la tabla de supervisores solo muestra Nombre, RUT y Email. Se agregara Teléfono y Ranking (Email ya existe).
+#### 1. Nuevos estados de filtro
 
-#### 1. Query de supervisores
+Agregar `supFilterTelefono` y `supFilterRanking` (strings, inicializados en '').
 
-Actualizar la consulta de perfiles de supervisores para incluir `ranking` (ya se obtiene `telefono` y `email`):
+#### 2. Logica de filtrado
 
-```
-.select('id, nombre, apellido, rut, email, telefono, ranking')
-```
+Agregar las condiciones al `useMemo` de `filteredSupervisors`:
+- `supFilterTelefono`: filtrar por coincidencia parcial en `s.telefono`
+- `supFilterRanking`: filtrar por coincidencia exacta con `s.ranking?.toString()`
 
-#### 2. Tabla de supervisores
+#### 3. Reset de pagina
 
-Agregar las columnas faltantes al header y body:
+Agregar ambos estados al `useEffect` que resetea `supPage` a 1 cuando cambian los filtros, y al bloque de reset al cerrar el dialogo.
 
-| Columna actual | Nueva |
-|---|---|
-| Nombre | (se mantiene) |
-| RUT | (se mantiene) |
-| Email | (se mantiene) |
-| — | Teléfono (nuevo) |
-| — | Ranking (nuevo) |
+#### 4. UI - Inputs de filtro
+
+Cambiar el grid de filtros de supervisores de 3 columnas a 2x3 (o grid adaptable) agregando dos inputs mas:
+- Input "Teléfono" para `supFilterTelefono`
+- Input "Ranking (1-7)" para `supFilterRanking`
 
 #### Archivo afectado
 
 | Archivo | Accion |
 |---------|--------|
-| `src/components/events/EventTeamDialog.tsx` | Agregar columnas Teléfono y Ranking en la tabla de supervisores, actualizar query |
+| `src/components/events/EventTeamDialog.tsx` | Agregar estados, logica de filtrado y inputs para Teléfono y Ranking en supervisores |
 
 No se requieren cambios en base de datos.
 
