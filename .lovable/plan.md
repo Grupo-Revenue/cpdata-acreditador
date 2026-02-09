@@ -1,37 +1,31 @@
 
-## Plan: Corregir error al aprobar usuarios
+
+## Plan: Aprobar usuarios sin forzar rol de Acreditador
 
 ### Problema
-Al aprobar un usuario, el sistema intenta insertar el rol `acreditador` en `user_roles`. Si el usuario ya tiene ese rol asignado (por ejemplo, fue creado manualmente con roles), la insercion falla con un error de clave duplicada: `duplicate key value violates unique constraint "user_roles_user_id_role_key"`.
+Al aprobar un usuario pendiente, el sistema automaticamente le asigna el rol `acreditador` (hardcoded en linea 146). Si el usuario ya fue creado con roles especificos (ej: supervisor), esto le agrega un rol adicional no deseado. Y si no tiene roles, siempre queda como acreditador sin opcion a elegir.
 
 ### Solucion
-Cambiar el `insert` por un `upsert` con `onConflict` para que si el rol ya existe, simplemente lo ignore en lugar de fallar.
+Separar la aprobacion de la asignacion de roles:
+
+1. **Aprobar** solo cambia el `approval_status` a `approved`, sin tocar roles.
+2. Si el usuario **no tiene roles asignados**, se asigna `acreditador` como rol por defecto (ya que necesita al menos un rol para acceder al sistema).
+3. Si el usuario **ya tiene roles** (porque fue creado manualmente con roles), no se modifica nada de roles.
 
 ### Cambio
 
-**`src/pages/app/Users.tsx`** (linea 143-145):
+**`src/pages/app/Users.tsx`** - funcion `handleApprove` (lineas 131-170):
 
-Reemplazar:
-```typescript
-const { error: roleError } = await supabase
-  .from('user_roles')
-  .insert({ user_id: selectedUser.id, role: 'acreditador' });
-```
-
-Por:
-```typescript
-const { error: roleError } = await supabase
-  .from('user_roles')
-  .upsert(
-    { user_id: selectedUser.id, role: 'acreditador' },
-    { onConflict: 'user_id,role' }
-  );
-```
-
-Esto evita el error cuando el rol ya existe previamente asignado al usuario.
+- Antes de insertar el rol, verificar si el usuario ya tiene roles en `user_roles`.
+- Si ya tiene roles: solo actualizar `approval_status` a `approved`.
+- Si no tiene roles: actualizar `approval_status` y asignar `acreditador` como rol por defecto.
+- Actualizar el mensaje de confirmacion para reflejar este comportamiento: "Se aprobara el acceso. Si no tiene roles asignados, se le asignara Acreditador por defecto."
 
 ### Archivos afectados
 
 | Archivo | Accion |
 |---------|--------|
-| `src/pages/app/Users.tsx` | Cambiar `insert` por `upsert` con `onConflict` en la funcion `handleApprove` |
+| `src/pages/app/Users.tsx` | Condicionar la asignacion de rol en `handleApprove` |
+
+No se requieren cambios en la base de datos.
+
