@@ -7,12 +7,14 @@ import { LoadingState } from '@/components/ui/LoadingState';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Card, CardContent } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { Calendar, AlertCircle, Pencil } from 'lucide-react';
+import { Calendar, AlertCircle, Pencil, Users } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious, PaginationEllipsis } from '@/components/ui/pagination';
 import { EventEditDialog } from '@/components/events/EventEditDialog';
+import { EventTeamDialog } from '@/components/events/EventTeamDialog';
+import { useAuth } from '@/contexts/AuthContext';
 
 function getStageBadgeClass(stage: string): string {
   const s = stage.toLowerCase();
@@ -42,6 +44,9 @@ interface HubSpotDeal {
 
 export default function EventsPage() {
   const { toast } = useToast();
+  const { hasRole } = useAuth();
+  const canEdit = hasRole('superadmin') || hasRole('administracion');
+  const canAssignTeam = hasRole('superadmin');
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['hubspot-deals'],
@@ -72,6 +77,8 @@ export default function EventsPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [editingDeal, setEditingDeal] = useState<HubSpotDeal | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [teamDeal, setTeamDeal] = useState<HubSpotDeal | null>(null);
+  const [teamDialogOpen, setTeamDialogOpen] = useState(false);
   const totalPages = Math.ceil(deals.length / PAGE_SIZE);
   const paginatedDeals = deals.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
@@ -141,15 +148,26 @@ export default function EventsPage() {
                          </Badge>
                        ) : '—'}
                      </TableCell>
-                     <TableCell>
-                       <Button
-                         variant="ghost"
-                         size="icon"
-                         onClick={() => { setEditingDeal(deal); setEditDialogOpen(true); }}
-                       >
-                         <Pencil className="h-4 w-4" />
-                       </Button>
-                     </TableCell>
+                     <TableCell className="flex gap-1">
+                        {canEdit && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => { setEditingDeal(deal); setEditDialogOpen(true); }}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                        )}
+                        {canAssignTeam && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => { setTeamDeal(deal); setTeamDialogOpen(true); }}
+                          >
+                            <Users className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -194,6 +212,13 @@ export default function EventsPage() {
         deal={editingDeal}
         open={editDialogOpen}
         onOpenChange={setEditDialogOpen}
+      />
+
+      <EventTeamDialog
+        dealId={teamDeal?.id ?? null}
+        dealName={teamDeal?.dealname ?? null}
+        open={teamDialogOpen}
+        onOpenChange={setTeamDialogOpen}
       />
     </AppShell>
   );
