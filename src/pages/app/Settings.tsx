@@ -1,6 +1,7 @@
 import { AppShell } from '@/components/layout/AppShell';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { RolesManager } from '@/components/settings/RolesManager';
+import { HubspotIntegration } from '@/components/settings/HubspotIntegration';
 
 export default function SettingsPage() {
   return (
@@ -16,6 +17,7 @@ export default function SettingsPage() {
 
       <div className="space-y-6">
         <RolesManager />
+        <HubspotIntegration />
       </div>
     </AppShell>
   );
