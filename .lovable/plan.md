@@ -1,26 +1,45 @@
 
 
-## Plan: Reemplazar filtro de estado por tabs Pendientes/Resueltos
+## Plan: Filtros de nombre, RUT, email y estado en tablas de usuarios
 
 ### Resumen
-Volver al diseno con tabs para separar tickets por estado (Pendientes y Resueltos), eliminando el select de filtro de estado. Se mantienen los filtros de busqueda por nombre del creador y por prioridad.
+Agregar una barra de filtros (nombre, RUT, email, estado de aprobacion) directamente en el componente `UsersTable`, de modo que cada tabla en cada tab tenga sus propios filtros. Esto evita duplicar logica de filtrado en la pagina padre.
 
 ---
 
-### Cambios en `src/pages/app/Support.tsx`
+### Cambios
 
-1. Eliminar el estado `filterStatus` y su select correspondiente
-2. Agregar componente `Tabs` con dos secciones:
-   - **Pendientes**: muestra tickets con `status === 'pendiente'`
-   - **Resueltos**: muestra tickets con `status === 'resuelto'` o `status === 'inactivo'`
-3. Mantener los filtros de busqueda por nombre y prioridad, aplicandolos dentro de cada tab
-4. Mostrar el contador de resultados filtrados en cada tab
+#### 1. `src/components/users/UsersTable.tsx`
+
+Agregar filtros internos al componente:
+
+- Importar `Input`, `Select`, `SelectContent`, `SelectItem`, `SelectTrigger`, `SelectValue` y `Search` (icono de lucide).
+- Agregar estados locales: `searchName`, `searchRut`, `searchEmail`, `filterStatus`.
+- Calcular `filteredUsers` con `useMemo` aplicando los 4 filtros sobre la prop `users`:
+  - **Nombre**: busca en `nombre + apellido` (case insensitive)
+  - **RUT**: busca parcialmente en `rut`
+  - **Email**: busca parcialmente en `email` (case insensitive)
+  - **Estado**: filtra por `approval_status` (opciones: Todos, Pendiente, Aprobado, Rechazado)
+- Renderizar una barra de filtros encima de la tabla con:
+  - Input de nombre con icono de busqueda
+  - Input de RUT
+  - Input de email
+  - Select de estado
+- Mostrar contador: "Mostrando X de Y usuarios"
+- Usar `filteredUsers` en lugar de `users` para renderizar las filas
+
+#### 2. `src/pages/app/Users.tsx`
+
+- Sin cambios de logica. Los filtros viven dentro de `UsersTable` y se aplican automaticamente en cada tab (Todos, Acreditadores, Supervisores, Administradores).
+- La seccion de "Pendientes" usa un layout diferente (cards, no tabla), por lo que no se ve afectada por estos filtros. Si se desea, se puede agregar un filtro similar ahi en una iteracion futura.
+
+---
 
 ### Archivos afectados
 
 | Archivo | Accion |
 |---------|--------|
-| `src/pages/app/Support.tsx` | Reemplazar filtro de estado por Tabs, mantener filtros de nombre y prioridad |
+| `src/components/users/UsersTable.tsx` | Agregar barra de filtros internos y logica de filtrado con `useMemo` |
 
-No se requieren cambios en la base de datos ni en otros componentes.
+No se requieren cambios en la base de datos.
 
