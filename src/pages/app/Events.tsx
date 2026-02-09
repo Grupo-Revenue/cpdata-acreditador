@@ -96,7 +96,7 @@ export default function EventsPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Nombre del Deal</TableHead>
+                  <TableHead>Id</TableHead>
                   <TableHead>Nombre del Evento</TableHead>
                   <TableHead>Tipo</TableHead>
                   <TableHead>Asistentes</TableHead>
