@@ -60,6 +60,8 @@ export function EventTeamDialog({ dealId, dealName, open, onOpenChange }: EventT
   const [supFilterNombre, setSupFilterNombre] = useState('');
   const [supFilterRut, setSupFilterRut] = useState('');
   const [supFilterEmail, setSupFilterEmail] = useState('');
+  const [supFilterTelefono, setSupFilterTelefono] = useState('');
+  const [supFilterRanking, setSupFilterRanking] = useState('');
   const [supPage, setSupPage] = useState(1);
 
   // Accreditor filters
@@ -156,6 +158,8 @@ export function EventTeamDialog({ dealId, dealName, open, onOpenChange }: EventT
       setSupFilterNombre('');
       setSupFilterRut('');
       setSupFilterEmail('');
+      setSupFilterTelefono('');
+      setSupFilterRanking('');
       setSupPage(1);
       setFilterNombre('');
       setFilterRut('');
@@ -174,15 +178,17 @@ export function EventTeamDialog({ dealId, dealName, open, onOpenChange }: EventT
       if (supFilterNombre && !fullName.includes(supFilterNombre.toLowerCase())) return false;
       if (supFilterRut && !s.rut.toLowerCase().includes(supFilterRut.toLowerCase())) return false;
       if (supFilterEmail && !s.email.toLowerCase().includes(supFilterEmail.toLowerCase())) return false;
+      if (supFilterTelefono && !(s.telefono || '').includes(supFilterTelefono)) return false;
+      if (supFilterRanking && s.ranking?.toString() !== supFilterRanking) return false;
       return true;
     });
-  }, [supervisors, supFilterNombre, supFilterRut, supFilterEmail]);
+  }, [supervisors, supFilterNombre, supFilterRut, supFilterEmail, supFilterTelefono, supFilterRanking]);
 
   const supTotalPages = Math.ceil(filteredSupervisors.length / PAGE_SIZE);
   const paginatedSupervisors = filteredSupervisors.slice((supPage - 1) * PAGE_SIZE, supPage * PAGE_SIZE);
 
   // Reset sup page on filter change
-  useEffect(() => { setSupPage(1); }, [supFilterNombre, supFilterRut, supFilterEmail]);
+  useEffect(() => { setSupPage(1); }, [supFilterNombre, supFilterRut, supFilterEmail, supFilterTelefono, supFilterRanking]);
 
   // Filtered & paginated accreditors
   const filteredAccreditors = useMemo(() => {
@@ -285,13 +291,15 @@ export function EventTeamDialog({ dealId, dealName, open, onOpenChange }: EventT
 
           <TabsContent value="supervisores">
             {/* Supervisor Filters */}
-            <div className="grid grid-cols-3 gap-2 mb-3">
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mb-3">
               <div className="relative">
                 <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
                 <Input placeholder="Nombre" value={supFilterNombre} onChange={e => setSupFilterNombre(e.target.value)} className="pl-8" />
               </div>
               <Input placeholder="RUT" value={supFilterRut} onChange={e => setSupFilterRut(e.target.value)} />
               <Input placeholder="Email" value={supFilterEmail} onChange={e => setSupFilterEmail(e.target.value)} />
+              <Input placeholder="Teléfono" value={supFilterTelefono} onChange={e => setSupFilterTelefono(e.target.value)} />
+              <Input placeholder="Ranking (1-7)" value={supFilterRanking} onChange={e => setSupFilterRanking(e.target.value)} />
             </div>
 
             {loadingSupervisors ? (
