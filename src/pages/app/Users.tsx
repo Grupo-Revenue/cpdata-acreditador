@@ -238,6 +238,45 @@ export default function UsersPage() {
     }
   };
 
+  const filterByRole = (role: AppRole) => allUsers.filter(u => u.roles.includes(role));
+
+  const RoleTabContent = ({ role, title, icon }: { role: AppRole; title: string; icon: string }) => {
+    const filtered = filterByRole(role);
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Users className="w-5 h-5" />
+            {title}
+            {filtered.length > 0 && (
+              <span className="text-sm font-normal text-muted-foreground">
+                ({filtered.length})
+              </span>
+            )}
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {isLoadingAll ? (
+            <LoadingState text="Cargando usuarios..." />
+          ) : filtered.length === 0 ? (
+            <EmptyState
+              icon={Users}
+              title={`Sin ${title.toLowerCase()}`}
+              description={`No hay usuarios con el rol de ${title.toLowerCase()}.`}
+            />
+          ) : (
+            <UsersTable
+              users={filtered}
+              onEdit={(user) => setEditingUser(user)}
+              onManageRoles={(user) => setManagingRolesUser(user)}
+              onDelete={(user) => setDeletingUser(user)}
+            />
+          )}
+        </CardContent>
+      </Card>
+    );
+  };
+
   const PendingUsersContent = () => (
     <Card>
       <CardHeader>
@@ -389,7 +428,7 @@ export default function UsersPage() {
 
       {isSuperadmin ? (
         <Tabs defaultValue="pending" className="space-y-4">
-          <TabsList>
+          <TabsList className="flex-wrap h-auto gap-1">
             <TabsTrigger value="pending">
               Pendientes
               {pendingUsers.length > 0 && (
@@ -399,12 +438,45 @@ export default function UsersPage() {
               )}
             </TabsTrigger>
             <TabsTrigger value="all">Todos los Usuarios</TabsTrigger>
+            <TabsTrigger value="acreditadores">
+              Acreditadores
+              {filterByRole('acreditador').length > 0 && (
+                <span className="ml-2 text-xs text-muted-foreground">
+                  ({filterByRole('acreditador').length})
+                </span>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="supervisores">
+              Supervisores
+              {filterByRole('supervisor').length > 0 && (
+                <span className="ml-2 text-xs text-muted-foreground">
+                  ({filterByRole('supervisor').length})
+                </span>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="administradores">
+              Administradores
+              {filterByRole('administracion').length > 0 && (
+                <span className="ml-2 text-xs text-muted-foreground">
+                  ({filterByRole('administracion').length})
+                </span>
+              )}
+            </TabsTrigger>
           </TabsList>
           <TabsContent value="pending">
             <PendingUsersContent />
           </TabsContent>
           <TabsContent value="all">
             <AllUsersContent />
+          </TabsContent>
+          <TabsContent value="acreditadores">
+            <RoleTabContent role="acreditador" title="Acreditadores" icon="" />
+          </TabsContent>
+          <TabsContent value="supervisores">
+            <RoleTabContent role="supervisor" title="Supervisores" icon="" />
+          </TabsContent>
+          <TabsContent value="administradores">
+            <RoleTabContent role="administracion" title="Administradores" icon="" />
           </TabsContent>
         </Tabs>
       ) : (
