@@ -1,45 +1,20 @@
 
 
-## Plan: Filtros de nombre, RUT, email y estado en tablas de usuarios
+## Plan: Guardar RUT con formato
 
-### Resumen
-Agregar una barra de filtros (nombre, RUT, email, estado de aprobacion) directamente en el componente `UsersTable`, de modo que cada tabla en cada tab tenga sus propios filtros. Esto evita duplicar logica de filtrado en la pagina padre.
+### Problema
+Al crear un usuario, el RUT se limpia con `cleanRUT()` antes de enviarlo a la edge function (linea 111 de `UserCreateDialog.tsx`), lo que elimina puntos y guion. El RUT se guarda como `12345678K` en vez de `12.345.678-K`.
 
----
+### Solucion
+Enviar el RUT formateado en lugar del limpio. El estado `rut` ya contiene el valor formateado gracias al componente `RUTInput`, asi que basta con enviarlo directamente.
 
-### Cambios
+### Cambio
 
-#### 1. `src/components/users/UsersTable.tsx`
+**`src/components/users/UserCreateDialog.tsx`** (linea 111):
+- Cambiar `rut: cleanRUT(rut)` por `rut: rut` (o simplemente `rut`)
 
-Agregar filtros internos al componente:
+Esto asegura que el RUT se almacene con formato `XX.XXX.XXX-X` en la base de datos.
 
-- Importar `Input`, `Select`, `SelectContent`, `SelectItem`, `SelectTrigger`, `SelectValue` y `Search` (icono de lucide).
-- Agregar estados locales: `searchName`, `searchRut`, `searchEmail`, `filterStatus`.
-- Calcular `filteredUsers` con `useMemo` aplicando los 4 filtros sobre la prop `users`:
-  - **Nombre**: busca en `nombre + apellido` (case insensitive)
-  - **RUT**: busca parcialmente en `rut`
-  - **Email**: busca parcialmente en `email` (case insensitive)
-  - **Estado**: filtra por `approval_status` (opciones: Todos, Pendiente, Aprobado, Rechazado)
-- Renderizar una barra de filtros encima de la tabla con:
-  - Input de nombre con icono de busqueda
-  - Input de RUT
-  - Input de email
-  - Select de estado
-- Mostrar contador: "Mostrando X de Y usuarios"
-- Usar `filteredUsers` en lugar de `users` para renderizar las filas
-
-#### 2. `src/pages/app/Users.tsx`
-
-- Sin cambios de logica. Los filtros viven dentro de `UsersTable` y se aplican automaticamente en cada tab (Todos, Acreditadores, Supervisores, Administradores).
-- La seccion de "Pendientes" usa un layout diferente (cards, no tabla), por lo que no se ve afectada por estos filtros. Si se desea, se puede agregar un filtro similar ahi en una iteracion futura.
-
----
-
-### Archivos afectados
-
-| Archivo | Accion |
-|---------|--------|
-| `src/components/users/UsersTable.tsx` | Agregar barra de filtros internos y logica de filtrado con `useMemo` |
-
-No se requieren cambios en la base de datos.
+### Nota sobre la edge function
+La edge function `create-user` busca duplicados con `eq("rut", rut)`. Como los RUTs existentes podrian estar guardados sin formato, tambien se debe verificar la consistencia. Sin embargo, si el sistema es nuevo y todos los RUTs futuros se guardaran con formato, no se necesita cambio en la edge function.
 
