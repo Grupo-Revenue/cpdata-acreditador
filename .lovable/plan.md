@@ -1,51 +1,78 @@
 
 
-## Plan: Corregir contadores de eventos en el Dashboard Superadmin
+## Plan: Agregar campos adicionales al perfil de usuario
 
-### Problema
-Los contadores de eventos muestran cero porque consultan la tabla local `events` de Supabase, la cual esta vacia. Los eventos reales provienen de HubSpot a traves de la Edge Function `hubspot-deals`.
+### Resumen
+Agregar 6 nuevos campos a la tabla `profiles` (idioma, altura, universidad, carrera, y datos bancarios) y actualizar el formulario de creacion de usuario, el de edicion, y la pagina de perfil para incluirlos.
 
-### Solucion
-Cambiar el dashboard para que obtenga los eventos desde HubSpot (reutilizando la misma query `hubspot-deals` que usa la pagina de Eventos) y calcule los contadores filtrando por las fechas de los deals.
+---
 
-### Cambios en las metricas
+### 1. Migracion de base de datos
 
-| Antes | Despues |
-|-------|---------|
-| Eventos Hoy (tabla local) | Eventos Hoy (HubSpot, filtrado por `fecha_inicio_del_evento` = hoy) |
-| Eventos del Mes (tabla local) | Eventos del Mes (HubSpot, filtrado por mes actual) |
-| Eventos del Dia (duplicado de Hoy) | **Eventos Semanales** (HubSpot, filtrado por semana actual) |
-| Usuarios Pendientes (tabla profiles) | Sin cambios |
+Agregar las siguientes columnas a la tabla `profiles`:
 
-### Archivo afectado: `src/pages/dashboard/SuperadminDashboard.tsx`
+| Columna | Tipo | Nullable | Default | Descripcion |
+|---------|------|----------|---------|-------------|
+| idioma | text | Si | null | Idioma del usuario |
+| altura | text | Si | null | Altura (ej: "1.75") |
+| universidad | text | Si | null | Universidad |
+| carrera | text | Si | null | Carrera universitaria |
+| banco | text | Si | null | Nombre del banco |
+| numero_cuenta | text | Si | null | Numero de cuenta bancaria |
+| tipo_cuenta | text | Si | null | Corriente, Vista, Ahorro, Prepago |
 
-**Cambios:**
+Todos los campos son opcionales (nullable) para no romper usuarios existentes.
 
-1. Reemplazar las 3 queries individuales de eventos (today, month, day) por una sola query que reutiliza `hubspot-deals`:
-   - Llama a `supabase.functions.invoke('hubspot-deals')`
-   - Del array de deals retornado, filtra por `fecha_inicio_del_evento` para calcular:
-     - **Hoy**: deals cuya fecha de inicio es hoy
-     - **Semana**: deals cuya fecha de inicio cae en la semana actual (lunes a domingo)
-     - **Mes**: deals cuya fecha de inicio cae en el mes actual
+---
 
-2. Cambiar la tercera tarjeta de "Eventos del Dia" a "Eventos Semanales" con descripcion "En esta semana"
+### 2. Actualizar `UserCreateDialog.tsx`
 
-3. Mantener la query de "Usuarios Pendientes" sin cambios (ya funciona correctamente desde la tabla `profiles`)
+Agregar los nuevos campos al formulario de creacion, organizados en secciones claras:
 
-### Detalle tecnico
+- **Datos personales** (existentes): RUT, Email, Nombre, Apellido, Telefono, Referencia
+- **Informacion adicional** (nuevos): Idioma (input texto), Altura (input texto), Universidad (input texto), Carrera (input texto)
+- **Datos bancarios** (nuevos):
+  - Banco: Select con los 12 bancos chilenos listados
+  - Numero de cuenta: Input texto
+  - Tipo de cuenta: Select con opciones Corriente, Vista, Ahorro, Prepago
 
-```text
-// Logica de filtrado client-side sobre los deals de HubSpot:
-const today = new Date().toISOString().split('T')[0];
-const startOfWeek = // lunes de la semana actual
-const endOfWeek = // domingo de la semana actual
-const startOfMonth = // primer dia del mes
-const endOfMonth = // ultimo dia del mes
+Enviar los nuevos campos al body de la Edge Function `create-user`.
 
-eventsToday = deals.filter(d => d.fecha_inicio_del_evento === today).length
-eventsWeek = deals.filter(d => d.fecha_inicio_del_evento >= startOfWeek && ... <= endOfWeek).length
-eventsMonth = deals.filter(d => d.fecha_inicio_del_evento >= startOfMonth && ... <= endOfMonth).length
-```
+---
 
-No se requieren cambios en la Edge Function ni migraciones de base de datos.
+### 3. Actualizar Edge Function `create-user`
+
+- Agregar los nuevos campos a la interfaz `CreateUserRequest`
+- Incluirlos en `user_metadata` para que el trigger los capture, O bien hacer un update directo a `profiles` despues de la creacion (mas confiable)
+- Se optara por hacer un `update` directo a profiles despues de la creacion, ya que modificar el trigger requiere acceso al SQL Editor manual
+
+---
+
+### 4. Actualizar `UserEditDialog.tsx`
+
+Agregar los mismos campos al formulario de edicion para que los superadmins puedan modificarlos.
+
+---
+
+### 5. Actualizar `Profile.tsx` (pagina de perfil)
+
+Agregar una nueva seccion "Informacion adicional" y "Datos bancarios" para que el usuario pueda ver y editar sus propios datos.
+
+---
+
+### 6. Actualizar `UserBulkUploadDialog.tsx`
+
+Verificar si la carga masiva necesita soportar los nuevos campos (probablemente no obligatorio en esta fase).
+
+---
+
+### Archivos afectados
+
+| Archivo | Accion |
+|---------|--------|
+| Migracion SQL | Crear: agregar 7 columnas a `profiles` |
+| `supabase/functions/create-user/index.ts` | Modificar: aceptar y guardar nuevos campos |
+| `src/components/users/UserCreateDialog.tsx` | Modificar: agregar campos al formulario |
+| `src/components/users/UserEditDialog.tsx` | Modificar: agregar campos al formulario |
+| `src/pages/app/Profile.tsx` | Modificar: agregar secciones de informacion adicional y datos bancarios |
 
