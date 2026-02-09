@@ -9,6 +9,7 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { TicketsTable } from '@/components/support/TicketsTable';
 import { TicketCreateDialog } from '@/components/support/TicketCreateDialog';
 import { TicketEditDialog } from '@/components/support/TicketEditDialog';
+import { TicketDetailDialog } from '@/components/support/TicketDetailDialog';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { HeadphonesIcon, Plus } from 'lucide-react';
@@ -46,6 +47,8 @@ export default function SupportPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [editTicket, setEditTicket] = useState<SupportTicket | null>(null);
+  const [detailOpen, setDetailOpen] = useState(false);
+  const [detailTicket, setDetailTicket] = useState<SupportTicket | null>(null);
 
   const fetchTickets = useCallback(async () => {
     setIsLoading(true);
@@ -74,6 +77,11 @@ export default function SupportPage() {
   const handleEdit = (ticket: SupportTicket) => {
     setEditTicket(ticket);
     setEditOpen(true);
+  };
+
+  const handleView = (ticket: SupportTicket) => {
+    setDetailTicket(ticket);
+    setDetailOpen(true);
   };
 
   return (
@@ -110,7 +118,7 @@ export default function SupportPage() {
               ) : pendientes.length === 0 ? (
                 <EmptyState icon={HeadphonesIcon} title="Sin tickets pendientes" description="No hay tickets pendientes en este momento." />
               ) : (
-                <TicketsTable tickets={pendientes} canEdit={isAdmin} onEdit={handleEdit} />
+                <TicketsTable tickets={pendientes} canEdit={isAdmin} canView={!isAdmin} onEdit={handleEdit} onView={handleView} />
               )}
             </CardContent>
           </Card>
@@ -127,7 +135,7 @@ export default function SupportPage() {
               ) : resueltos.length === 0 ? (
                 <EmptyState icon={HeadphonesIcon} title="Sin tickets resueltos" description="No hay tickets resueltos aún." />
               ) : (
-                <TicketsTable tickets={resueltos} canEdit={isAdmin} onEdit={handleEdit} />
+                <TicketsTable tickets={resueltos} canEdit={isAdmin} canView={!isAdmin} onEdit={handleEdit} onView={handleView} />
               )}
             </CardContent>
           </Card>
@@ -136,6 +144,7 @@ export default function SupportPage() {
 
       <TicketCreateDialog open={createOpen} onOpenChange={setCreateOpen} onCreated={fetchTickets} />
       <TicketEditDialog open={editOpen} onOpenChange={setEditOpen} ticket={editTicket} onUpdated={fetchTickets} />
+      <TicketDetailDialog open={detailOpen} onOpenChange={setDetailOpen} ticket={detailTicket} />
     </AppShell>
   );
 }
