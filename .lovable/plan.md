@@ -1,148 +1,86 @@
 
 
-## Plan: Carga Masiva de Usuarios
+## Plan: Integración HubSpot en Configuración
 
 ### Objetivo
-Agregar un boton en la pagina de Gestion de Usuarios que permita cargar multiples usuarios de manera simultanea mediante un archivo CSV o Excel.
+Agregar una sección en la página de Configuración para que el superadmin pueda ingresar y gestionar el token de HubSpot. Este token se almacenará de forma segura en la tabla `settings` de la base de datos y será accesible para futuras integraciones del sistema.
 
 ---
 
-### Flujo de Usuario
+### Diseño Visual
 
-1. El superadmin hace clic en "Cargar Usuarios" (nuevo boton junto a "Crear Usuario")
-2. Se abre un dialogo modal con instrucciones y zona para subir archivo
-3. El usuario descarga una plantilla CSV de ejemplo (opcional)
-4. El usuario sube un archivo CSV con los datos de usuarios
-5. El sistema valida los datos y muestra una vista previa
-6. El usuario confirma la carga
-7. Los usuarios se crean en lote y se muestra el resultado
-
----
-
-### Estructura del Archivo CSV
-
-| Columna | Requerido | Descripcion |
-|---------|-----------|-------------|
-| nombre | Si | Nombre del usuario |
-| apellido | Si | Apellido del usuario |
-| rut | Si | RUT chileno (se validara formato y digito verificador) |
-| telefono | Si | Numero de telefono |
-| email | Si | Correo electronico (debe ser unico) |
-
-**Notas del CSV:**
-- Primera fila: encabezados (se ignora)
-- Separador: coma (,) o punto y coma (;)
-- Encoding: UTF-8
-
----
-
-### Validaciones
-
-**Por cada fila del archivo:**
-- Nombre y apellido no vacios
-- RUT con formato valido y digito verificador correcto
-- Email con formato valido
-- Telefono no vacio
-- RUT y Email no duplicados (en archivo ni en BD)
-
-**Resultado de validacion:**
-- Filas validas: listas para crear
-- Filas con errores: se muestran los errores especificos
-
----
-
-### Diseno Visual del Dialogo
+La página de Configuración tendrá una nueva card debajo de la gestión de roles:
 
 ```text
 +----------------------------------------------------------+
-|  Carga Masiva de Usuarios                          [X]   |
-|----------------------------------------------------------|
+|  Configuración                                           |
+|  Parámetros del sistema                                  |
++----------------------------------------------------------+
 |                                                          |
-|  Instrucciones:                                          |
-|  Suba un archivo CSV con los datos de los usuarios.      |
-|  [Descargar plantilla de ejemplo]                        |
+|  [Card: Gestión de Roles]  (existente, sin cambios)      |
 |                                                          |
-|  +----------------------------------------------------+  |
-|  |                                                    |  |
-|  |     Arrastre el archivo aqui o haga clic para     |  |
-|  |              seleccionar archivo                   |  |
-|  |                                                    |  |
-|  +----------------------------------------------------+  |
++----------------------------------------------------------+
 |                                                          |
-|  Vista previa: (aparece despues de cargar archivo)       |
-|  +----------------------------------------------------+  |
-|  | Validos: 15  |  Con errores: 3                     |  |
-|  +----------------------------------------------------+  |
-|  | # | Nombre | Apellido | RUT | Tel | Email | Estado |  |
-|  |---|--------|----------|-----|-----|-------|--------|  |
-|  | 1 | Juan   | Perez    | ... | ... | ...   | OK     |  |
-|  | 2 | Maria  | Lopez    | ... | ... | ...   | Error  |  |
-|  |   |        |          | RUT invalido               |  |
-|  +----------------------------------------------------+  |
+|  Integración HubSpot                                     |
+|  Configura la conexión con HubSpot para todo el sistema  |
 |                                                          |
-|                     [Cancelar]  [Crear 15 usuarios]      |
+|  Token de acceso:                                        |
+|  [pat-na1-xxxx****xxxx]              [Mostrar/Ocultar]   |
+|                                                          |
+|  Estado: Conectado / No configurado                      |
+|                                                          |
+|              [Guardar Token]  [Eliminar Token]           |
+|                                                          |
 +----------------------------------------------------------+
 ```
 
 ---
 
-### Componentes a Crear
+### Funcionamiento
 
-| Archivo | Descripcion |
-|---------|-------------|
-| `src/components/users/UserBulkUploadDialog.tsx` | Dialogo principal con dropzone y vista previa |
-| `src/lib/csv-parser.ts` | Utilidad para parsear CSV y validar datos |
-| `supabase/functions/create-users-bulk/index.ts` | Edge Function para creacion masiva |
-
----
-
-### Modificaciones a Archivos Existentes
-
-| Archivo | Cambio |
-|---------|--------|
-| `src/pages/app/Users.tsx` | Agregar boton "Cargar Usuarios" y estado del dialogo |
+1. **Sin token configurado**: Se muestra un input vacío con placeholder e indicador "No configurado"
+2. **Con token guardado**: Se muestra el token enmascarado (solo últimos 4 caracteres visibles), con opción de mostrar/ocultar
+3. **Guardar**: Inserta o actualiza el registro `hubspot_token` en la tabla `settings`
+4. **Eliminar**: Borra el valor del token de la tabla `settings`
 
 ---
 
-### Detalles Tecnicos
+### Almacenamiento
 
-**Edge Function `create-users-bulk`:**
-- Recibe array de usuarios a crear
-- Valida permisos (solo superadmin)
-- Procesa usuarios en lote
-- Retorna resumen: creados exitosamente, fallidos con errores
+Se utilizará la tabla `settings` existente con:
+- `key`: `hubspot_token`
+- `value`: el token de HubSpot
+- `description`: "Token de acceso privado de HubSpot"
 
-**Configuracion por defecto para usuarios creados masivamente:**
-- Estado de aprobacion: `approved` (pre-aprobados)
-- Rol inicial: `acreditador`
-- Contrasena: generada automaticamente (se puede enviar por email o mostrar al final)
+La tabla `settings` ya tiene RLS configurado:
+- Lectura: todos los usuarios autenticados
+- Escritura: solo superadmin (política existente)
 
----
-
-### Manejo de Contrasenas
-
-Para la carga masiva, las contrasenas se manejaran asi:
-- Se genera una contrasena temporal automatica para cada usuario
-- Al finalizar la carga, se muestra una tabla descargable con usuario + contrasena temporal
-- Los usuarios deberan cambiar su contrasena en el primer inicio de sesion
+**Nota de seguridad**: El token se almacena en la tabla `settings` que es legible por todos los usuarios autenticados. Para esta primera versión es funcional, pero en el futuro se podría migrar a Supabase Vault o secrets para mayor seguridad.
 
 ---
 
-### Ejemplo de Archivo CSV
+### Archivos a Crear/Modificar
 
-```text
-nombre,apellido,rut,telefono,email
-Juan,Perez,12345678-5,+56912345678,juan.perez@ejemplo.com
-Maria,Lopez,98765432-1,+56987654321,maria.lopez@ejemplo.com
-Pedro,Gonzalez,11222333-4,+56911223344,pedro.gonzalez@ejemplo.com
-```
+| Archivo | Tipo | Descripción |
+|---------|------|-------------|
+| `src/components/settings/HubspotIntegration.tsx` | Nuevo | Componente con formulario para gestionar el token |
+| `src/pages/app/Settings.tsx` | Modificar | Agregar el componente HubspotIntegration debajo de RolesManager |
 
 ---
 
-### Resumen de Cambios
+### Detalles Técnicos
 
-1. **Nueva Edge Function** para creacion masiva con validaciones
-2. **Nuevo dialogo** con dropzone, validacion y vista previa
-3. **Utilidad CSV** para parsear y validar datos
-4. **Integracion** en la pagina de usuarios existente
+**Componente `HubspotIntegration`:**
+- Usa `useQuery` para leer el setting `hubspot_token` de la tabla `settings`
+- Usa `useMutation` para guardar/eliminar el token
+- Input de tipo password con toggle de visibilidad
+- Indicador visual del estado de conexión (badge verde "Conectado" o gris "No configurado")
+- Diálogo de confirmación al eliminar el token
+- Toast de confirmación al guardar/eliminar exitosamente
+
+**Consultas:**
+- Lectura: `SELECT value FROM settings WHERE key = 'hubspot_token'`
+- Escritura: `UPSERT` en settings con key `hubspot_token`
+- Eliminación: `UPDATE settings SET value = NULL WHERE key = 'hubspot_token'` o `DELETE`
 
