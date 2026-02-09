@@ -8,3 +8,6 @@ verify_jwt = false
 
 [functions.create-users-bulk]
 verify_jwt = false
+
+[functions.hubspot-deals]
+verify_jwt = false
