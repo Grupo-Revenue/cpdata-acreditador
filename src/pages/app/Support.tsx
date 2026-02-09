@@ -1,9 +1,10 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { AppShell } from '@/components/layout/AppShell';
 import { PageHeader } from '@/components/ui/PageHeader';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { LoadingState } from '@/components/ui/LoadingState';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { TicketsTable } from '@/components/support/TicketsTable';
@@ -12,7 +13,7 @@ import { TicketEditDialog } from '@/components/support/TicketEditDialog';
 import { TicketDetailDialog } from '@/components/support/TicketDetailDialog';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { HeadphonesIcon, Plus } from 'lucide-react';
+import { HeadphonesIcon, Plus, Search } from 'lucide-react';
 
 interface SupportTicket {
   id: string;
@@ -50,6 +51,10 @@ export default function SupportPage() {
   const [detailOpen, setDetailOpen] = useState(false);
   const [detailTicket, setDetailTicket] = useState<SupportTicket | null>(null);
 
+  const [searchCreator, setSearchCreator] = useState('');
+  const [filterStatus, setFilterStatus] = useState('todos');
+  const [filterPriority, setFilterPriority] = useState('todas');
+
   const fetchTickets = useCallback(async () => {
     setIsLoading(true);
     try {
@@ -71,8 +76,16 @@ export default function SupportPage() {
     fetchTickets();
   }, [fetchTickets]);
 
-  const pendientes = tickets.filter(t => t.status === 'pendiente');
-  const resueltos = tickets.filter(t => t.status === 'resuelto');
+  const filteredTickets = useMemo(() => {
+    return tickets
+      .filter(t => {
+        if (!searchCreator) return true;
+        const fullName = `${t.creator_nombre} ${t.creator_apellido}`.toLowerCase();
+        return fullName.includes(searchCreator.toLowerCase());
+      })
+      .filter(t => filterStatus === 'todos' || t.status === filterStatus)
+      .filter(t => filterPriority === 'todas' || t.priority === filterPriority);
+  }, [tickets, searchCreator, filterStatus, filterPriority]);
 
   const handleEdit = (ticket: SupportTicket) => {
     setEditTicket(ticket);
@@ -101,46 +114,58 @@ export default function SupportPage() {
         }
       />
 
-      <Tabs defaultValue="pendientes" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="pendientes">Pendientes ({pendientes.length})</TabsTrigger>
-          <TabsTrigger value="resueltos">Resueltos ({resueltos.length})</TabsTrigger>
-        </TabsList>
+      <Card>
+        <CardHeader>
+          <CardTitle>Tickets de Soporte</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex flex-col sm:flex-row gap-3">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Buscar por nombre del creador..."
+                value={searchCreator}
+                onChange={e => setSearchCreator(e.target.value)}
+                className="pl-9"
+              />
+            </div>
+            <Select value={filterStatus} onValueChange={setFilterStatus}>
+              <SelectTrigger className="w-full sm:w-[180px]">
+                <SelectValue placeholder="Estado" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="todos">Todos los estados</SelectItem>
+                <SelectItem value="pendiente">Pendiente</SelectItem>
+                <SelectItem value="resuelto">Resuelto</SelectItem>
+                <SelectItem value="inactivo">Inactivo</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={filterPriority} onValueChange={setFilterPriority}>
+              <SelectTrigger className="w-full sm:w-[180px]">
+                <SelectValue placeholder="Prioridad" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="todas">Todas las prioridades</SelectItem>
+                <SelectItem value="alta">Alta</SelectItem>
+                <SelectItem value="media">Media</SelectItem>
+                <SelectItem value="baja">Baja</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
 
-        <TabsContent value="pendientes">
-          <Card>
-            <CardHeader>
-              <CardTitle>Tickets Pendientes</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {isLoading ? (
-                <LoadingState />
-              ) : pendientes.length === 0 ? (
-                <EmptyState icon={HeadphonesIcon} title="Sin tickets pendientes" description="No hay tickets pendientes en este momento." />
-              ) : (
-                <TicketsTable tickets={pendientes} canEdit={isAdmin} canView={!isAdmin} onEdit={handleEdit} onView={handleView} />
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
+          <p className="text-sm text-muted-foreground">
+            Mostrando {filteredTickets.length} de {tickets.length} tickets
+          </p>
 
-        <TabsContent value="resueltos">
-          <Card>
-            <CardHeader>
-              <CardTitle>Tickets Resueltos</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {isLoading ? (
-                <LoadingState />
-              ) : resueltos.length === 0 ? (
-                <EmptyState icon={HeadphonesIcon} title="Sin tickets resueltos" description="No hay tickets resueltos aún." />
-              ) : (
-                <TicketsTable tickets={resueltos} canEdit={isAdmin} canView={!isAdmin} onEdit={handleEdit} onView={handleView} />
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+          {isLoading ? (
+            <LoadingState />
+          ) : filteredTickets.length === 0 ? (
+            <EmptyState icon={HeadphonesIcon} title="Sin tickets" description="No se encontraron tickets con los filtros aplicados." />
+          ) : (
+            <TicketsTable tickets={filteredTickets} canEdit={isAdmin} canView={!isAdmin} onEdit={handleEdit} onView={handleView} />
+          )}
+        </CardContent>
+      </Card>
 
       <TicketCreateDialog open={createOpen} onOpenChange={setCreateOpen} onCreated={fetchTickets} />
       <TicketEditDialog open={editOpen} onOpenChange={setEditOpen} ticket={editTicket} onUpdated={fetchTickets} />
