@@ -8,8 +8,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Card, CardContent } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { Calendar, AlertCircle } from 'lucide-react';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
+import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious, PaginationEllipsis } from '@/components/ui/pagination';
 
 function getStageBadgeClass(stage: string): string {
   const s = stage.toLowerCase();
@@ -65,6 +66,15 @@ export default function EventsPage() {
   const deals = data?.deals ?? [];
   const notConfigured = data?.error === 'hubspot_not_configured';
 
+  const PAGE_SIZE = 5;
+  const [currentPage, setCurrentPage] = useState(1);
+  const totalPages = Math.ceil(deals.length / PAGE_SIZE);
+  const paginatedDeals = deals.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [deals.length]);
+
   return (
     <AppShell>
       <PageHeader
@@ -91,6 +101,7 @@ export default function EventsPage() {
           description="No se encontraron negocios en el pipeline y etapa configurados."
         />
       ) : (
+        <>
         <Card>
           <CardContent className="p-0">
             <Table>
@@ -108,7 +119,7 @@ export default function EventsPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {deals.map((deal) => (
+                {paginatedDeals.map((deal) => (
                   <TableRow key={deal.id}>
                     <TableCell className="font-medium">{deal.dealname ?? '—'}</TableCell>
                     <TableCell>{deal.nombre_del_evento ?? '—'}</TableCell>
@@ -131,6 +142,38 @@ export default function EventsPage() {
             </Table>
           </CardContent>
         </Card>
+
+        {totalPages > 1 && (
+          <Pagination className="mt-4">
+            <PaginationContent>
+              {currentPage > 1 && (
+                <PaginationItem>
+                  <PaginationPrevious href="#" onClick={(e) => { e.preventDefault(); setCurrentPage(p => p - 1); }} />
+                </PaginationItem>
+              )}
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => {
+                if (totalPages <= 7 || page === 1 || page === totalPages || Math.abs(page - currentPage) <= 1) {
+                  return (
+                    <PaginationItem key={page}>
+                      <PaginationLink href="#" isActive={page === currentPage} onClick={(e) => { e.preventDefault(); setCurrentPage(page); }}>
+                        {page}
+                      </PaginationLink>
+                    </PaginationItem>
+                  );
+                }
+                if (page === 2 && currentPage > 3) return <PaginationEllipsis key="start-ellipsis" />;
+                if (page === totalPages - 1 && currentPage < totalPages - 2) return <PaginationEllipsis key="end-ellipsis" />;
+                return null;
+              })}
+              {currentPage < totalPages && (
+                <PaginationItem>
+                  <PaginationNext href="#" onClick={(e) => { e.preventDefault(); setCurrentPage(p => p + 1); }} />
+                </PaginationItem>
+              )}
+            </PaginationContent>
+          </Pagination>
+        )}
+      </>
       )}
     </AppShell>
   );
