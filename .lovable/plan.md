@@ -1,86 +1,61 @@
 
 
-## Plan: Integración HubSpot en Configuración
+## Plan: Mostrar Negocios de HubSpot en la Pagina de Eventos
 
 ### Objetivo
-Agregar una sección en la página de Configuración para que el superadmin pueda ingresar y gestionar el token de HubSpot. Este token se almacenará de forma segura en la tabla `settings` de la base de datos y será accesible para futuras integraciones del sistema.
+Reemplazar el estado vacio actual de la pagina de Eventos por una tabla que muestre los negocios (deals) de HubSpot filtrados por pipeline `755372600` y dealstage `1098991990`, usando el token configurado en Configuracion.
 
 ---
 
-### Diseño Visual
+### Arquitectura
 
-La página de Configuración tendrá una nueva card debajo de la gestión de roles:
-
-```text
-+----------------------------------------------------------+
-|  Configuración                                           |
-|  Parámetros del sistema                                  |
-+----------------------------------------------------------+
-|                                                          |
-|  [Card: Gestión de Roles]  (existente, sin cambios)      |
-|                                                          |
-+----------------------------------------------------------+
-|                                                          |
-|  Integración HubSpot                                     |
-|  Configura la conexión con HubSpot para todo el sistema  |
-|                                                          |
-|  Token de acceso:                                        |
-|  [pat-na1-xxxx****xxxx]              [Mostrar/Ocultar]   |
-|                                                          |
-|  Estado: Conectado / No configurado                      |
-|                                                          |
-|              [Guardar Token]  [Eliminar Token]           |
-|                                                          |
-+----------------------------------------------------------+
-```
+La pagina de Eventos llamara a una nueva Edge Function que:
+1. Lee el token de HubSpot desde la tabla `settings`
+2. Consulta la API de HubSpot para obtener los deals del pipeline y stage especificados
+3. Devuelve los datos al frontend
 
 ---
 
-### Funcionamiento
+### Columnas de la Tabla
 
-1. **Sin token configurado**: Se muestra un input vacío con placeholder e indicador "No configurado"
-2. **Con token guardado**: Se muestra el token enmascarado (solo últimos 4 caracteres visibles), con opción de mostrar/ocultar
-3. **Guardar**: Inserta o actualiza el registro `hubspot_token` en la tabla `settings`
-4. **Eliminar**: Borra el valor del token de la tabla `settings`
-
----
-
-### Almacenamiento
-
-Se utilizará la tabla `settings` existente con:
-- `key`: `hubspot_token`
-- `value`: el token de HubSpot
-- `description`: "Token de acceso privado de HubSpot"
-
-La tabla `settings` ya tiene RLS configurado:
-- Lectura: todos los usuarios autenticados
-- Escritura: solo superadmin (política existente)
-
-**Nota de seguridad**: El token se almacena en la tabla `settings` que es legible por todos los usuarios autenticados. Para esta primera versión es funcional, pero en el futuro se podría migrar a Supabase Vault o secrets para mayor seguridad.
+| Columna | Propiedad HubSpot | Descripcion |
+|---------|-------------------|-------------|
+| Nombre del Deal | `dealname` | Nombre del negocio |
+| Nombre del Evento | `nombre_del_evento` | Propiedad personalizada |
+| Tipo de Evento | `tipo_de_evento` | Propiedad personalizada |
+| Cantidad de Asistentes | `cantidad_de_asistentes` | Propiedad personalizada |
+| Locacion | `locacion_del_evento` | Propiedad personalizada |
+| Horario | `hora_de_inicio_y_fin_del_evento` | Propiedad personalizada |
+| Fecha Inicio | `fecha_inicio_del_evento` | Propiedad personalizada |
+| Fecha Fin | `fecha_fin_del_evento` | Propiedad personalizada |
+| Etapa | `dealstage` | Etapa del negocio |
 
 ---
 
 ### Archivos a Crear/Modificar
 
-| Archivo | Tipo | Descripción |
+| Archivo | Tipo | Descripcion |
 |---------|------|-------------|
-| `src/components/settings/HubspotIntegration.tsx` | Nuevo | Componente con formulario para gestionar el token |
-| `src/pages/app/Settings.tsx` | Modificar | Agregar el componente HubspotIntegration debajo de RolesManager |
+| `supabase/functions/hubspot-deals/index.ts` | Nuevo | Edge Function que consulta la API de HubSpot |
+| `src/pages/app/Events.tsx` | Modificar | Reemplazar EmptyState con tabla de datos |
 
 ---
 
-### Detalles Técnicos
+### Detalles Tecnicos
 
-**Componente `HubspotIntegration`:**
-- Usa `useQuery` para leer el setting `hubspot_token` de la tabla `settings`
-- Usa `useMutation` para guardar/eliminar el token
-- Input de tipo password con toggle de visibilidad
-- Indicador visual del estado de conexión (badge verde "Conectado" o gris "No configurado")
-- Diálogo de confirmación al eliminar el token
-- Toast de confirmación al guardar/eliminar exitosamente
+**Edge Function `hubspot-deals`:**
+- Lee el `hubspot_token` de la tabla `settings` usando el service role key
+- Llama a `POST https://api.hubapi.com/crm/v3/objects/deals/search` con filtros:
+  - `pipeline = 755372600`
+  - `dealstage = 1098991990`
+- Solicita las propiedades: `dealname`, `nombre_del_evento`, `tipo_de_evento`, `cantidad_de_asistentes`, `locacion_del_evento`, `hora_de_inicio_y_fin_del_evento`, `fecha_inicio_del_evento`, `fecha_fin_del_evento`, `dealstage`
+- Requiere autenticacion (usuario logueado)
+- Retorna el array de deals con sus propiedades
 
-**Consultas:**
-- Lectura: `SELECT value FROM settings WHERE key = 'hubspot_token'`
-- Escritura: `UPSERT` en settings con key `hubspot_token`
-- Eliminación: `UPDATE settings SET value = NULL WHERE key = 'hubspot_token'` o `DELETE`
+**Pagina de Eventos:**
+- Usa `useQuery` para llamar a la Edge Function via `supabase.functions.invoke('hubspot-deals')`
+- Muestra `LoadingState` mientras carga
+- Muestra `EmptyState` si no hay resultados o si HubSpot no esta configurado
+- Muestra una tabla con las columnas indicadas cuando hay datos
+- Manejo de errores con toast si la llamada falla
 
