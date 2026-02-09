@@ -9,6 +9,20 @@ import { Card, CardContent } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { Calendar, AlertCircle } from 'lucide-react';
 import { useEffect } from 'react';
+import { Badge } from '@/components/ui/badge';
+
+function getStageBadgeClass(stage: string): string {
+  const s = stage.toLowerCase();
+  if (s.includes('ganado') || s.includes('cerrado ganado') || s.includes('completado') || s.includes('firmado'))
+    return 'bg-success/10 text-success border-success/20';
+  if (s.includes('progreso') || s.includes('activ') || s.includes('en curso'))
+    return 'bg-primary/10 text-primary border-primary/20';
+  if (s.includes('pendiente') || s.includes('espera') || s.includes('revisión'))
+    return 'bg-warning/10 text-warning border-warning/20';
+  if (s.includes('perdido') || s.includes('cancelado') || s.includes('rechazado'))
+    return 'bg-destructive/10 text-destructive border-destructive/20';
+  return 'bg-muted text-muted-foreground border-muted';
+}
 
 interface HubSpotDeal {
   id: string;
@@ -104,7 +118,13 @@ export default function EventsPage() {
                     <TableCell>{deal.hora_de_inicio_y_fin_del_evento ?? '—'}</TableCell>
                     <TableCell>{deal.fecha_inicio_del_evento ?? '—'}</TableCell>
                     <TableCell>{deal.fecha_fin_del_evento ?? '—'}</TableCell>
-                    <TableCell>{deal.dealstage ?? '—'}</TableCell>
+                    <TableCell>
+                      {deal.dealstage ? (
+                        <Badge variant="outline" className={getStageBadgeClass(deal.dealstage)}>
+                          {deal.dealstage}
+                        </Badge>
+                      ) : '—'}
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
