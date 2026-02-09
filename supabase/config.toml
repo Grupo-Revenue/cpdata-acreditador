@@ -11,3 +11,6 @@ verify_jwt = false
 
 [functions.hubspot-deals]
 verify_jwt = false
+
+[functions.hubspot-update-deal]
+verify_jwt = false

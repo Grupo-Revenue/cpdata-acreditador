@@ -7,10 +7,12 @@ import { LoadingState } from '@/components/ui/LoadingState';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Card, CardContent } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { Calendar, AlertCircle } from 'lucide-react';
+import { Calendar, AlertCircle, Pencil } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious, PaginationEllipsis } from '@/components/ui/pagination';
+import { EventEditDialog } from '@/components/events/EventEditDialog';
 
 function getStageBadgeClass(stage: string): string {
   const s = stage.toLowerCase();
@@ -68,6 +70,8 @@ export default function EventsPage() {
 
   const PAGE_SIZE = 5;
   const [currentPage, setCurrentPage] = useState(1);
+  const [editingDeal, setEditingDeal] = useState<HubSpotDeal | null>(null);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
   const totalPages = Math.ceil(deals.length / PAGE_SIZE);
   const paginatedDeals = deals.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
@@ -115,8 +119,9 @@ export default function EventsPage() {
                   <TableHead>Horario</TableHead>
                   <TableHead>Fecha Inicio</TableHead>
                   <TableHead>Fecha Fin</TableHead>
-                  <TableHead>Etapa</TableHead>
-                </TableRow>
+                   <TableHead>Etapa</TableHead>
+                   <TableHead className="w-[70px]">Acciones</TableHead>
+                 </TableRow>
               </TableHeader>
               <TableBody>
                 {paginatedDeals.map((deal) => (
@@ -130,12 +135,21 @@ export default function EventsPage() {
                     <TableCell>{deal.fecha_inicio_del_evento ?? '—'}</TableCell>
                     <TableCell>{deal.fecha_fin_del_evento ?? '—'}</TableCell>
                     <TableCell>
-                      {deal.dealstage ? (
-                        <Badge variant="outline" className={getStageBadgeClass(deal.dealstage)}>
-                          {deal.dealstage}
-                        </Badge>
-                      ) : '—'}
-                    </TableCell>
+                       {deal.dealstage ? (
+                         <Badge variant="outline" className={getStageBadgeClass(deal.dealstage)}>
+                           {deal.dealstage}
+                         </Badge>
+                       ) : '—'}
+                     </TableCell>
+                     <TableCell>
+                       <Button
+                         variant="ghost"
+                         size="icon"
+                         onClick={() => { setEditingDeal(deal); setEditDialogOpen(true); }}
+                       >
+                         <Pencil className="h-4 w-4" />
+                       </Button>
+                     </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -175,6 +189,12 @@ export default function EventsPage() {
         )}
       </>
       )}
+
+      <EventEditDialog
+        deal={editingDeal}
+        open={editDialogOpen}
+        onOpenChange={setEditDialogOpen}
+      />
     </AppShell>
   );
 }
