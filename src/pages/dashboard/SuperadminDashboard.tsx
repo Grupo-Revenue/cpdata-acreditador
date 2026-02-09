@@ -15,6 +15,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
 import { RankingTable } from '@/components/dashboard/RankingTable';
+import { startOfWeek, endOfWeek } from 'date-fns';
 
 export default function SuperadminDashboard() {
   const navigate = useNavigate();
@@ -33,82 +34,56 @@ export default function SuperadminDashboard() {
     }
   });
 
-  // Query para eventos de hoy
-  const { data: eventsTodayCount, isLoading: loadingEventsToday } = useQuery({
-    queryKey: ['events-today-count'],
+  // Query para eventos desde HubSpot
+  const { data: eventCounts, isLoading: loadingEvents } = useQuery({
+    queryKey: ['hubspot-events-counts'],
     queryFn: async () => {
-      const today = new Date().toISOString().split('T')[0];
-      const { count, error } = await supabase
-        .from('events')
-        .select('*', { count: 'exact', head: true })
-        .eq('event_date', today);
-      
+      const { data, error } = await supabase.functions.invoke('hubspot-deals');
       if (error) throw error;
-      return count || 0;
-    }
-  });
+      const deals: { fecha_inicio_del_evento?: string | null }[] = data?.deals ?? [];
 
-  // Query para eventos del mes
-  const { data: eventsMonthCount, isLoading: loadingEventsMonth } = useQuery({
-    queryKey: ['events-month-count'],
-    queryFn: async () => {
+      const today = new Date().toISOString().split('T')[0];
       const now = new Date();
-      const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
-      const lastDayOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
-      
-      const { count, error } = await supabase
-        .from('events')
-        .select('*', { count: 'exact', head: true })
-        .gte('event_date', firstDayOfMonth)
-        .lte('event_date', lastDayOfMonth);
-      
-      if (error) throw error;
-      return count || 0;
-    }
-  });
+      const weekStart = startOfWeek(now, { weekStartsOn: 1 }).toISOString().split('T')[0];
+      const weekEnd = endOfWeek(now, { weekStartsOn: 1 }).toISOString().split('T')[0];
+      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+      const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
 
-  // Query para eventos del día (igual que hoy, pero podría diferir si se define de otra manera)
-  const { data: eventsDayCount, isLoading: loadingEventsDay } = useQuery({
-    queryKey: ['events-day-count'],
-    queryFn: async () => {
-      const today = new Date().toISOString().split('T')[0];
-      const { count, error } = await supabase
-        .from('events')
-        .select('*', { count: 'exact', head: true })
-        .eq('event_date', today);
-      
-      if (error) throw error;
-      return count || 0;
+      return {
+        today: deals.filter(d => d.fecha_inicio_del_evento === today).length,
+        week: deals.filter(d => d.fecha_inicio_del_evento && d.fecha_inicio_del_evento >= weekStart && d.fecha_inicio_del_evento <= weekEnd).length,
+        month: deals.filter(d => d.fecha_inicio_del_evento && d.fecha_inicio_del_evento >= monthStart && d.fecha_inicio_del_evento <= monthEnd).length,
+      };
     }
   });
 
   const stats = [
     {
       title: 'Eventos Hoy',
-      value: eventsTodayCount?.toString() || '0',
+      value: (eventCounts?.today ?? 0).toString(),
       icon: Calendar,
       trend: 'Programados para hoy',
       color: 'text-primary',
       bgColor: 'bg-primary/10',
-      isLoading: loadingEventsToday,
+      isLoading: loadingEvents,
     },
     {
       title: 'Eventos del Mes',
-      value: eventsMonthCount?.toString() || '0',
+      value: (eventCounts?.month ?? 0).toString(),
       icon: Calendar,
       trend: 'En este mes',
       color: 'text-accent',
       bgColor: 'bg-accent/10',
-      isLoading: loadingEventsMonth,
+      isLoading: loadingEvents,
     },
     {
-      title: 'Eventos del Día',
-      value: eventsDayCount?.toString() || '0',
+      title: 'Eventos Semanales',
+      value: (eventCounts?.week ?? 0).toString(),
       icon: Calendar,
-      trend: 'En curso hoy',
+      trend: 'En esta semana',
       color: 'text-success',
       bgColor: 'bg-success/10',
-      isLoading: loadingEventsDay,
+      isLoading: loadingEvents,
     },
     {
       title: 'Usuarios Pendientes',
