@@ -51,6 +51,7 @@ export type Database = {
           created_at: string
           description: string | null
           event_date: string
+          hubspot_deal_id: string | null
           id: string
           location: string | null
           name: string
@@ -61,6 +62,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           event_date: string
+          hubspot_deal_id?: string | null
           id?: string
           location?: string | null
           name: string
@@ -71,6 +73,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           event_date?: string
+          hubspot_deal_id?: string | null
           id?: string
           location?: string | null
           name?: string
@@ -94,6 +97,7 @@ export type Database = {
           is_active: boolean
           nombre: string
           numero_cuenta: string | null
+          ranking: number | null
           referencia_contacto: string | null
           rut: string
           telefono: string | null
@@ -115,6 +119,7 @@ export type Database = {
           is_active?: boolean
           nombre: string
           numero_cuenta?: string | null
+          ranking?: number | null
           referencia_contacto?: string | null
           rut: string
           telefono?: string | null
@@ -136,6 +141,7 @@ export type Database = {
           is_active?: boolean
           nombre?: string
           numero_cuenta?: string | null
+          ranking?: number | null
           referencia_contacto?: string | null
           rut?: string
           telefono?: string | null
