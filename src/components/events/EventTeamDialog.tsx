@@ -138,17 +138,17 @@ export function EventTeamDialog({ dealId, dealName, open, onOpenChange }: EventT
       return data.map(a => a.user_id);
     },
     enabled: open && !!dealId,
+    refetchOnMount: 'always',
   });
 
   // Pre-select existing assignments
   useEffect(() => {
-    if (existingAssignments.length > 0) {
-      const supIds = new Set(supervisors.map(s => s.id));
-      const accIds = new Set(accreditors.map(a => a.id));
-      setSelectedSupervisors(new Set(existingAssignments.filter(id => supIds.has(id))));
-      setSelectedAccreditors(new Set(existingAssignments.filter(id => accIds.has(id))));
-    }
-  }, [existingAssignments, supervisors, accreditors]);
+    if (!open) return;
+    const supIds = new Set(supervisors.map(s => s.id));
+    const accIds = new Set(accreditors.map(a => a.id));
+    setSelectedSupervisors(new Set(existingAssignments.filter(id => supIds.has(id))));
+    setSelectedAccreditors(new Set(existingAssignments.filter(id => accIds.has(id))));
+  }, [open, existingAssignments, supervisors, accreditors]);
 
   // Reset on close
   useEffect(() => {
