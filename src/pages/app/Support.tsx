@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { LoadingState } from '@/components/ui/LoadingState';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { TicketsTable } from '@/components/support/TicketsTable';
@@ -52,7 +53,6 @@ export default function SupportPage() {
   const [detailTicket, setDetailTicket] = useState<SupportTicket | null>(null);
 
   const [searchCreator, setSearchCreator] = useState('');
-  const [filterStatus, setFilterStatus] = useState('todos');
   const [filterPriority, setFilterPriority] = useState('todas');
 
   const fetchTickets = useCallback(async () => {
@@ -76,16 +76,18 @@ export default function SupportPage() {
     fetchTickets();
   }, [fetchTickets]);
 
-  const filteredTickets = useMemo(() => {
+  const baseFiltered = useMemo(() => {
     return tickets
       .filter(t => {
         if (!searchCreator) return true;
         const fullName = `${t.creator_nombre} ${t.creator_apellido}`.toLowerCase();
         return fullName.includes(searchCreator.toLowerCase());
       })
-      .filter(t => filterStatus === 'todos' || t.status === filterStatus)
       .filter(t => filterPriority === 'todas' || t.priority === filterPriority);
-  }, [tickets, searchCreator, filterStatus, filterPriority]);
+  }, [tickets, searchCreator, filterPriority]);
+
+  const pendingTickets = useMemo(() => baseFiltered.filter(t => t.status === 'pendiente'), [baseFiltered]);
+  const resolvedTickets = useMemo(() => baseFiltered.filter(t => t.status === 'resuelto' || t.status === 'inactivo'), [baseFiltered]);
 
   const handleEdit = (ticket: SupportTicket) => {
     setEditTicket(ticket);
@@ -129,17 +131,6 @@ export default function SupportPage() {
                 className="pl-9"
               />
             </div>
-            <Select value={filterStatus} onValueChange={setFilterStatus}>
-              <SelectTrigger className="w-full sm:w-[180px]">
-                <SelectValue placeholder="Estado" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="todos">Todos los estados</SelectItem>
-                <SelectItem value="pendiente">Pendiente</SelectItem>
-                <SelectItem value="resuelto">Resuelto</SelectItem>
-                <SelectItem value="inactivo">Inactivo</SelectItem>
-              </SelectContent>
-            </Select>
             <Select value={filterPriority} onValueChange={setFilterPriority}>
               <SelectTrigger className="w-full sm:w-[180px]">
                 <SelectValue placeholder="Prioridad" />
@@ -153,17 +144,30 @@ export default function SupportPage() {
             </Select>
           </div>
 
-          <p className="text-sm text-muted-foreground">
-            Mostrando {filteredTickets.length} de {tickets.length} tickets
-          </p>
-
-          {isLoading ? (
-            <LoadingState />
-          ) : filteredTickets.length === 0 ? (
-            <EmptyState icon={HeadphonesIcon} title="Sin tickets" description="No se encontraron tickets con los filtros aplicados." />
-          ) : (
-            <TicketsTable tickets={filteredTickets} canEdit={isAdmin} canView={!isAdmin} onEdit={handleEdit} onView={handleView} />
-          )}
+          <Tabs defaultValue="pendientes">
+            <TabsList>
+              <TabsTrigger value="pendientes">Pendientes ({pendingTickets.length})</TabsTrigger>
+              <TabsTrigger value="resueltos">Resueltos ({resolvedTickets.length})</TabsTrigger>
+            </TabsList>
+            <TabsContent value="pendientes">
+              {isLoading ? (
+                <LoadingState />
+              ) : pendingTickets.length === 0 ? (
+                <EmptyState icon={HeadphonesIcon} title="Sin tickets pendientes" description="No se encontraron tickets pendientes con los filtros aplicados." />
+              ) : (
+                <TicketsTable tickets={pendingTickets} canEdit={isAdmin} canView={!isAdmin} onEdit={handleEdit} onView={handleView} />
+              )}
+            </TabsContent>
+            <TabsContent value="resueltos">
+              {isLoading ? (
+                <LoadingState />
+              ) : resolvedTickets.length === 0 ? (
+                <EmptyState icon={HeadphonesIcon} title="Sin tickets resueltos" description="No se encontraron tickets resueltos con los filtros aplicados." />
+              ) : (
+                <TicketsTable tickets={resolvedTickets} canEdit={isAdmin} canView={!isAdmin} onEdit={handleEdit} onView={handleView} />
+              )}
+            </TabsContent>
+          </Tabs>
         </CardContent>
       </Card>
 
