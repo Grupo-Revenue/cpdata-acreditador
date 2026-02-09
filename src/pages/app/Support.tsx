@@ -24,6 +24,19 @@ interface SupportTicket {
   created_by: string;
   created_at: string;
   updated_at: string;
+  updated_by: string | null;
+  creator_nombre: string;
+  creator_apellido: string;
+  creator_email: string;
+  creator_telefono: string | null;
+  creator_rut: string;
+  creator_role: string;
+  editor_nombre: string | null;
+  editor_apellido: string | null;
+  editor_email: string | null;
+  editor_telefono: string | null;
+  editor_rut: string | null;
+  editor_role: string | null;
 }
 
 export default function SupportPage() {

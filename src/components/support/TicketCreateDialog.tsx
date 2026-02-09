@@ -6,6 +6,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface TicketCreateDialogProps {
   open: boolean;
@@ -18,6 +19,7 @@ export function TicketCreateDialog({ open, onOpenChange, onCreated }: TicketCrea
   const [priority, setPriority] = useState<string>('media');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
+  const { profile, roles } = useAuth();
 
   const handleSubmit = async () => {
     if (!motivo.trim()) {
@@ -29,7 +31,16 @@ export function TicketCreateDialog({ open, onOpenChange, onCreated }: TicketCrea
     try {
       const { error } = await supabase
         .from('support_tickets')
-        .insert({ motivo: motivo.trim(), priority: priority as 'alta' | 'media' | 'baja' });
+        .insert({
+          motivo: motivo.trim(),
+          priority: priority as 'alta' | 'media' | 'baja',
+          creator_nombre: profile?.nombre || '',
+          creator_apellido: profile?.apellido || '',
+          creator_email: profile?.email || '',
+          creator_telefono: profile?.telefono || null,
+          creator_rut: profile?.rut || '',
+          creator_role: roles[0] || '',
+        });
 
       if (error) throw error;
 
