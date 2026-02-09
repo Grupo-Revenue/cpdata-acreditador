@@ -133,6 +133,7 @@ export default function UsersPage() {
     
     setIsProcessing(true);
     try {
+      // Update approval status
       const { error: profileError } = await supabase
         .from('profiles')
         .update({ approval_status: 'approved' })
@@ -140,14 +141,22 @@ export default function UsersPage() {
 
       if (profileError) throw profileError;
 
-      const { error: roleError } = await supabase
+      // Check if user already has roles assigned
+      const { data: existingRoles, error: rolesCheckError } = await supabase
         .from('user_roles')
-        .upsert(
-          { user_id: selectedUser.id, role: 'acreditador' },
-          { onConflict: 'user_id,role' }
-        );
+        .select('role')
+        .eq('user_id', selectedUser.id);
 
-      if (roleError) throw roleError;
+      if (rolesCheckError) throw rolesCheckError;
+
+      // Only assign default role if user has no roles
+      if (!existingRoles || existingRoles.length === 0) {
+        const { error: roleError } = await supabase
+          .from('user_roles')
+          .insert({ user_id: selectedUser.id, role: 'acreditador' });
+
+        if (roleError) throw roleError;
+      }
 
       toast({
         title: 'Usuario aprobado',
@@ -493,7 +502,7 @@ export default function UsersPage() {
           setActionType(null);
         }}
         title="Aprobar usuario"
-        description={`¿Estás seguro de aprobar a ${selectedUser?.nombre} ${selectedUser?.apellido}? Se le asignará el rol de Acreditador.`}
+        description={`¿Estás seguro de aprobar a ${selectedUser?.nombre} ${selectedUser?.apellido}? Se aprobará el acceso. Si no tiene roles asignados, se le asignará Acreditador por defecto.`}
         confirmLabel="Aprobar"
         onConfirm={handleApprove}
         isLoading={isProcessing}
