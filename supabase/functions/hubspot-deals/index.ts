@@ -102,10 +102,33 @@ serve(async (req) => {
 
     const hubspotData = await hubspotRes.json();
 
-    const deals = (hubspotData.results || []).map((deal: any) => ({
-      id: deal.id,
-      ...deal.properties,
-    }));
+    // Fetch stage labels
+    const stagesRes = await fetch(
+      "https://api.hubapi.com/crm/v3/pipelines/deals/755372600/stages",
+      {
+        headers: { Authorization: `Bearer ${hubspotToken}` },
+      }
+    );
+
+    let stageMap: Record<string, string> = {};
+    if (stagesRes.ok) {
+      const stagesData = await stagesRes.json();
+      for (const stage of stagesData.results || []) {
+        stageMap[stage.id] = stage.label;
+      }
+    }
+
+    const deals = (hubspotData.results || [])
+      .map((deal: any) => ({
+        id: deal.id,
+        ...deal.properties,
+        dealstage: stageMap[deal.properties?.dealstage] || deal.properties?.dealstage,
+      }))
+      .sort((a: any, b: any) => {
+        const nameA = (a.dealname || "").toLowerCase();
+        const nameB = (b.dealname || "").toLowerCase();
+        return nameB.localeCompare(nameA);
+      });
 
     return new Response(JSON.stringify({ deals }), {
       status: 200,
