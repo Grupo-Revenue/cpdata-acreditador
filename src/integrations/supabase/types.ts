@@ -193,6 +193,45 @@ export type Database = {
         }
         Relationships: []
       }
+      support_tickets: {
+        Row: {
+          created_at: string
+          created_by: string
+          evidence_url: string | null
+          id: string
+          motivo: string
+          observaciones: string | null
+          priority: Database["public"]["Enums"]["ticket_priority"]
+          status: Database["public"]["Enums"]["ticket_status"]
+          ticket_number: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string
+          evidence_url?: string | null
+          id?: string
+          motivo: string
+          observaciones?: string | null
+          priority?: Database["public"]["Enums"]["ticket_priority"]
+          status?: Database["public"]["Enums"]["ticket_status"]
+          ticket_number?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          evidence_url?: string | null
+          id?: string
+          motivo?: string
+          observaciones?: string | null
+          priority?: Database["public"]["Enums"]["ticket_priority"]
+          status?: Database["public"]["Enums"]["ticket_status"]
+          ticket_number?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -288,6 +327,8 @@ export type Database = {
       app_role: "superadmin" | "administracion" | "supervisor" | "acreditador"
       approval_status: "pending" | "rejected" | "approved"
       event_status: "pending" | "in_progress" | "completed" | "cancelled"
+      ticket_priority: "alta" | "media" | "baja"
+      ticket_status: "pendiente" | "resuelto" | "inactivo"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -419,6 +460,8 @@ export const Constants = {
       app_role: ["superadmin", "administracion", "supervisor", "acreditador"],
       approval_status: ["pending", "rejected", "approved"],
       event_status: ["pending", "in_progress", "completed", "cancelled"],
+      ticket_priority: ["alta", "media", "baja"],
+      ticket_status: ["pendiente", "resuelto", "inactivo"],
     },
   },
 } as const
