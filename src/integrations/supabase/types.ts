@@ -81,45 +81,66 @@ export type Database = {
       }
       profiles: {
         Row: {
+          altura: string | null
           apellido: string
           approval_status: Database["public"]["Enums"]["approval_status"]
+          banco: string | null
+          carrera: string | null
           created_at: string
           email: string
           foto_url: string | null
           id: string
+          idioma: string | null
           is_active: boolean
           nombre: string
+          numero_cuenta: string | null
           referencia_contacto: string | null
           rut: string
           telefono: string | null
+          tipo_cuenta: string | null
+          universidad: string | null
           updated_at: string
         }
         Insert: {
+          altura?: string | null
           apellido: string
           approval_status?: Database["public"]["Enums"]["approval_status"]
+          banco?: string | null
+          carrera?: string | null
           created_at?: string
           email: string
           foto_url?: string | null
           id: string
+          idioma?: string | null
           is_active?: boolean
           nombre: string
+          numero_cuenta?: string | null
           referencia_contacto?: string | null
           rut: string
           telefono?: string | null
+          tipo_cuenta?: string | null
+          universidad?: string | null
           updated_at?: string
         }
         Update: {
+          altura?: string | null
           apellido?: string
           approval_status?: Database["public"]["Enums"]["approval_status"]
+          banco?: string | null
+          carrera?: string | null
           created_at?: string
           email?: string
           foto_url?: string | null
           id?: string
+          idioma?: string | null
           is_active?: boolean
           nombre?: string
+          numero_cuenta?: string | null
           referencia_contacto?: string | null
           rut?: string
           telefono?: string | null
+          tipo_cuenta?: string | null
+          universidad?: string | null
           updated_at?: string
         }
         Relationships: []

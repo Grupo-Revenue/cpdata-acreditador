@@ -16,6 +16,13 @@ interface CreateUserRequest {
   referencia_contacto?: string;
   approval_status?: "pending" | "approved";
   roles?: string[];
+  idioma?: string;
+  altura?: string;
+  universidad?: string;
+  carrera?: string;
+  banco?: string;
+  numero_cuenta?: string;
+  tipo_cuenta?: string;
 }
 
 Deno.serve(async (req) => {
@@ -81,6 +88,13 @@ Deno.serve(async (req) => {
       referencia_contacto,
       approval_status = "approved",
       roles = [],
+      idioma,
+      altura,
+      universidad,
+      carrera,
+      banco,
+      numero_cuenta,
+      tipo_cuenta,
     } = body;
 
     // Validate required fields
@@ -137,15 +151,25 @@ Deno.serve(async (req) => {
 
     const newUserId = newUser.user.id;
 
-    // Update approval_status if needed (trigger sets it to 'pending' by default)
-    if (approval_status === "approved") {
+    // Update profile with approval_status and additional fields
+    const profileUpdate: Record<string, unknown> = {};
+    if (approval_status === "approved") profileUpdate.approval_status = "approved";
+    if (idioma) profileUpdate.idioma = idioma;
+    if (altura) profileUpdate.altura = altura;
+    if (universidad) profileUpdate.universidad = universidad;
+    if (carrera) profileUpdate.carrera = carrera;
+    if (banco) profileUpdate.banco = banco;
+    if (numero_cuenta) profileUpdate.numero_cuenta = numero_cuenta;
+    if (tipo_cuenta) profileUpdate.tipo_cuenta = tipo_cuenta;
+
+    if (Object.keys(profileUpdate).length > 0) {
       const { error: updateError } = await adminClient
         .from("profiles")
-        .update({ approval_status: "approved" })
+        .update(profileUpdate)
         .eq("id", newUserId);
 
       if (updateError) {
-        console.error("Error updating approval status:", updateError);
+        console.error("Error updating profile:", updateError);
       }
     }
 
