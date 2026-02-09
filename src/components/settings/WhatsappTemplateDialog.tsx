@@ -1,0 +1,262 @@
+import { useState, useEffect } from 'react';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useToast } from '@/hooks/use-toast';
+import { Plus, Trash2 } from 'lucide-react';
+
+interface TemplateButton {
+  type: 'URL' | 'PHONE_NUMBER' | 'QUICK_REPLY';
+  text: string;
+  url?: string;
+  phone_number?: string;
+}
+
+interface TemplateData {
+  id?: string;
+  name: string;
+  language: string;
+  category: string;
+  header_type: string;
+  header_text: string;
+  header_image_url: string;
+  body_text: string;
+  footer_text: string;
+  buttons: TemplateButton[];
+  status?: string;
+}
+
+const EMPTY: TemplateData = {
+  name: '', language: 'es', category: 'MARKETING', header_type: 'none',
+  header_text: '', header_image_url: '', body_text: '', footer_text: '', buttons: [],
+};
+
+const LANGUAGES = [
+  { value: 'es', label: 'Español' },
+  { value: 'es_AR', label: 'Español (Argentina)' },
+  { value: 'es_MX', label: 'Español (México)' },
+  { value: 'en', label: 'Inglés' },
+  { value: 'pt_BR', label: 'Portugués (Brasil)' },
+];
+
+const CATEGORIES = [
+  { value: 'MARKETING', label: 'Marketing' },
+  { value: 'UTILITY', label: 'Utilidad' },
+  { value: 'AUTHENTICATION', label: 'Autenticación' },
+];
+
+interface Props {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  template?: TemplateData | null;
+}
+
+export function WhatsappTemplateDialog({ open, onOpenChange, template }: Props) {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [form, setForm] = useState<TemplateData>(EMPTY);
+  const isEdit = !!template?.id;
+
+  useEffect(() => {
+    if (open) {
+      setForm(template ? { ...template, buttons: template.buttons ?? [] } : { ...EMPTY });
+    }
+  }, [open, template]);
+
+  const set = <K extends keyof TemplateData>(key: K, value: TemplateData[K]) =>
+    setForm((prev) => ({ ...prev, [key]: value }));
+
+  const saveMutation = useMutation({
+    mutationFn: async (status: string) => {
+      const payload = {
+        name: form.name,
+        language: form.language,
+        category: form.category,
+        header_type: form.header_type,
+        header_text: form.header_type === 'text' ? form.header_text : null,
+        header_image_url: form.header_type === 'image' ? form.header_image_url : null,
+        body_text: form.body_text,
+        footer_text: form.footer_text || null,
+        buttons: JSON.parse(JSON.stringify(form.buttons)),
+        status,
+      };
+
+      if (isEdit) {
+        const { error } = await supabase.from('whatsapp_templates').update(payload).eq('id', form.id!);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from('whatsapp_templates').insert(payload);
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['whatsapp_templates'] });
+      toast({ title: 'Plantilla guardada' });
+      onOpenChange(false);
+    },
+    onError: (e: Error) => {
+      toast({ title: 'Error', description: e.message, variant: 'destructive' });
+    },
+  });
+
+  const addButton = () => {
+    if (form.buttons.length >= 3) return;
+    set('buttons', [...form.buttons, { type: 'QUICK_REPLY', text: '' }]);
+  };
+
+  const updateButton = (idx: number, patch: Partial<TemplateButton>) => {
+    const updated = form.buttons.map((b, i) => (i === idx ? { ...b, ...patch } : b));
+    set('buttons', updated);
+  };
+
+  const removeButton = (idx: number) => {
+    set('buttons', form.buttons.filter((_, i) => i !== idx));
+  };
+
+  const canSave = form.name.trim() && form.body_text.trim();
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>{isEdit ? 'Editar Plantilla' : 'Nueva Plantilla'}</DialogTitle>
+          <DialogDescription>
+            Completa los campos para {isEdit ? 'editar' : 'crear'} una plantilla de mensaje de WhatsApp.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4">
+          {/* Name */}
+          <div className="space-y-2">
+            <Label>Nombre de la plantilla *</Label>
+            <Input placeholder="bienvenida_cliente" value={form.name} onChange={(e) => set('name', e.target.value)} />
+            <p className="text-xs text-muted-foreground">Solo letras minúsculas, números y guiones bajos</p>
+          </div>
+
+          {/* Category + Language */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Categoría</Label>
+              <Select value={form.category} onValueChange={(v) => set('category', v)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {CATEGORIES.map((c) => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Idioma</Label>
+              <Select value={form.language} onValueChange={(v) => set('language', v)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {LANGUAGES.map((l) => <SelectItem key={l.value} value={l.value}>{l.label}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          {/* Header */}
+          <div className="space-y-2">
+            <Label>Tipo de header</Label>
+            <Select value={form.header_type} onValueChange={(v) => set('header_type', v)}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">Ninguno</SelectItem>
+                <SelectItem value="text">Texto</SelectItem>
+                <SelectItem value="image">Imagen</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {form.header_type === 'text' && (
+            <div className="space-y-2">
+              <Label>Texto del header</Label>
+              <Input placeholder="Ej: ¡Hola {{1}}!" value={form.header_text} onChange={(e) => set('header_text', e.target.value)} />
+            </div>
+          )}
+
+          {form.header_type === 'image' && (
+            <div className="space-y-2">
+              <Label>URL de la imagen</Label>
+              <Input placeholder="https://example.com/image.jpg" value={form.header_image_url} onChange={(e) => set('header_image_url', e.target.value)} />
+            </div>
+          )}
+
+          {/* Body */}
+          <div className="space-y-2">
+            <Label>Cuerpo del mensaje *</Label>
+            <Textarea
+              placeholder="Hola {{1}}, tu cita es el {{2}} a las {{3}}."
+              value={form.body_text}
+              onChange={(e) => set('body_text', e.target.value)}
+              rows={4}
+            />
+            <p className="text-xs text-muted-foreground">
+              Usa {'{{1}}'}, {'{{2}}'}, etc. para variables dinámicas
+            </p>
+          </div>
+
+          {/* Footer */}
+          <div className="space-y-2">
+            <Label>Footer (opcional)</Label>
+            <Input placeholder="Ej: Responde STOP para cancelar" value={form.footer_text} onChange={(e) => set('footer_text', e.target.value)} />
+          </div>
+
+          {/* Buttons */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <Label>Botones (máx. 3)</Label>
+              <Button type="button" variant="outline" size="sm" onClick={addButton} disabled={form.buttons.length >= 3}>
+                <Plus className="w-3 h-3 mr-1" /> Agregar
+              </Button>
+            </div>
+
+            {form.buttons.map((btn, idx) => (
+              <div key={idx} className="flex items-start gap-2 p-3 rounded-md border bg-muted/30">
+                <div className="flex-1 space-y-2">
+                  <div className="grid grid-cols-2 gap-2">
+                    <Select value={btn.type} onValueChange={(v) => updateButton(idx, { type: v as TemplateButton['type'] })}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="QUICK_REPLY">Respuesta rápida</SelectItem>
+                        <SelectItem value="URL">URL</SelectItem>
+                        <SelectItem value="PHONE_NUMBER">Teléfono</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Input placeholder="Texto del botón" value={btn.text} onChange={(e) => updateButton(idx, { text: e.target.value })} />
+                  </div>
+                  {btn.type === 'URL' && (
+                    <Input placeholder="https://example.com" value={btn.url ?? ''} onChange={(e) => updateButton(idx, { url: e.target.value })} />
+                  )}
+                  {btn.type === 'PHONE_NUMBER' && (
+                    <Input placeholder="+56912345678" value={btn.phone_number ?? ''} onChange={(e) => updateButton(idx, { phone_number: e.target.value })} />
+                  )}
+                </div>
+                <Button type="button" variant="ghost" size="icon" onClick={() => removeButton(idx)}>
+                  <Trash2 className="w-4 h-4 text-destructive" />
+                </Button>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <DialogFooter className="gap-2">
+          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
+          <Button variant="secondary" onClick={() => saveMutation.mutate('draft')} disabled={!canSave || saveMutation.isPending}>
+            Guardar borrador
+          </Button>
+          <Button onClick={() => saveMutation.mutate('pending')} disabled={!canSave || saveMutation.isPending}>
+            Enviar a aprobación
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}

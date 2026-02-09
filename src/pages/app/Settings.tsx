@@ -2,6 +2,9 @@ import { AppShell } from '@/components/layout/AppShell';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { RolesManager } from '@/components/settings/RolesManager';
 import { HubspotIntegration } from '@/components/settings/HubspotIntegration';
+import { MetaIntegration } from '@/components/settings/MetaIntegration';
+import { WhatsappTemplatesManager } from '@/components/settings/WhatsappTemplatesManager';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 export default function SettingsPage() {
   return (
@@ -15,10 +18,26 @@ export default function SettingsPage() {
         ]}
       />
 
-      <div className="space-y-6">
-        <RolesManager />
-        <HubspotIntegration />
-      </div>
+      <Tabs defaultValue="general" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="general">General</TabsTrigger>
+          <TabsTrigger value="integrations">Integraciones</TabsTrigger>
+          <TabsTrigger value="whatsapp">Plantillas WhatsApp</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="general">
+          <RolesManager />
+        </TabsContent>
+
+        <TabsContent value="integrations" className="space-y-6">
+          <HubspotIntegration />
+          <MetaIntegration />
+        </TabsContent>
+
+        <TabsContent value="whatsapp">
+          <WhatsappTemplatesManager />
+        </TabsContent>
+      </Tabs>
     </AppShell>
   );
 }
