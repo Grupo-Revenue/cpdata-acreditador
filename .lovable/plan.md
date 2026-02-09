@@ -1,20 +1,37 @@
 
-
-## Plan: Guardar RUT con formato
+## Plan: Corregir error al aprobar usuarios
 
 ### Problema
-Al crear un usuario, el RUT se limpia con `cleanRUT()` antes de enviarlo a la edge function (linea 111 de `UserCreateDialog.tsx`), lo que elimina puntos y guion. El RUT se guarda como `12345678K` en vez de `12.345.678-K`.
+Al aprobar un usuario, el sistema intenta insertar el rol `acreditador` en `user_roles`. Si el usuario ya tiene ese rol asignado (por ejemplo, fue creado manualmente con roles), la insercion falla con un error de clave duplicada: `duplicate key value violates unique constraint "user_roles_user_id_role_key"`.
 
 ### Solucion
-Enviar el RUT formateado en lugar del limpio. El estado `rut` ya contiene el valor formateado gracias al componente `RUTInput`, asi que basta con enviarlo directamente.
+Cambiar el `insert` por un `upsert` con `onConflict` para que si el rol ya existe, simplemente lo ignore en lugar de fallar.
 
 ### Cambio
 
-**`src/components/users/UserCreateDialog.tsx`** (linea 111):
-- Cambiar `rut: cleanRUT(rut)` por `rut: rut` (o simplemente `rut`)
+**`src/pages/app/Users.tsx`** (linea 143-145):
 
-Esto asegura que el RUT se almacene con formato `XX.XXX.XXX-X` en la base de datos.
+Reemplazar:
+```typescript
+const { error: roleError } = await supabase
+  .from('user_roles')
+  .insert({ user_id: selectedUser.id, role: 'acreditador' });
+```
 
-### Nota sobre la edge function
-La edge function `create-user` busca duplicados con `eq("rut", rut)`. Como los RUTs existentes podrian estar guardados sin formato, tambien se debe verificar la consistencia. Sin embargo, si el sistema es nuevo y todos los RUTs futuros se guardaran con formato, no se necesita cambio en la edge function.
+Por:
+```typescript
+const { error: roleError } = await supabase
+  .from('user_roles')
+  .upsert(
+    { user_id: selectedUser.id, role: 'acreditador' },
+    { onConflict: 'user_id,role' }
+  );
+```
 
+Esto evita el error cuando el rol ya existe previamente asignado al usuario.
+
+### Archivos afectados
+
+| Archivo | Accion |
+|---------|--------|
+| `src/pages/app/Users.tsx` | Cambiar `insert` por `upsert` con `onConflict` en la funcion `handleApprove` |
