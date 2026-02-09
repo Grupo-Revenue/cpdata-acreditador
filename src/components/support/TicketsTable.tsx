@@ -1,7 +1,7 @@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Pencil } from 'lucide-react';
+import { Pencil, Eye } from 'lucide-react';
 import { format } from 'date-fns';
 
 interface SupportTicket {
@@ -33,7 +33,9 @@ interface SupportTicket {
 interface TicketsTableProps {
   tickets: SupportTicket[];
   canEdit: boolean;
+  canView?: boolean;
   onEdit: (ticket: SupportTicket) => void;
+  onView?: (ticket: SupportTicket) => void;
 }
 
 const statusConfig: Record<string, { label: string; className: string }> = {
@@ -48,7 +50,8 @@ const priorityConfig: Record<string, { label: string; className: string }> = {
   baja: { label: 'Baja', className: 'bg-muted text-muted-foreground border-muted' },
 };
 
-export function TicketsTable({ tickets, canEdit, onEdit }: TicketsTableProps) {
+export function TicketsTable({ tickets, canEdit, canView, onEdit, onView }: TicketsTableProps) {
+  const showActions = canEdit || canView;
   return (
     <div className="rounded-md border">
       <Table>
@@ -61,13 +64,13 @@ export function TicketsTable({ tickets, canEdit, onEdit }: TicketsTableProps) {
             <TableHead className="w-28">Estado</TableHead>
             <TableHead className="w-28">Prioridad</TableHead>
             <TableHead className="w-32">Fecha</TableHead>
-            {canEdit && <TableHead className="w-24">Acciones</TableHead>}
+            {showActions && <TableHead className="w-24">Acciones</TableHead>}
           </TableRow>
         </TableHeader>
         <TableBody>
           {tickets.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={canEdit ? 8 : 7} className="text-center text-muted-foreground py-8">
+              <TableCell colSpan={showActions ? 8 : 7} className="text-center text-muted-foreground py-8">
                 No hay tickets para mostrar
               </TableCell>
             </TableRow>
@@ -94,11 +97,17 @@ export function TicketsTable({ tickets, canEdit, onEdit }: TicketsTableProps) {
                     <Badge variant="outline" className={pc?.className}>{pc?.label}</Badge>
                   </TableCell>
                   <TableCell>{format(new Date(ticket.created_at), 'dd-MM-yyyy')}</TableCell>
-                  {canEdit && (
+                  {showActions && (
                     <TableCell>
-                      <Button variant="ghost" size="icon" onClick={() => onEdit(ticket)}>
-                        <Pencil className="h-4 w-4" />
-                      </Button>
+                      {canEdit ? (
+                        <Button variant="ghost" size="icon" onClick={() => onEdit(ticket)}>
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                      ) : canView && onView ? (
+                        <Button variant="ghost" size="icon" onClick={() => onView(ticket)}>
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                      ) : null}
                     </TableCell>
                   )}
                 </TableRow>
