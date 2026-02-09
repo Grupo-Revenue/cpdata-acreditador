@@ -9,7 +9,9 @@ import { LoadingState } from '@/components/ui/LoadingState';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Users, Search } from 'lucide-react';
+import { Users, Search, ChevronLeft, ChevronRight } from 'lucide-react';
+
+const PAGE_SIZE = 10;
 
 interface UserWithProfile {
   id: string;
@@ -30,6 +32,23 @@ interface EventTeamDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
+function PaginationControls({ page, totalPages, onPageChange }: { page: number; totalPages: number; onPageChange: (p: number) => void }) {
+  if (totalPages <= 1) return null;
+  return (
+    <div className="flex items-center justify-between pt-3">
+      <span className="text-sm text-muted-foreground">Página {page} de {totalPages}</span>
+      <div className="flex gap-2">
+        <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => onPageChange(page - 1)}>
+          <ChevronLeft className="h-4 w-4 mr-1" /> Anterior
+        </Button>
+        <Button variant="outline" size="sm" disabled={page >= totalPages} onClick={() => onPageChange(page + 1)}>
+          Siguiente <ChevronRight className="h-4 w-4 ml-1" />
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 export function EventTeamDialog({ dealId, dealName, open, onOpenChange }: EventTeamDialogProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -37,13 +56,20 @@ export function EventTeamDialog({ dealId, dealName, open, onOpenChange }: EventT
   const [selectedAccreditors, setSelectedAccreditors] = useState<Set<string>>(new Set());
   const [saving, setSaving] = useState(false);
 
-  // Filters for accreditors
+  // Supervisor filters
+  const [supFilterNombre, setSupFilterNombre] = useState('');
+  const [supFilterRut, setSupFilterRut] = useState('');
+  const [supFilterEmail, setSupFilterEmail] = useState('');
+  const [supPage, setSupPage] = useState(1);
+
+  // Accreditor filters
   const [filterNombre, setFilterNombre] = useState('');
   const [filterRut, setFilterRut] = useState('');
   const [filterEmail, setFilterEmail] = useState('');
   const [filterIdioma, setFilterIdioma] = useState('');
   const [filterRanking, setFilterRanking] = useState('');
   const [filterTelefono, setFilterTelefono] = useState('');
+  const [accPage, setAccPage] = useState(1);
 
   // Fetch supervisors
   const { data: supervisors = [], isLoading: loadingSupervisors } = useQuery({
@@ -96,7 +122,6 @@ export function EventTeamDialog({ dealId, dealName, open, onOpenChange }: EventT
     queryKey: ['event-assignments', dealId],
     queryFn: async () => {
       if (!dealId) return [];
-      // Find local event by hubspot_deal_id
       const { data: evt } = await (supabase
         .from('events')
         .select('id') as any)
@@ -128,16 +153,38 @@ export function EventTeamDialog({ dealId, dealName, open, onOpenChange }: EventT
     if (!open) {
       setSelectedSupervisors(new Set());
       setSelectedAccreditors(new Set());
+      setSupFilterNombre('');
+      setSupFilterRut('');
+      setSupFilterEmail('');
+      setSupPage(1);
       setFilterNombre('');
       setFilterRut('');
       setFilterEmail('');
       setFilterIdioma('');
       setFilterRanking('');
       setFilterTelefono('');
+      setAccPage(1);
     }
   }, [open]);
 
-  // Filtered accreditors
+  // Filtered & paginated supervisors
+  const filteredSupervisors = useMemo(() => {
+    return supervisors.filter(s => {
+      const fullName = `${s.nombre} ${s.apellido}`.toLowerCase();
+      if (supFilterNombre && !fullName.includes(supFilterNombre.toLowerCase())) return false;
+      if (supFilterRut && !s.rut.toLowerCase().includes(supFilterRut.toLowerCase())) return false;
+      if (supFilterEmail && !s.email.toLowerCase().includes(supFilterEmail.toLowerCase())) return false;
+      return true;
+    });
+  }, [supervisors, supFilterNombre, supFilterRut, supFilterEmail]);
+
+  const supTotalPages = Math.ceil(filteredSupervisors.length / PAGE_SIZE);
+  const paginatedSupervisors = filteredSupervisors.slice((supPage - 1) * PAGE_SIZE, supPage * PAGE_SIZE);
+
+  // Reset sup page on filter change
+  useEffect(() => { setSupPage(1); }, [supFilterNombre, supFilterRut, supFilterEmail]);
+
+  // Filtered & paginated accreditors
   const filteredAccreditors = useMemo(() => {
     return accreditors.filter(a => {
       const fullName = `${a.nombre} ${a.apellido}`.toLowerCase();
@@ -150,6 +197,12 @@ export function EventTeamDialog({ dealId, dealName, open, onOpenChange }: EventT
       return true;
     });
   }, [accreditors, filterNombre, filterRut, filterEmail, filterIdioma, filterRanking, filterTelefono]);
+
+  const accTotalPages = Math.ceil(filteredAccreditors.length / PAGE_SIZE);
+  const paginatedAccreditors = filteredAccreditors.slice((accPage - 1) * PAGE_SIZE, accPage * PAGE_SIZE);
+
+  // Reset acc page on filter change
+  useEffect(() => { setAccPage(1); }, [filterNombre, filterRut, filterEmail, filterIdioma, filterRanking, filterTelefono]);
 
   const toggleSupervisor = (id: string) => {
     setSelectedSupervisors(prev => {
@@ -171,7 +224,6 @@ export function EventTeamDialog({ dealId, dealName, open, onOpenChange }: EventT
     if (!dealId) return;
     setSaving(true);
     try {
-      // Find or create local event
       let { data: evt } = await (supabase
         .from('events')
         .select('id') as any)
@@ -193,17 +245,11 @@ export function EventTeamDialog({ dealId, dealName, open, onOpenChange }: EventT
       }
 
       const eventId = evt!.id;
-
-      // Delete existing assignments
       await supabase.from('event_accreditors').delete().eq('event_id', eventId);
 
-      // Insert new assignments
       const allSelected = [...selectedSupervisors, ...selectedAccreditors];
       if (allSelected.length > 0) {
-        const rows = allSelected.map(userId => ({
-          event_id: eventId,
-          user_id: userId,
-        }));
+        const rows = allSelected.map(userId => ({ event_id: eventId, user_id: userId }));
         const { error: insertErr } = await supabase.from('event_accreditors').insert(rows);
         if (insertErr) throw insertErr;
       }
@@ -233,47 +279,58 @@ export function EventTeamDialog({ dealId, dealName, open, onOpenChange }: EventT
 
         <Tabs defaultValue="supervisores" className="w-full">
           <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="supervisores">
-              Supervisores ({selectedSupervisors.size})
-            </TabsTrigger>
-            <TabsTrigger value="acreditadores">
-              Acreditadores ({selectedAccreditors.size})
-            </TabsTrigger>
+            <TabsTrigger value="supervisores">Supervisores ({selectedSupervisors.size})</TabsTrigger>
+            <TabsTrigger value="acreditadores">Acreditadores ({selectedAccreditors.size})</TabsTrigger>
           </TabsList>
 
           <TabsContent value="supervisores">
+            {/* Supervisor Filters */}
+            <div className="grid grid-cols-3 gap-2 mb-3">
+              <div className="relative">
+                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input placeholder="Nombre" value={supFilterNombre} onChange={e => setSupFilterNombre(e.target.value)} className="pl-8" />
+              </div>
+              <Input placeholder="RUT" value={supFilterRut} onChange={e => setSupFilterRut(e.target.value)} />
+              <Input placeholder="Email" value={supFilterEmail} onChange={e => setSupFilterEmail(e.target.value)} />
+            </div>
+
             {loadingSupervisors ? (
               <LoadingState text="Cargando supervisores..." className="py-8" />
-            ) : supervisors.length === 0 ? (
-              <p className="text-sm text-muted-foreground py-4 text-center">No hay supervisores aprobados.</p>
+            ) : filteredSupervisors.length === 0 ? (
+              <p className="text-sm text-muted-foreground py-4 text-center">
+                {supervisors.length === 0 ? 'No hay supervisores aprobados.' : 'Sin resultados para los filtros aplicados.'}
+              </p>
             ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-[50px]" />
-                    <TableHead>Nombre</TableHead>
-                    <TableHead>RUT</TableHead>
-                    <TableHead>Email</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {supervisors.map(s => (
-                    <TableRow key={s.id} className="cursor-pointer" onClick={() => toggleSupervisor(s.id)}>
-                      <TableCell>
-                        <Checkbox checked={selectedSupervisors.has(s.id)} onCheckedChange={() => toggleSupervisor(s.id)} />
-                      </TableCell>
-                      <TableCell>{s.nombre} {s.apellido}</TableCell>
-                      <TableCell>{s.rut}</TableCell>
-                      <TableCell>{s.email}</TableCell>
+              <>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-[50px]" />
+                      <TableHead>Nombre</TableHead>
+                      <TableHead>RUT</TableHead>
+                      <TableHead>Email</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {paginatedSupervisors.map(s => (
+                      <TableRow key={s.id} className="cursor-pointer" onClick={() => toggleSupervisor(s.id)}>
+                        <TableCell>
+                          <Checkbox checked={selectedSupervisors.has(s.id)} onCheckedChange={() => toggleSupervisor(s.id)} />
+                        </TableCell>
+                        <TableCell>{s.nombre} {s.apellido}</TableCell>
+                        <TableCell>{s.rut}</TableCell>
+                        <TableCell>{s.email}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+                <PaginationControls page={supPage} totalPages={supTotalPages} onPageChange={setSupPage} />
+              </>
             )}
           </TabsContent>
 
           <TabsContent value="acreditadores">
-            {/* Filters */}
+            {/* Accreditor Filters */}
             <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mb-3">
               <div className="relative">
                 <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -293,36 +350,39 @@ export function EventTeamDialog({ dealId, dealName, open, onOpenChange }: EventT
                 {accreditors.length === 0 ? 'No hay acreditadores aprobados.' : 'Sin resultados para los filtros aplicados.'}
               </p>
             ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-[50px]" />
-                    <TableHead>Nombre</TableHead>
-                    <TableHead>RUT</TableHead>
-                    <TableHead>Email</TableHead>
-                    <TableHead>Idioma</TableHead>
-                    <TableHead>Estatura</TableHead>
-                    <TableHead>Ranking</TableHead>
-                    <TableHead>Teléfono</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredAccreditors.map(a => (
-                    <TableRow key={a.id} className="cursor-pointer" onClick={() => toggleAccreditor(a.id)}>
-                      <TableCell>
-                        <Checkbox checked={selectedAccreditors.has(a.id)} onCheckedChange={() => toggleAccreditor(a.id)} />
-                      </TableCell>
-                      <TableCell>{a.nombre} {a.apellido}</TableCell>
-                      <TableCell>{a.rut}</TableCell>
-                      <TableCell>{a.email}</TableCell>
-                      <TableCell>{a.idioma ?? '—'}</TableCell>
-                      <TableCell>{a.altura ?? '—'}</TableCell>
-                      <TableCell>{a.ranking ?? '—'}</TableCell>
-                      <TableCell>{a.telefono ?? '—'}</TableCell>
+              <>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-[50px]" />
+                      <TableHead>Nombre</TableHead>
+                      <TableHead>RUT</TableHead>
+                      <TableHead>Email</TableHead>
+                      <TableHead>Idioma</TableHead>
+                      <TableHead>Estatura</TableHead>
+                      <TableHead>Ranking</TableHead>
+                      <TableHead>Teléfono</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {paginatedAccreditors.map(a => (
+                      <TableRow key={a.id} className="cursor-pointer" onClick={() => toggleAccreditor(a.id)}>
+                        <TableCell>
+                          <Checkbox checked={selectedAccreditors.has(a.id)} onCheckedChange={() => toggleAccreditor(a.id)} />
+                        </TableCell>
+                        <TableCell>{a.nombre} {a.apellido}</TableCell>
+                        <TableCell>{a.rut}</TableCell>
+                        <TableCell>{a.email}</TableCell>
+                        <TableCell>{a.idioma ?? '—'}</TableCell>
+                        <TableCell>{a.altura ?? '—'}</TableCell>
+                        <TableCell>{a.ranking ?? '—'}</TableCell>
+                        <TableCell>{a.telefono ?? '—'}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+                <PaginationControls page={accPage} totalPages={accTotalPages} onPageChange={setAccPage} />
+              </>
             )}
           </TabsContent>
         </Tabs>
