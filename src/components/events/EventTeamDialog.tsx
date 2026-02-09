@@ -84,7 +84,7 @@ export function EventTeamDialog({ dealId, dealName, open, onOpenChange }: EventT
       if (userIds.length === 0) return [];
       const { data: profiles, error: pErr } = await supabase
         .from('profiles')
-        .select('id, nombre, apellido, rut, email, telefono')
+        .select('id, nombre, apellido, rut, email, telefono, ranking')
         .in('id', userIds)
         .eq('approval_status', 'approved')
         .eq('is_active', true);
@@ -309,6 +309,8 @@ export function EventTeamDialog({ dealId, dealName, open, onOpenChange }: EventT
                       <TableHead>Nombre</TableHead>
                       <TableHead>RUT</TableHead>
                       <TableHead>Email</TableHead>
+                      <TableHead>Teléfono</TableHead>
+                      <TableHead>Ranking</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -320,6 +322,8 @@ export function EventTeamDialog({ dealId, dealName, open, onOpenChange }: EventT
                         <TableCell>{s.nombre} {s.apellido}</TableCell>
                         <TableCell>{s.rut}</TableCell>
                         <TableCell>{s.email}</TableCell>
+                        <TableCell>{s.telefono ?? '—'}</TableCell>
+                        <TableCell>{s.ranking ?? '—'}</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
