@@ -2,7 +2,7 @@ import { useState, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Camera, User, Mail, CreditCard, Phone, Users, Lock, Loader2 } from 'lucide-react';
+import { Camera, User, Mail, CreditCard, Phone, Users, Lock, Loader2, GraduationCap, Landmark } from 'lucide-react';
 import { AppShell } from '@/components/layout/AppShell';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -16,12 +16,23 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
+import { BANCOS_CHILE, TIPOS_CUENTA } from '@/components/users/constants';
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from '@/components/ui/select';
 
 const profileSchema = z.object({
   nombre: z.string().min(2, 'El nombre debe tener al menos 2 caracteres'),
   apellido: z.string().min(2, 'El apellido debe tener al menos 2 caracteres'),
   telefono: z.string().min(8, 'El teléfono debe tener al menos 8 dígitos').optional().or(z.literal('')),
   referencia_contacto: z.string().optional().or(z.literal('')),
+  idioma: z.string().optional().or(z.literal('')),
+  altura: z.string().optional().or(z.literal('')),
+  universidad: z.string().optional().or(z.literal('')),
+  carrera: z.string().optional().or(z.literal('')),
+  banco: z.string().optional().or(z.literal('')),
+  numero_cuenta: z.string().optional().or(z.literal('')),
+  tipo_cuenta: z.string().optional().or(z.literal('')),
 });
 
 type ProfileFormValues = z.infer<typeof profileSchema>;
@@ -40,6 +51,13 @@ export default function ProfilePage() {
       apellido: profile?.apellido || '',
       telefono: profile?.telefono || '',
       referencia_contacto: profile?.referencia_contacto || '',
+      idioma: (profile as any)?.idioma || '',
+      altura: (profile as any)?.altura || '',
+      universidad: (profile as any)?.universidad || '',
+      carrera: (profile as any)?.carrera || '',
+      banco: (profile as any)?.banco || '',
+      numero_cuenta: (profile as any)?.numero_cuenta || '',
+      tipo_cuenta: (profile as any)?.tipo_cuenta || '',
     },
   });
 
@@ -139,6 +157,13 @@ export default function ProfilePage() {
           apellido: data.apellido,
           telefono: data.telefono || null,
           referencia_contacto: data.referencia_contacto || null,
+          idioma: data.idioma || null,
+          altura: data.altura || null,
+          universidad: data.universidad || null,
+          carrera: data.carrera || null,
+          banco: data.banco || null,
+          numero_cuenta: data.numero_cuenta || null,
+          tipo_cuenta: data.tipo_cuenta || null,
         })
         .eq('id', user.id);
 
@@ -352,6 +377,93 @@ export default function ProfilePage() {
                   />
                 </div>
 
+                <div className="flex justify-end pt-4">
+                  <Button type="submit" disabled={isSaving}>
+                    {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    Guardar cambios
+                  </Button>
+                </div>
+              </form>
+            </Form>
+          </CardContent>
+        </Card>
+
+        {/* Información adicional */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <GraduationCap className="h-5 w-5" />
+              Información adicional
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <FormField control={form.control} name="idioma" render={({ field }) => (
+                    <FormItem><FormLabel>Idioma</FormLabel><FormControl><Input placeholder="Ej: Español" {...field} /></FormControl><FormMessage /></FormItem>
+                  )} />
+                  <FormField control={form.control} name="altura" render={({ field }) => (
+                    <FormItem><FormLabel>Altura</FormLabel><FormControl><Input placeholder="Ej: 1.75" {...field} /></FormControl><FormMessage /></FormItem>
+                  )} />
+                  <FormField control={form.control} name="universidad" render={({ field }) => (
+                    <FormItem><FormLabel>Universidad</FormLabel><FormControl><Input placeholder="Universidad" {...field} /></FormControl><FormMessage /></FormItem>
+                  )} />
+                  <FormField control={form.control} name="carrera" render={({ field }) => (
+                    <FormItem><FormLabel>Carrera</FormLabel><FormControl><Input placeholder="Carrera" {...field} /></FormControl><FormMessage /></FormItem>
+                  )} />
+                </div>
+                <div className="flex justify-end pt-4">
+                  <Button type="submit" disabled={isSaving}>
+                    {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    Guardar cambios
+                  </Button>
+                </div>
+              </form>
+            </Form>
+          </CardContent>
+        </Card>
+
+        {/* Datos bancarios */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Landmark className="h-5 w-5" />
+              Datos bancarios
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <FormField control={form.control} name="banco" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Banco</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl><SelectTrigger><SelectValue placeholder="Seleccionar banco" /></SelectTrigger></FormControl>
+                        <SelectContent>
+                          {BANCOS_CHILE.map((b) => <SelectItem key={b} value={b}>{b}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
+                  <FormField control={form.control} name="tipo_cuenta" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Tipo de cuenta</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl><SelectTrigger><SelectValue placeholder="Seleccionar tipo" /></SelectTrigger></FormControl>
+                        <SelectContent>
+                          {TIPOS_CUENTA.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
+                </div>
+                <FormField control={form.control} name="numero_cuenta" render={({ field }) => (
+                  <FormItem><FormLabel>Número de cuenta</FormLabel><FormControl><Input placeholder="Número de cuenta" {...field} /></FormControl><FormMessage /></FormItem>
+                )} />
                 <div className="flex justify-end pt-4">
                   <Button type="submit" disabled={isSaving}>
                     {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}

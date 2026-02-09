@@ -18,6 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Separator } from '@/components/ui/separator';
 import { RUTInput } from '@/components/ui/RUTInput';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
@@ -25,6 +26,7 @@ import { getRUTError, cleanRUT } from '@/lib/rut';
 import { AppRole } from '@/contexts/AuthContext';
 import { Loader2 } from 'lucide-react';
 import { useRoles } from '@/hooks/useRoles';
+import { BANCOS_CHILE, TIPOS_CUENTA } from './constants';
 
 interface UserCreateDialogProps {
   open: boolean;
@@ -37,7 +39,6 @@ export function UserCreateDialog({ open, onOpenChange, onSuccess }: UserCreateDi
   const [isLoading, setIsLoading] = useState(false);
   const { data: roles } = useRoles();
   
-  // Form state
   const [rut, setRut] = useState('');
   const [nombre, setNombre] = useState('');
   const [apellido, setApellido] = useState('');
@@ -47,17 +48,21 @@ export function UserCreateDialog({ open, onOpenChange, onSuccess }: UserCreateDi
   const [password, setPassword] = useState('');
   const [approvalStatus, setApprovalStatus] = useState<'pending' | 'approved'>('approved');
   const [selectedRoles, setSelectedRoles] = useState<AppRole[]>([]);
+  // New fields
+  const [idioma, setIdioma] = useState('');
+  const [altura, setAltura] = useState('');
+  const [universidad, setUniversidad] = useState('');
+  const [carrera, setCarrera] = useState('');
+  const [banco, setBanco] = useState('');
+  const [numeroCuenta, setNumeroCuenta] = useState('');
+  const [tipoCuenta, setTipoCuenta] = useState('');
 
   const resetForm = () => {
-    setRut('');
-    setNombre('');
-    setApellido('');
-    setEmail('');
-    setTelefono('');
-    setReferenciaContacto('');
-    setPassword('');
-    setApprovalStatus('approved');
-    setSelectedRoles([]);
+    setRut(''); setNombre(''); setApellido(''); setEmail('');
+    setTelefono(''); setReferenciaContacto(''); setPassword('');
+    setApprovalStatus('approved'); setSelectedRoles([]);
+    setIdioma(''); setAltura(''); setUniversidad(''); setCarrera('');
+    setBanco(''); setNumeroCuenta(''); setTipoCuenta('');
   };
 
   const handleRoleToggle = (role: AppRole) => {
@@ -69,34 +74,19 @@ export function UserCreateDialog({ open, onOpenChange, onSuccess }: UserCreateDi
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Validate RUT
     const rutError = getRUTError(rut);
     if (rutError) {
-      toast({
-        variant: 'destructive',
-        title: 'Error de validación',
-        description: rutError,
-      });
+      toast({ variant: 'destructive', title: 'Error de validación', description: rutError });
       return;
     }
 
-    // Validate required fields
     if (!nombre.trim() || !apellido.trim() || !email.trim() || !telefono.trim() || !password.trim()) {
-      toast({
-        variant: 'destructive',
-        title: 'Error de validación',
-        description: 'Todos los campos marcados son requeridos.',
-      });
+      toast({ variant: 'destructive', title: 'Error de validación', description: 'Todos los campos marcados son requeridos.' });
       return;
     }
 
-    // Validate password length
     if (password.length < 6) {
-      toast({
-        variant: 'destructive',
-        title: 'Error de validación',
-        description: 'La contraseña debe tener al menos 6 caracteres.',
-      });
+      toast({ variant: 'destructive', title: 'Error de validación', description: 'La contraseña debe tener al menos 6 caracteres.' });
       return;
     }
 
@@ -105,10 +95,7 @@ export function UserCreateDialog({ open, onOpenChange, onSuccess }: UserCreateDi
     try {
       const { data: sessionData } = await supabase.auth.getSession();
       const token = sessionData.session?.access_token;
-
-      if (!token) {
-        throw new Error('No hay sesión activa');
-      }
+      if (!token) throw new Error('No hay sesión activa');
 
       const response = await fetch(
         'https://wodzysrgdsforiuliejo.supabase.co/functions/v1/create-user',
@@ -128,21 +115,21 @@ export function UserCreateDialog({ open, onOpenChange, onSuccess }: UserCreateDi
             referencia_contacto: referenciaContacto.trim() || undefined,
             approval_status: approvalStatus,
             roles: selectedRoles,
+            idioma: idioma.trim() || undefined,
+            altura: altura.trim() || undefined,
+            universidad: universidad.trim() || undefined,
+            carrera: carrera.trim() || undefined,
+            banco: banco || undefined,
+            numero_cuenta: numeroCuenta.trim() || undefined,
+            tipo_cuenta: tipoCuenta || undefined,
           }),
         }
       );
 
       const result = await response.json();
+      if (!response.ok) throw new Error(result.error || 'Error al crear usuario');
 
-      if (!response.ok) {
-        throw new Error(result.error || 'Error al crear usuario');
-      }
-
-      toast({
-        title: 'Usuario creado',
-        description: `${nombre} ${apellido} ha sido creado exitosamente.`,
-      });
-
+      toast({ title: 'Usuario creado', description: `${nombre} ${apellido} ha sido creado exitosamente.` });
       resetForm();
       onOpenChange(false);
       onSuccess();
@@ -159,114 +146,120 @@ export function UserCreateDialog({ open, onOpenChange, onSuccess }: UserCreateDi
   };
 
   return (
-    <Dialog open={open} onOpenChange={(isOpen) => {
-      if (!isOpen) resetForm();
-      onOpenChange(isOpen);
-    }}>
+    <Dialog open={open} onOpenChange={(isOpen) => { if (!isOpen) resetForm(); onOpenChange(isOpen); }}>
       <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Crear Usuario</DialogTitle>
-          <DialogDescription>
-            Complete los datos para crear un nuevo usuario en el sistema.
-          </DialogDescription>
+          <DialogDescription>Complete los datos para crear un nuevo usuario en el sistema.</DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Datos personales */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="rut">RUT *</Label>
-              <RUTInput
-                id="rut"
-                value={rut}
-                onChange={setRut}
-                disabled={isLoading}
-              />
+              <RUTInput id="rut" value={rut} onChange={setRut} disabled={isLoading} />
             </div>
             <div className="space-y-2">
               <Label htmlFor="email">Email *</Label>
-              <Input
-                id="email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                disabled={isLoading}
-                placeholder="correo@ejemplo.com"
-              />
+              <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} disabled={isLoading} placeholder="correo@ejemplo.com" />
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="nombre">Nombre *</Label>
-              <Input
-                id="nombre"
-                value={nombre}
-                onChange={(e) => setNombre(e.target.value)}
-                disabled={isLoading}
-                placeholder="Nombre"
-              />
+              <Input id="nombre" value={nombre} onChange={(e) => setNombre(e.target.value)} disabled={isLoading} placeholder="Nombre" />
             </div>
             <div className="space-y-2">
               <Label htmlFor="apellido">Apellido *</Label>
-              <Input
-                id="apellido"
-                value={apellido}
-                onChange={(e) => setApellido(e.target.value)}
-                disabled={isLoading}
-                placeholder="Apellido"
-              />
+              <Input id="apellido" value={apellido} onChange={(e) => setApellido(e.target.value)} disabled={isLoading} placeholder="Apellido" />
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="telefono">Teléfono *</Label>
-              <Input
-                id="telefono"
-                type="tel"
-                value={telefono}
-                onChange={(e) => setTelefono(e.target.value)}
-                disabled={isLoading}
-                placeholder="+56 9 1234 5678"
-              />
+              <Input id="telefono" type="tel" value={telefono} onChange={(e) => setTelefono(e.target.value)} disabled={isLoading} placeholder="+56 9 1234 5678" />
             </div>
             <div className="space-y-2">
               <Label htmlFor="referencia">Referencia de contacto</Label>
-              <Input
-                id="referencia"
-                value={referenciaContacto}
-                onChange={(e) => setReferenciaContacto(e.target.value)}
-                disabled={isLoading}
-                placeholder="Opcional"
-              />
+              <Input id="referencia" value={referenciaContacto} onChange={(e) => setReferenciaContacto(e.target.value)} disabled={isLoading} placeholder="Opcional" />
             </div>
           </div>
 
           <div className="space-y-2">
             <Label htmlFor="password">Contraseña temporal *</Label>
-            <Input
-              id="password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              disabled={isLoading}
-              placeholder="Mínimo 6 caracteres"
-            />
-            <p className="text-xs text-muted-foreground">
-              El usuario deberá cambiar esta contraseña en su primer inicio de sesión.
-            </p>
+            <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} disabled={isLoading} placeholder="Mínimo 6 caracteres" />
+            <p className="text-xs text-muted-foreground">El usuario deberá cambiar esta contraseña en su primer inicio de sesión.</p>
           </div>
+
+          <Separator />
+
+          {/* Información adicional */}
+          <div>
+            <Label className="text-base font-semibold">Información adicional</Label>
+            <div className="grid grid-cols-2 gap-4 mt-2">
+              <div className="space-y-2">
+                <Label htmlFor="idioma">Idioma</Label>
+                <Input id="idioma" value={idioma} onChange={(e) => setIdioma(e.target.value)} disabled={isLoading} placeholder="Ej: Español" />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="altura">Altura</Label>
+                <Input id="altura" value={altura} onChange={(e) => setAltura(e.target.value)} disabled={isLoading} placeholder="Ej: 1.75" />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="universidad">Universidad</Label>
+                <Input id="universidad" value={universidad} onChange={(e) => setUniversidad(e.target.value)} disabled={isLoading} placeholder="Universidad" />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="carrera">Carrera</Label>
+                <Input id="carrera" value={carrera} onChange={(e) => setCarrera(e.target.value)} disabled={isLoading} placeholder="Carrera" />
+              </div>
+            </div>
+          </div>
+
+          <Separator />
+
+          {/* Datos bancarios */}
+          <div>
+            <Label className="text-base font-semibold">Datos bancarios</Label>
+            <div className="grid grid-cols-2 gap-4 mt-2">
+              <div className="space-y-2">
+                <Label htmlFor="banco">Banco</Label>
+                <Select value={banco} onValueChange={setBanco} disabled={isLoading}>
+                  <SelectTrigger id="banco"><SelectValue placeholder="Seleccionar banco" /></SelectTrigger>
+                  <SelectContent>
+                    {BANCOS_CHILE.map((b) => (
+                      <SelectItem key={b} value={b}>{b}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="tipo_cuenta">Tipo de cuenta</Label>
+                <Select value={tipoCuenta} onValueChange={setTipoCuenta} disabled={isLoading}>
+                  <SelectTrigger id="tipo_cuenta"><SelectValue placeholder="Seleccionar tipo" /></SelectTrigger>
+                  <SelectContent>
+                    {TIPOS_CUENTA.map((t) => (
+                      <SelectItem key={t} value={t}>{t}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="col-span-2 space-y-2">
+                <Label htmlFor="numero_cuenta">Número de cuenta</Label>
+                <Input id="numero_cuenta" value={numeroCuenta} onChange={(e) => setNumeroCuenta(e.target.value)} disabled={isLoading} placeholder="Número de cuenta" />
+              </div>
+            </div>
+          </div>
+
+          <Separator />
 
           <div className="space-y-2">
             <Label htmlFor="status">Estado inicial</Label>
-            <Select
-              value={approvalStatus}
-              onValueChange={(value: 'pending' | 'approved') => setApprovalStatus(value)}
-              disabled={isLoading}
-            >
-              <SelectTrigger id="status">
-                <SelectValue />
-              </SelectTrigger>
+            <Select value={approvalStatus} onValueChange={(value: 'pending' | 'approved') => setApprovalStatus(value)} disabled={isLoading}>
+              <SelectTrigger id="status"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="approved">Aprobado</SelectItem>
                 <SelectItem value="pending">Pendiente</SelectItem>
@@ -279,32 +272,15 @@ export function UserCreateDialog({ open, onOpenChange, onSuccess }: UserCreateDi
             <div className="grid grid-cols-2 gap-2">
               {roles?.map((role) => (
                 <div key={role.name} className="flex items-center space-x-2">
-                  <Checkbox
-                    id={`role-${role.name}`}
-                    checked={selectedRoles.includes(role.name as AppRole)}
-                    onCheckedChange={() => handleRoleToggle(role.name as AppRole)}
-                    disabled={isLoading}
-                  />
-                  <Label
-                    htmlFor={`role-${role.name}`}
-                    className="text-sm font-normal cursor-pointer"
-                  >
-                    {role.name}
-                  </Label>
+                  <Checkbox id={`role-${role.name}`} checked={selectedRoles.includes(role.name as AppRole)} onCheckedChange={() => handleRoleToggle(role.name as AppRole)} disabled={isLoading} />
+                  <Label htmlFor={`role-${role.name}`} className="text-sm font-normal cursor-pointer">{role.name}</Label>
                 </div>
               ))}
             </div>
           </div>
 
           <DialogFooter className="pt-4">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => onOpenChange(false)}
-              disabled={isLoading}
-            >
-              Cancelar
-            </Button>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isLoading}>Cancelar</Button>
             <Button type="submit" disabled={isLoading}>
               {isLoading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
               Crear Usuario

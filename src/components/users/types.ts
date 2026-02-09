@@ -13,6 +13,13 @@ export interface UserWithRoles {
   created_at: string;
   updated_at: string;
   roles: AppRole[];
+  idioma: string | null;
+  altura: string | null;
+  universidad: string | null;
+  carrera: string | null;
+  banco: string | null;
+  numero_cuenta: string | null;
+  tipo_cuenta: string | null;
 }
 
 export interface UserRole {
