@@ -1,48 +1,28 @@
 
 
-## Plan: Mostrar etapa del deal como badge con colores
-
-### Objetivo
-Reemplazar el texto plano de la columna "Etapa" en la tabla de eventos por un badge/tag con colores para que sea visualmente mas destacado.
+## Plan: Agregar paginacion a la tabla de Eventos (5 por pagina)
 
 ### Cambios
 
 **Archivo: `src/pages/app/Events.tsx`**
 
-- Importar el componente `Badge` existente
-- Reemplazar la celda de texto plano de `dealstage` por un Badge con colores asignados dinamicamente
-- Crear un mapeo de colores para las etapas conocidas del pipeline, usando las clases de Tailwind ya existentes en el proyecto (similar al patron de `StatusBadge`)
-- Para etapas no mapeadas, usar un color neutral por defecto
-
-### Logica de colores
-
-Se creara una funcion auxiliar `getStageBadgeClass` dentro del archivo que retorne clases de Tailwind segun el nombre del label de la etapa. Ejemplo de esquema:
-
-| Etapa | Estilo |
-|-------|--------|
-| Etapa activa / en progreso | `bg-primary/10 text-primary border-primary/20` |
-| Etapa completada / ganada | `bg-success/10 text-success border-success/20` |
-| Etapa pendiente | `bg-warning/10 text-warning border-warning/20` |
-| Otras etapas | `bg-muted text-muted-foreground border-muted` |
-
-Como los nombres exactos de las etapas provienen de HubSpot y pueden variar, se usara un mapeo flexible que asigne colores basandose en palabras clave del label (por ejemplo, si contiene "ganado" o "cerrado" se muestra en verde).
+- Agregar estado local `currentPage` (iniciando en 1)
+- Calcular el slice de deals a mostrar segun la pagina actual (5 por pagina)
+- Debajo de la tabla, agregar controles de paginacion usando los componentes `Pagination`, `PaginationContent`, `PaginationItem`, `PaginationPrevious`, `PaginationNext`, `PaginationLink` y `PaginationEllipsis` ya existentes en el proyecto
+- Mostrar numeros de pagina con ellipsis cuando haya muchas paginas
+- Deshabilitar/ocultar boton "Previous" en la primera pagina y "Next" en la ultima
+- Resetear a pagina 1 si los datos cambian
 
 ### Detalle tecnico
 
-En la celda de la tabla, se reemplazara:
+```tsx
+const PAGE_SIZE = 5;
+const [currentPage, setCurrentPage] = useState(1);
+const totalPages = Math.ceil(deals.length / PAGE_SIZE);
+const paginatedDeals = deals.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 ```
-<TableCell>{deal.dealstage ?? '—'}</TableCell>
-```
-Por:
-```
-<TableCell>
-  {deal.dealstage ? (
-    <Badge variant="outline" className={getStageBadgeClass(deal.dealstage)}>
-      {deal.dealstage}
-    </Badge>
-  ) : '—'}
-</TableCell>
-```
+
+Se renderizara `paginatedDeals` en lugar de `deals` en el `TableBody`, y se agregara el componente de paginacion debajo del `Card`.
 
 Solo se modifica un archivo: `src/pages/app/Events.tsx`.
 
