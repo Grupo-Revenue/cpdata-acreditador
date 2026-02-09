@@ -108,7 +108,7 @@ export function UserCreateDialog({ open, onOpenChange, onSuccess }: UserCreateDi
           body: JSON.stringify({
             email: email.trim(),
             password,
-            rut: cleanRUT(rut),
+            rut,
             nombre: nombre.trim(),
             apellido: apellido.trim(),
             telefono: telefono.trim(),
