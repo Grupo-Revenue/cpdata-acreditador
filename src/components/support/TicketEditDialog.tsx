@@ -7,6 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
 import { format } from 'date-fns';
 import { Upload } from 'lucide-react';
 
@@ -21,6 +22,19 @@ interface SupportTicket {
   created_by: string;
   created_at: string;
   updated_at: string;
+  updated_by: string | null;
+  creator_nombre: string;
+  creator_apellido: string;
+  creator_email: string;
+  creator_telefono: string | null;
+  creator_rut: string;
+  creator_role: string;
+  editor_nombre: string | null;
+  editor_apellido: string | null;
+  editor_email: string | null;
+  editor_telefono: string | null;
+  editor_rut: string | null;
+  editor_role: string | null;
 }
 
 interface TicketEditDialogProps {
@@ -39,6 +53,7 @@ export function TicketEditDialog({ open, onOpenChange, ticket, onUpdated }: Tick
   const [isUploading, setIsUploading] = useState(false);
   const [evidenceUrl, setEvidenceUrl] = useState<string | null>(null);
   const { toast } = useToast();
+  const { profile, roles, user } = useAuth();
 
   useEffect(() => {
     if (ticket) {
@@ -91,6 +106,13 @@ export function TicketEditDialog({ open, onOpenChange, ticket, onUpdated }: Tick
           status: status as 'pendiente' | 'resuelto' | 'inactivo',
           observaciones: observaciones.trim() || null,
           evidence_url: evidenceUrl,
+          updated_by: user?.id || null,
+          editor_nombre: profile?.nombre || null,
+          editor_apellido: profile?.apellido || null,
+          editor_email: profile?.email || null,
+          editor_telefono: profile?.telefono || null,
+          editor_rut: profile?.rut || null,
+          editor_role: roles[0] || null,
         })
         .eq('id', ticket.id);
 
@@ -110,11 +132,12 @@ export function TicketEditDialog({ open, onOpenChange, ticket, onUpdated }: Tick
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Editar Ticket #{ticket.ticket_number}</DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
+          {/* Info del ticket */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>ID del Ticket</Label>
@@ -125,22 +148,43 @@ export function TicketEditDialog({ open, onOpenChange, ticket, onUpdated }: Tick
               <Input value={format(new Date(ticket.created_at), 'dd-MM-yyyy')} disabled />
             </div>
           </div>
+
+          {/* Datos del creador */}
+          <div className="rounded-md border p-3 space-y-2 bg-muted/50">
+            <Label className="text-sm font-semibold">Creado por</Label>
+            <div className="grid grid-cols-2 gap-2 text-sm">
+              <div><span className="text-muted-foreground">Nombre:</span> {ticket.creator_nombre} {ticket.creator_apellido}</div>
+              <div><span className="text-muted-foreground">Rol:</span> {ticket.creator_role || '-'}</div>
+              <div><span className="text-muted-foreground">Email:</span> {ticket.creator_email}</div>
+              <div><span className="text-muted-foreground">Teléfono:</span> {ticket.creator_telefono || '-'}</div>
+              <div className="col-span-2"><span className="text-muted-foreground">RUT:</span> {ticket.creator_rut}</div>
+            </div>
+          </div>
+
+          {/* Datos del último editor */}
+          {ticket.editor_nombre && (
+            <div className="rounded-md border p-3 space-y-2 bg-muted/50">
+              <Label className="text-sm font-semibold">Último editor</Label>
+              <div className="grid grid-cols-2 gap-2 text-sm">
+                <div><span className="text-muted-foreground">Nombre:</span> {ticket.editor_nombre} {ticket.editor_apellido}</div>
+                <div><span className="text-muted-foreground">Rol:</span> {ticket.editor_role || '-'}</div>
+                <div><span className="text-muted-foreground">Email:</span> {ticket.editor_email}</div>
+                <div><span className="text-muted-foreground">Teléfono:</span> {ticket.editor_telefono || '-'}</div>
+                <div className="col-span-2"><span className="text-muted-foreground">RUT:</span> {ticket.editor_rut}</div>
+              </div>
+            </div>
+          )}
+
+          {/* Campos editables */}
           <div className="space-y-2">
             <Label htmlFor="edit-motivo">Motivo</Label>
-            <Textarea
-              id="edit-motivo"
-              value={motivo}
-              onChange={(e) => setMotivo(e.target.value)}
-              rows={3}
-            />
+            <Textarea id="edit-motivo" value={motivo} onChange={(e) => setMotivo(e.target.value)} rows={3} />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Prioridad</Label>
               <Select value={priority} onValueChange={setPriority}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
+                <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="alta">Alta</SelectItem>
                   <SelectItem value="media">Media</SelectItem>
@@ -151,9 +195,7 @@ export function TicketEditDialog({ open, onOpenChange, ticket, onUpdated }: Tick
             <div className="space-y-2">
               <Label>Estado</Label>
               <Select value={status} onValueChange={setStatus}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
+                <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="pendiente">Pendiente</SelectItem>
                   <SelectItem value="resuelto">Resuelto</SelectItem>
@@ -164,13 +206,7 @@ export function TicketEditDialog({ open, onOpenChange, ticket, onUpdated }: Tick
           </div>
           <div className="space-y-2">
             <Label htmlFor="observaciones">Observaciones</Label>
-            <Textarea
-              id="observaciones"
-              placeholder="Agregar observaciones..."
-              value={observaciones}
-              onChange={(e) => setObservaciones(e.target.value)}
-              rows={3}
-            />
+            <Textarea id="observaciones" placeholder="Agregar observaciones..." value={observaciones} onChange={(e) => setObservaciones(e.target.value)} rows={3} />
           </div>
           <div className="space-y-2">
             <Label>Evidencia</Label>

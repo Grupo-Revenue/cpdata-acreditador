@@ -15,6 +15,19 @@ interface SupportTicket {
   created_by: string;
   created_at: string;
   updated_at: string;
+  updated_by: string | null;
+  creator_nombre: string;
+  creator_apellido: string;
+  creator_email: string;
+  creator_telefono: string | null;
+  creator_rut: string;
+  creator_role: string;
+  editor_nombre: string | null;
+  editor_apellido: string | null;
+  editor_email: string | null;
+  editor_telefono: string | null;
+  editor_rut: string | null;
+  editor_role: string | null;
 }
 
 interface TicketsTableProps {
@@ -43,6 +56,8 @@ export function TicketsTable({ tickets, canEdit, onEdit }: TicketsTableProps) {
           <TableRow>
             <TableHead className="w-20">ID</TableHead>
             <TableHead>Motivo</TableHead>
+            <TableHead className="w-36">Creado por</TableHead>
+            <TableHead className="w-36">Responsable</TableHead>
             <TableHead className="w-28">Estado</TableHead>
             <TableHead className="w-28">Prioridad</TableHead>
             <TableHead className="w-32">Fecha</TableHead>
@@ -52,7 +67,7 @@ export function TicketsTable({ tickets, canEdit, onEdit }: TicketsTableProps) {
         <TableBody>
           {tickets.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={canEdit ? 6 : 5} className="text-center text-muted-foreground py-8">
+              <TableCell colSpan={canEdit ? 8 : 7} className="text-center text-muted-foreground py-8">
                 No hay tickets para mostrar
               </TableCell>
             </TableRow>
@@ -64,6 +79,14 @@ export function TicketsTable({ tickets, canEdit, onEdit }: TicketsTableProps) {
                 <TableRow key={ticket.id}>
                   <TableCell className="font-medium">#{ticket.ticket_number}</TableCell>
                   <TableCell className="max-w-xs truncate">{ticket.motivo}</TableCell>
+                  <TableCell className="text-sm">
+                    {ticket.creator_nombre} {ticket.creator_apellido}
+                  </TableCell>
+                  <TableCell className="text-sm">
+                    {ticket.editor_nombre
+                      ? `${ticket.editor_nombre} ${ticket.editor_apellido}`
+                      : '-'}
+                  </TableCell>
                   <TableCell>
                     <Badge variant="outline" className={sc?.className}>{sc?.label}</Badge>
                   </TableCell>

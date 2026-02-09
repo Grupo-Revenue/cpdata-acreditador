@@ -197,6 +197,18 @@ export type Database = {
         Row: {
           created_at: string
           created_by: string
+          creator_apellido: string
+          creator_email: string
+          creator_nombre: string
+          creator_role: string
+          creator_rut: string
+          creator_telefono: string | null
+          editor_apellido: string | null
+          editor_email: string | null
+          editor_nombre: string | null
+          editor_role: string | null
+          editor_rut: string | null
+          editor_telefono: string | null
           evidence_url: string | null
           id: string
           motivo: string
@@ -205,10 +217,23 @@ export type Database = {
           status: Database["public"]["Enums"]["ticket_status"]
           ticket_number: number
           updated_at: string
+          updated_by: string | null
         }
         Insert: {
           created_at?: string
           created_by?: string
+          creator_apellido?: string
+          creator_email?: string
+          creator_nombre?: string
+          creator_role?: string
+          creator_rut?: string
+          creator_telefono?: string | null
+          editor_apellido?: string | null
+          editor_email?: string | null
+          editor_nombre?: string | null
+          editor_role?: string | null
+          editor_rut?: string | null
+          editor_telefono?: string | null
           evidence_url?: string | null
           id?: string
           motivo: string
@@ -217,10 +242,23 @@ export type Database = {
           status?: Database["public"]["Enums"]["ticket_status"]
           ticket_number?: number
           updated_at?: string
+          updated_by?: string | null
         }
         Update: {
           created_at?: string
           created_by?: string
+          creator_apellido?: string
+          creator_email?: string
+          creator_nombre?: string
+          creator_role?: string
+          creator_rut?: string
+          creator_telefono?: string | null
+          editor_apellido?: string | null
+          editor_email?: string | null
+          editor_nombre?: string | null
+          editor_role?: string | null
+          editor_rut?: string | null
+          editor_telefono?: string | null
           evidence_url?: string | null
           id?: string
           motivo?: string
@@ -229,6 +267,7 @@ export type Database = {
           status?: Database["public"]["Enums"]["ticket_status"]
           ticket_number?: number
           updated_at?: string
+          updated_by?: string | null
         }
         Relationships: []
       }
