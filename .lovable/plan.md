@@ -1,33 +1,36 @@
 
 
-## Plan: Filtros para supervisores y paginacion en ambas tablas
+## Plan: Agregar columnas Teléfono, Email y Ranking a la tabla de Supervisores
 
-### Cambios en `src/components/events/EventTeamDialog.tsx`
+### Cambio en `src/components/events/EventTeamDialog.tsx`
 
-#### 1. Filtros para la tabla de supervisores
+Actualmente la tabla de supervisores solo muestra Nombre, RUT y Email. Se agregara Teléfono y Ranking (Email ya existe).
 
-Agregar filtros de busqueda (Nombre, RUT, Email) en la seccion de supervisores, siguiendo el mismo patron que ya existe para acreditadores. Se agregaran estados `supFilterNombre`, `supFilterRut`, `supFilterEmail` y un `filteredSupervisors` con `useMemo`.
+#### 1. Query de supervisores
 
-#### 2. Paginacion en ambas tablas
+Actualizar la consulta de perfiles de supervisores para incluir `ranking` (ya se obtiene `telefono` y `email`):
 
-Agregar paginacion local de 10 registros por pagina en ambas tablas (supervisores y acreditadores):
+```
+.select('id, nombre, apellido, rut, email, telefono, ranking')
+```
 
-- Nuevos estados: `supPage` y `accPage` (inician en 1).
-- Calcular `paginatedSupervisors` y `paginatedAccreditors` a partir de los datos filtrados.
-- Mostrar controles de paginacion debajo de cada tabla con botones "Anterior" / "Siguiente" y el indicador "Pagina X de Y".
-- Los filtros reinician la pagina a 1 cuando cambian.
+#### 2. Tabla de supervisores
 
-#### 3. Reset al cerrar
+Agregar las columnas faltantes al header y body:
 
-Agregar los nuevos estados de filtro de supervisores y las paginas al bloque de reset existente (lineas 127-138).
+| Columna actual | Nueva |
+|---|---|
+| Nombre | (se mantiene) |
+| RUT | (se mantiene) |
+| Email | (se mantiene) |
+| — | Teléfono (nuevo) |
+| — | Ranking (nuevo) |
 
-### Resumen de cambios
+#### Archivo afectado
 
-| Aspecto | Detalle |
-|---------|---------|
-| Filtros supervisores | Nombre, RUT, Email (3 inputs con grid) |
-| Paginacion supervisores | 10 por pagina, botones Anterior/Siguiente |
-| Paginacion acreditadores | 10 por pagina, botones Anterior/Siguiente |
-| Archivo afectado | `src/components/events/EventTeamDialog.tsx` (unico) |
+| Archivo | Accion |
+|---------|--------|
+| `src/components/events/EventTeamDialog.tsx` | Agregar columnas Teléfono y Ranking en la tabla de supervisores, actualizar query |
 
-No se requieren cambios en base de datos ni en otros archivos.
+No se requieren cambios en base de datos.
+
