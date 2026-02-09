@@ -1,34 +1,54 @@
 
 
-## Plan: Agregar filtros de Teléfono y Ranking en la pestaña de Supervisores
+## Plan: Corregir la visualizacion de asignaciones al reabrir el dialogo
 
-### Cambio en `src/components/events/EventTeamDialog.tsx`
+### Problema
 
-#### 1. Nuevos estados de filtro
+Hay una condicion de carrera entre dos `useEffect`:
 
-Agregar `supFilterTelefono` y `supFilterRanking` (strings, inicializados en '').
+1. **Reset al cerrar** (linea 154): limpia `selectedSupervisors` y `selectedAccreditors` cuando `open` pasa a `false`.
+2. **Pre-seleccion** (linea 144): restaura las selecciones basandose en `existingAssignments`, `supervisors` y `accreditors`.
 
-#### 2. Logica de filtrado
+Cuando los datos estan en cache de React Query, al reabrir el dialogo los valores de `existingAssignments` no cambian, por lo que el efecto de pre-seleccion no se vuelve a ejecutar. Las selecciones quedan vacias.
 
-Agregar las condiciones al `useMemo` de `filteredSupervisors`:
-- `supFilterTelefono`: filtrar por coincidencia parcial en `s.telefono`
-- `supFilterRanking`: filtrar por coincidencia exacta con `s.ranking?.toString()`
+### Solucion
 
-#### 3. Reset de pagina
+Dos cambios en `src/components/events/EventTeamDialog.tsx`:
 
-Agregar ambos estados al `useEffect` que resetea `supPage` a 1 cuando cambian los filtros, y al bloque de reset al cerrar el dialogo.
+#### 1. Agregar `open` como dependencia del efecto de pre-seleccion
 
-#### 4. UI - Inputs de filtro
+Cambiar el `useEffect` de la linea 144 para que tambien dependa de `open`, y solo ejecute cuando `open` sea `true`:
 
-Cambiar el grid de filtros de supervisores de 3 columnas a 2x3 (o grid adaptable) agregando dos inputs mas:
-- Input "Teléfono" para `supFilterTelefono`
-- Input "Ranking (1-7)" para `supFilterRanking`
+```typescript
+useEffect(() => {
+  if (!open) return;
+  const supIds = new Set(supervisors.map(s => s.id));
+  const accIds = new Set(accreditors.map(a => a.id));
+  setSelectedSupervisors(new Set(existingAssignments.filter(id => supIds.has(id))));
+  setSelectedAccreditors(new Set(existingAssignments.filter(id => accIds.has(id))));
+}, [open, existingAssignments, supervisors, accreditors]);
+```
 
-#### Archivo afectado
+Esto elimina la condicion `if (existingAssignments.length > 0)` para que tambien funcione correctamente cuando se deseleccionan todos los usuarios (caso de 0 asignaciones).
 
-| Archivo | Accion |
+#### 2. Forzar refetch de asignaciones al abrir
+
+Agregar `refetchOnMount: 'always'` al query de `existingAssignments` para que siempre traiga datos frescos al abrir:
+
+```typescript
+const { data: existingAssignments = [] } = useQuery({
+  queryKey: ['event-assignments', dealId],
+  queryFn: async () => { ... },
+  enabled: open && !!dealId,
+  refetchOnMount: 'always',
+});
+```
+
+### Archivo afectado
+
+| Archivo | Cambio |
 |---------|--------|
-| `src/components/events/EventTeamDialog.tsx` | Agregar estados, logica de filtrado y inputs para Teléfono y Ranking en supervisores |
+| `src/components/events/EventTeamDialog.tsx` | Corregir efecto de pre-seleccion y forzar refetch |
 
 No se requieren cambios en base de datos.
 
