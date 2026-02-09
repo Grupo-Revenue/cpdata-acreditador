@@ -142,7 +142,10 @@ export default function UsersPage() {
 
       const { error: roleError } = await supabase
         .from('user_roles')
-        .insert({ user_id: selectedUser.id, role: 'acreditador' });
+        .upsert(
+          { user_id: selectedUser.id, role: 'acreditador' },
+          { onConflict: 'user_id,role' }
+        );
 
       if (roleError) throw roleError;
 
