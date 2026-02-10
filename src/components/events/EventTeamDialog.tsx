@@ -438,7 +438,7 @@ export function EventTeamDialog({ dealId, dealName, open, onOpenChange }: EventT
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
-          <Button onClick={handleSave} disabled={saving || (selectedSupervisors.size === 0 && selectedAccreditors.size === 0)}>
+          <Button onClick={handleSave} disabled={saving}>
             {saving ? 'Guardando...' : 'Guardar Asignación'}
           </Button>
         </DialogFooter>
