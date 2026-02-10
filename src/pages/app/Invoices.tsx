@@ -31,12 +31,32 @@ export default function InvoicesPage() {
         .select(`
           *,
           profiles:user_id(nombre, apellido, telefono),
-          user_roles:user_id(role),
           events:event_id(name, event_date)
         `)
         .order('invoice_number', { ascending: false });
       if (error) throw error;
-      return (data || []) as unknown as InvoiceRow[];
+
+      const items = data || [];
+      const userIds = [...new Set(items.map(i => i.user_id))];
+
+      let rolesMap: Record<string, string[]> = {};
+      if (userIds.length > 0) {
+        const { data: rolesData } = await supabase
+          .from('user_roles')
+          .select('user_id, role')
+          .in('user_id', userIds);
+        if (rolesData) {
+          for (const r of rolesData) {
+            if (!rolesMap[r.user_id]) rolesMap[r.user_id] = [];
+            rolesMap[r.user_id].push(r.role);
+          }
+        }
+      }
+
+      return items.map(inv => ({
+        ...inv,
+        roles: rolesMap[inv.user_id] || [],
+      })) as unknown as InvoiceRow[];
     },
   });
 
