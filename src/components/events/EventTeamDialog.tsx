@@ -251,6 +251,8 @@ export function EventTeamDialog({ dealId, dealName, open, onOpenChange }: EventT
       }
 
       const eventId = evt!.id;
+      const previousAssignments = [...existingAssignments];
+
       await supabase.from('event_accreditors').delete().eq('event_id', eventId);
 
       const allSelected = [...selectedSupervisors, ...selectedAccreditors];
@@ -260,8 +262,32 @@ export function EventTeamDialog({ dealId, dealName, open, onOpenChange }: EventT
         if (insertErr) throw insertErr;
       }
 
+      // Create invoices for newly assigned users
+      const newUserIds = allSelected.filter(id => !previousAssignments.includes(id));
+      if (newUserIds.length > 0) {
+        const { data: existingInvoices } = await supabase
+          .from('invoices')
+          .select('user_id')
+          .eq('event_id', eventId)
+          .in('user_id', newUserIds);
+
+        const usersWithInvoice = new Set((existingInvoices || []).map(i => i.user_id));
+        const usersNeedingInvoice = newUserIds.filter(id => !usersWithInvoice.has(id));
+
+        if (usersNeedingInvoice.length > 0) {
+          const invoiceRows = usersNeedingInvoice.map(userId => ({
+            user_id: userId,
+            event_id: eventId,
+            amount: 0,
+          }));
+          const { error: invErr } = await supabase.from('invoices').insert(invoiceRows);
+          if (invErr) throw invErr;
+        }
+      }
+
       toast({ title: 'Equipo asignado', description: `Se asignaron ${allSelected.length} personas al evento.` });
       queryClient.invalidateQueries({ queryKey: ['event-assignments', dealId] });
+      queryClient.invalidateQueries({ queryKey: ['invoices'] });
       onOpenChange(false);
     } catch (err: any) {
       toast({ title: 'Error', description: err.message || 'No se pudo asignar el equipo.', variant: 'destructive' });
