@@ -262,6 +262,17 @@ export function EventTeamDialog({ dealId, dealName, open, onOpenChange }: EventT
         if (insertErr) throw insertErr;
       }
 
+      // Delete invoices for removed users
+      const removedUserIds = previousAssignments.filter(id => !allSelected.includes(id));
+      if (removedUserIds.length > 0) {
+        const { error: delInvErr } = await supabase
+          .from('invoices')
+          .delete()
+          .eq('event_id', eventId)
+          .in('user_id', removedUserIds);
+        if (delInvErr) throw delInvErr;
+      }
+
       // Create invoices for newly assigned users
       const newUserIds = allSelected.filter(id => !previousAssignments.includes(id));
       if (newUserIds.length > 0) {
