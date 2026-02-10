@@ -1,42 +1,36 @@
 
 
-## Plan: Corregir query de boletas que falla con error 400
+## Plan: Permitir guardar al deseleccionar usuarios
 
 ### Problema
 
-Las boletas **si se estan creando** en la base de datos (hay 5 registros). El problema es que la pagina de Boletas no puede mostrarlos porque el query de Supabase falla con error 400:
-
-```
-column profiles_1.role does not exist
-```
-
-La causa es el JOIN `user_roles:user_id(role)` en el query. PostgREST no puede hacer este JOIN porque `invoices.user_id` tiene FK hacia `profiles`, no hacia `user_roles`. No hay relacion directa entre `invoices` y `user_roles`.
+El boton "Guardar Asignacion" esta deshabilitado cuando no hay ningun supervisor ni acreditador seleccionado (linea 441). Esto impide desasignar a todos los usuarios de un evento, ya que el boton queda en estado `disabled`.
 
 ### Solucion
 
-Modificar el query en `src/pages/app/Invoices.tsx` para obtener los roles en una consulta separada, o simplemente eliminar el JOIN con `user_roles` y obtener el rol de otra manera.
+Eliminar la condicion `selectedSupervisors.size === 0 && selectedAccreditors.size === 0` del atributo `disabled` del boton. Solo debe quedarse `disabled={saving}`.
 
-La solucion mas limpia es hacer dos consultas:
-1. Obtener las boletas con JOINs a `profiles` y `events` (que si tienen FK directa)
-2. Obtener los roles de los usuarios desde `user_roles` en una consulta separada y combinarlos en el frontend
+Esto permitira guardar incluso con 0 seleccionados, lo cual ejecutara correctamente:
+- La eliminacion de todas las asignaciones en `event_accreditors`
+- La eliminacion de las boletas correspondientes en `invoices`
 
-### Cambios
+### Archivo afectado
 
 | Archivo | Cambio |
 |---------|--------|
-| `src/pages/app/Invoices.tsx` | Separar la consulta de roles de la consulta principal de invoices |
-| `src/components/invoices/InvoicesTable.tsx` | Ajustar el tipo `InvoiceRow` para reflejar la nueva estructura de datos |
+| `src/components/events/EventTeamDialog.tsx` (linea 441) | Quitar la validacion que deshabilita el boton cuando no hay seleccion |
 
 ### Detalle tecnico
 
-En `Invoices.tsx`, el queryFn se modificara asi:
+Cambio en linea 441:
 
-```text
-1. SELECT invoices.*, profiles(nombre, apellido, telefono), events(name, event_date)
-2. Obtener user_ids unicos de los resultados
-3. SELECT user_id, role FROM user_roles WHERE user_id IN (user_ids)
-4. Combinar: agregar campo "role" a cada invoice basado en su user_id
+Antes:
+```
+disabled={saving || (selectedSupervisors.size === 0 && selectedAccreditors.size === 0)}
 ```
 
-En `InvoicesTable.tsx`, el tipo `InvoiceRow` cambiara `user_roles` de objeto anidado a un campo `role` string directo.
+Despues:
+```
+disabled={saving}
+```
 
