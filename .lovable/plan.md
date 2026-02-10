@@ -1,49 +1,42 @@
 
 
-## Plan: Corregir creacion automatica de boletas y agregar eliminacion al desasignar
+## Plan: Corregir query de boletas que falla con error 400
 
-### Problema identificado
+### Problema
 
-1. **Las boletas no se crean**: El insert a `invoices` puede fallar silenciosamente si hay un problema con la politica RLS o si el error no se captura correctamente. Se debe agregar manejo de errores explicito.
+Las boletas **si se estan creando** en la base de datos (hay 5 registros). El problema es que la pagina de Boletas no puede mostrarlos porque el query de Supabase falla con error 400:
 
-2. **No se eliminan boletas al desasignar**: Actualmente, cuando se quita a un usuario del equipo, su boleta permanece en la tabla `invoices`. Se debe eliminar el registro correspondiente.
-
-### Cambios en `src/components/events/EventTeamDialog.tsx`
-
-Modificar la funcion `handleSave` para:
-
-#### 1. Eliminar boletas de usuarios desasignados
-
-Despues de actualizar `event_accreditors`, calcular los usuarios que fueron **removidos** (`previousAssignments` que no estan en `allSelected`) y borrar sus registros en `invoices` para ese `event_id`.
-
-#### 2. Crear boletas para todos los nuevos asignados
-
-Mantener la logica existente de creacion, pero asegurar que los errores se capturen y muestren correctamente.
-
-### Logica actualizada
-
-```text
-handleSave():
-  1. Obtener/crear evento -> eventId
-  2. Guardar previousAssignments = [...existingAssignments]
-  3. Borrar event_accreditors del evento
-  4. Insertar nuevas asignaciones
-  5. Calcular removedUserIds = previousAssignments que NO estan en allSelected
-  6. Si hay removedUserIds:
-     -> DELETE FROM invoices WHERE event_id = eventId AND user_id IN (removedUserIds)
-  7. Calcular newUserIds = allSelected que NO estaban en previousAssignments
-  8. Si hay newUserIds:
-     a. Consultar invoices existentes para ese event_id + user_ids
-     b. Filtrar los que ya tienen boleta
-     c. Insertar invoices para los restantes (amount: 0)
-  9. Invalidar queries de invoices y event-assignments
+```
+column profiles_1.role does not exist
 ```
 
-### Detalle tecnico
+La causa es el JOIN `user_roles:user_id(role)` en el query. PostgREST no puede hacer este JOIN porque `invoices.user_id` tiene FK hacia `profiles`, no hacia `user_roles`. No hay relacion directa entre `invoices` y `user_roles`.
+
+### Solucion
+
+Modificar el query en `src/pages/app/Invoices.tsx` para obtener los roles en una consulta separada, o simplemente eliminar el JOIN con `user_roles` y obtener el rol de otra manera.
+
+La solucion mas limpia es hacer dos consultas:
+1. Obtener las boletas con JOINs a `profiles` y `events` (que si tienen FK directa)
+2. Obtener los roles de los usuarios desde `user_roles` en una consulta separada y combinarlos en el frontend
+
+### Cambios
 
 | Archivo | Cambio |
 |---------|--------|
-| `src/components/events/EventTeamDialog.tsx` | Agregar eliminacion de boletas al desasignar, mejorar manejo de errores en creacion |
+| `src/pages/app/Invoices.tsx` | Separar la consulta de roles de la consulta principal de invoices |
+| `src/components/invoices/InvoicesTable.tsx` | Ajustar el tipo `InvoiceRow` para reflejar la nueva estructura de datos |
 
-No se requieren cambios en base de datos.
+### Detalle tecnico
+
+En `Invoices.tsx`, el queryFn se modificara asi:
+
+```text
+1. SELECT invoices.*, profiles(nombre, apellido, telefono), events(name, event_date)
+2. Obtener user_ids unicos de los resultados
+3. SELECT user_id, role FROM user_roles WHERE user_id IN (user_ids)
+4. Combinar: agregar campo "role" a cada invoice basado en su user_id
+```
+
+En `InvoicesTable.tsx`, el tipo `InvoiceRow` cambiara `user_roles` de objeto anidado a un campo `role` string directo.
 
