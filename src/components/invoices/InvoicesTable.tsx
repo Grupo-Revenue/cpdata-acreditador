@@ -17,7 +17,7 @@ export interface InvoiceRow {
   created_at: string;
   updated_at: string;
   profiles: { nombre: string; apellido: string; telefono: string | null } | null;
-  user_roles: { role: string }[] | null;
+  roles: string[];
   events: { name: string; event_date: string } | null;
 }
 
@@ -71,7 +71,7 @@ export function InvoicesTable({ invoices, isAdmin, onEdit, onWhatsapp, onUpload 
             invoices.map((inv) => {
               const sc = statusConfig[inv.status];
               const invoiceId = formatInvoiceId(inv.invoice_number);
-              const roles = inv.user_roles?.map(r => r.role).join(', ') || '-';
+              const roles = inv.roles.length > 0 ? inv.roles.join(', ') : '-';
 
               return (
                 <TableRow key={inv.id}>
