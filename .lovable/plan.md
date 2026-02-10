@@ -1,24 +1,26 @@
 
 
-## Plan: Crear boletas automaticamente al asignar equipo
+## Plan: Corregir creacion automatica de boletas y agregar eliminacion al desasignar
 
-### Cambio en `src/components/events/EventTeamDialog.tsx`
+### Problema identificado
 
-Modificar la funcion `handleSave` (linea 229) para que, despues de insertar las asignaciones en `event_accreditors`, tambien cree un registro en `invoices` por cada usuario **nuevo** (que no tenia asignacion previa).
+1. **Las boletas no se crean**: El insert a `invoices` puede fallar silenciosamente si hay un problema con la politica RLS o si el error no se captura correctamente. Se debe agregar manejo de errores explicito.
 
-### Logica
+2. **No se eliminan boletas al desasignar**: Actualmente, cuando se quita a un usuario del equipo, su boleta permanece en la tabla `invoices`. Se debe eliminar el registro correspondiente.
 
-1. Antes de borrar las asignaciones existentes, guardar la lista actual de `existingAssignments` para saber quienes ya estaban asignados.
-2. Despues de insertar en `event_accreditors`, calcular los usuarios nuevos: los que estan en `allSelected` pero no estaban en `existingAssignments`.
-3. Para cada usuario nuevo, verificar si ya existe una boleta para ese `user_id` + `event_id` en la tabla `invoices` (para evitar duplicados si se reasigna).
-4. Insertar registros en `invoices` solo para los que no tengan boleta existente, con:
-   - `user_id`: el ID del usuario
-   - `event_id`: el ID del evento
-   - `amount`: 0 (valor por defecto, el admin lo editara despues)
-   - `status`: 'pendiente'
-   - Los demas campos toman sus valores default (emission_date = hoy, created_by = auth.uid())
+### Cambios en `src/components/events/EventTeamDialog.tsx`
 
-### Detalle tecnico
+Modificar la funcion `handleSave` para:
+
+#### 1. Eliminar boletas de usuarios desasignados
+
+Despues de actualizar `event_accreditors`, calcular los usuarios que fueron **removidos** (`previousAssignments` que no estan en `allSelected`) y borrar sus registros en `invoices` para ese `event_id`.
+
+#### 2. Crear boletas para todos los nuevos asignados
+
+Mantener la logica existente de creacion, pero asegurar que los errores se capturen y muestren correctamente.
+
+### Logica actualizada
 
 ```text
 handleSave():
@@ -26,19 +28,22 @@ handleSave():
   2. Guardar previousAssignments = [...existingAssignments]
   3. Borrar event_accreditors del evento
   4. Insertar nuevas asignaciones
-  5. Calcular newUserIds = allSelected.filter(id => !previousAssignments.includes(id))
-  6. Si hay newUserIds:
+  5. Calcular removedUserIds = previousAssignments que NO estan en allSelected
+  6. Si hay removedUserIds:
+     -> DELETE FROM invoices WHERE event_id = eventId AND user_id IN (removedUserIds)
+  7. Calcular newUserIds = allSelected que NO estaban en previousAssignments
+  8. Si hay newUserIds:
      a. Consultar invoices existentes para ese event_id + user_ids
      b. Filtrar los que ya tienen boleta
-     c. Insertar invoices para los restantes
-  7. Invalidar query de invoices
+     c. Insertar invoices para los restantes (amount: 0)
+  9. Invalidar queries de invoices y event-assignments
 ```
 
-### Archivo afectado
+### Detalle tecnico
 
 | Archivo | Cambio |
 |---------|--------|
-| `src/components/events/EventTeamDialog.tsx` | Agregar creacion automatica de boletas en `handleSave` |
+| `src/components/events/EventTeamDialog.tsx` | Agregar eliminacion de boletas al desasignar, mejorar manejo de errores en creacion |
 
 No se requieren cambios en base de datos.
 
