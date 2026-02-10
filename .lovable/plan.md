@@ -1,54 +1,135 @@
 
 
-## Plan: Corregir la visualizacion de asignaciones al reabrir el dialogo
+## Plan: Gestor de Boletas completo
 
-### Problema
+Este plan cubre la creacion de la tabla en base de datos, bucket de almacenamiento, componentes de UI y logica de permisos.
 
-Hay una condicion de carrera entre dos `useEffect`:
+---
 
-1. **Reset al cerrar** (linea 154): limpia `selectedSupervisors` y `selectedAccreditors` cuando `open` pasa a `false`.
-2. **Pre-seleccion** (linea 144): restaura las selecciones basandose en `existingAssignments`, `supervisors` y `accreditors`.
+### 1. Base de datos
 
-Cuando los datos estan en cache de React Query, al reabrir el dialogo los valores de `existingAssignments` no cambian, por lo que el efecto de pre-seleccion no se vuelve a ejecutar. Las selecciones quedan vacias.
+#### 1.1 Crear tabla `invoices`
 
-### Solucion
+| Columna | Tipo | Notas |
+|---------|------|-------|
+| id | uuid (PK) | gen_random_uuid() |
+| invoice_number | serial | Correlativo para generar B001, B002... |
+| user_id | uuid (FK profiles) | Usuario asociado (supervisor/acreditador) |
+| event_id | uuid (FK events) | Evento asociado |
+| status | enum `invoice_status` | 'pendiente', 'pagado', 'rechazado' |
+| amount | integer | Valor en pesos chilenos (sin decimales) |
+| emission_date | date | Fecha de emision, default now() |
+| file_url | text nullable | URL del archivo subido |
+| created_by | uuid | Quien creo el registro |
+| created_at | timestamptz | default now() |
+| updated_at | timestamptz | default now() + trigger |
 
-Dos cambios en `src/components/events/EventTeamDialog.tsx`:
+#### 1.2 Crear enum `invoice_status`
 
-#### 1. Agregar `open` como dependencia del efecto de pre-seleccion
-
-Cambiar el `useEffect` de la linea 144 para que tambien dependa de `open`, y solo ejecute cuando `open` sea `true`:
-
-```typescript
-useEffect(() => {
-  if (!open) return;
-  const supIds = new Set(supervisors.map(s => s.id));
-  const accIds = new Set(accreditors.map(a => a.id));
-  setSelectedSupervisors(new Set(existingAssignments.filter(id => supIds.has(id))));
-  setSelectedAccreditors(new Set(existingAssignments.filter(id => accIds.has(id))));
-}, [open, existingAssignments, supervisors, accreditors]);
+```
+create type public.invoice_status as enum ('pendiente', 'pagado', 'rechazado');
 ```
 
-Esto elimina la condicion `if (existingAssignments.length > 0)` para que tambien funcione correctamente cuando se deseleccionan todos los usuarios (caso de 0 asignaciones).
+#### 1.3 Politicas RLS
 
-#### 2. Forzar refetch de asignaciones al abrir
+- **Admins (superadmin/administracion)**: SELECT, INSERT, UPDATE, DELETE completo
+- **Usuarios normales**: SELECT solo sus propios registros (`user_id = auth.uid()`)
+- **Usuarios normales**: UPDATE solo su propio `file_url` (para subir su boleta)
 
-Agregar `refetchOnMount: 'always'` al query de `existingAssignments` para que siempre traiga datos frescos al abrir:
+#### 1.4 Crear bucket `invoices`
 
-```typescript
-const { data: existingAssignments = [] } = useQuery({
-  queryKey: ['event-assignments', dealId],
-  queryFn: async () => { ... },
-  enabled: open && !!dealId,
-  refetchOnMount: 'always',
-});
-```
+Bucket publico para almacenar los archivos de boletas, con politicas RLS:
+- Lectura publica
+- Upload: admins pueden subir cualquier archivo; usuarios solo en su carpeta (`{user_id}/...`)
 
-### Archivo afectado
+---
 
-| Archivo | Cambio |
+### 2. Componentes nuevos
+
+#### 2.1 `src/components/invoices/InvoicesTable.tsx`
+
+Tabla con las columnas solicitadas:
+
+| Columna | Fuente |
 |---------|--------|
-| `src/components/events/EventTeamDialog.tsx` | Corregir efecto de pre-seleccion y forzar refetch |
+| Nombre usuario | JOIN con profiles (nombre + apellido) |
+| Rol | JOIN con user_roles |
+| ID Boleta | B + invoice_number formateado (B001) |
+| Estado | StatusBadge (pendiente/pagado/rechazado) |
+| Nombre evento | JOIN con events |
+| Fecha inicio evento | event_date formateada dd-mm-yyyy |
+| Valor | Formato $ chileno (ej: $150.000) |
+| Fecha emision | emission_date formateada dd-mm-yyyy |
+| Acciones | Botones editar y enviar WhatsApp |
 
-No se requieren cambios en base de datos.
+- El ID de boleta sera un link clickeable para ver/descargar el archivo si `file_url` existe
+- Boton de editar visible solo para admins
+- Boton de enviar plantilla WhatsApp visible solo para admins
+
+#### 2.2 `src/components/invoices/InvoiceCreateDialog.tsx`
+
+Dialogo para crear nueva boleta con campos:
+- Seleccionar usuario (dropdown de perfiles aprobados con rol supervisor/acreditador)
+- Seleccionar evento (dropdown de eventos existentes)
+- Estado (default: pendiente)
+- Valor ($)
+- Fecha de emision (default: hoy)
+- Subir archivo de boleta (opcional)
+
+Accesible solo para superadmin y administracion.
+
+#### 2.3 `src/components/invoices/InvoiceEditDialog.tsx`
+
+Dialogo de edicion con todos los campos editables excepto:
+- ID Boleta (mostrado pero bloqueado)
+- Fecha de emision (mostrada pero bloqueada)
+
+Para usuarios no-admin, solo se mostrara el campo de subir archivo.
+
+#### 2.4 `src/components/invoices/InvoiceWhatsappDialog.tsx`
+
+Dialogo para seleccionar una plantilla de WhatsApp y enviarla al numero del usuario asociado:
+- Lista de plantillas aprobadas desde `whatsapp_templates`
+- Vista previa del mensaje
+- Boton de enviar (UI-only por ahora, igual que el sistema actual)
+
+---
+
+### 3. Pagina principal
+
+#### `src/pages/app/Invoices.tsx` (reescribir)
+
+- PageHeader con boton "Crear Boleta" (solo admins)
+- Filtros: busqueda por nombre, filtro por estado
+- Tabla con paginacion
+- Dialogos de crear, editar y enviar WhatsApp
+- Query con JOINs a profiles, user_roles y events
+- Admins ven todas las boletas; usuarios ven solo las suyas (manejado por RLS)
+
+---
+
+### 4. Permisos y acceso
+
+| Accion | Superadmin / Admin | Supervisor / Acreditador |
+|--------|-------------------|--------------------------|
+| Ver todas las boletas | Si | No (solo las suyas) |
+| Crear boleta | Si | No |
+| Editar campos | Si (todos excepto ID y fecha emision) | No |
+| Subir archivo | Si | Si (solo su propia boleta) |
+| Enviar WhatsApp | Si | No |
+
+---
+
+### Resumen de archivos
+
+| Archivo | Accion |
+|---------|--------|
+| Migracion SQL | Crear enum, tabla `invoices`, bucket, RLS |
+| `src/integrations/supabase/types.ts` | Se regenerara automaticamente |
+| `src/components/invoices/InvoicesTable.tsx` | Nuevo |
+| `src/components/invoices/InvoiceCreateDialog.tsx` | Nuevo |
+| `src/components/invoices/InvoiceEditDialog.tsx` | Nuevo |
+| `src/components/invoices/InvoiceWhatsappDialog.tsx` | Nuevo |
+| `src/pages/app/Invoices.tsx` | Reescribir completamente |
+| `src/components/ui/StatusBadge.tsx` | Agregar estado 'pagado' si no existe (ya existe) |
 
