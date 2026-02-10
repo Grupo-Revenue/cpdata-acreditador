@@ -82,6 +82,63 @@ export type Database = {
         }
         Relationships: []
       }
+      invoices: {
+        Row: {
+          amount: number
+          created_at: string
+          created_by: string
+          emission_date: string
+          event_id: string
+          file_url: string | null
+          id: string
+          invoice_number: number
+          status: Database["public"]["Enums"]["invoice_status"]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          created_by?: string
+          emission_date?: string
+          event_id: string
+          file_url?: string | null
+          id?: string
+          invoice_number?: number
+          status?: Database["public"]["Enums"]["invoice_status"]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          created_by?: string
+          emission_date?: string
+          event_id?: string
+          file_url?: string | null
+          id?: string
+          invoice_number?: number
+          status?: Database["public"]["Enums"]["invoice_status"]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoices_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoices_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           altura: string | null
@@ -372,6 +429,7 @@ export type Database = {
       app_role: "superadmin" | "administracion" | "supervisor" | "acreditador"
       approval_status: "pending" | "rejected" | "approved"
       event_status: "pending" | "in_progress" | "completed" | "cancelled"
+      invoice_status: "pendiente" | "pagado" | "rechazado"
       ticket_priority: "alta" | "media" | "baja"
       ticket_status: "pendiente" | "resuelto" | "inactivo"
     }
@@ -505,6 +563,7 @@ export const Constants = {
       app_role: ["superadmin", "administracion", "supervisor", "acreditador"],
       approval_status: ["pending", "rejected", "approved"],
       event_status: ["pending", "in_progress", "completed", "cancelled"],
+      invoice_status: ["pendiente", "pagado", "rechazado"],
       ticket_priority: ["alta", "media", "baja"],
       ticket_status: ["pendiente", "resuelto", "inactivo"],
     },
