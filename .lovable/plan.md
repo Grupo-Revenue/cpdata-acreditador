@@ -1,39 +1,31 @@
 
 
-## Plan: Mostrar nombre_del_evento en lugar de dealname
+## Plan: Sincronizar nombre_del_evento de HubSpot a la tabla events
 
 ### Problema
 
-Los eventos existentes en la base de datos ya tienen guardado el `dealname` (ej: `#5104`, `#5095`) en el campo `name`, no el `nombre_del_evento` descriptivo. El cambio anterior en `Events.tsx` solo afecta a eventos **nuevos**. Los 3 eventos existentes siguen mostrando el nombre incorrecto.
+La tabla `events` almacena el `dealname` (ej: `#5095`, `#5104`) en el campo `name` para 2 de 3 eventos. El evento `#5088` ya se corrigio a "Entel Suppliers Day" porque alguien guardo su equipo. Pero los otros 2 solo se actualizaran si alguien abre y guarda manualmente la asignacion de equipo, lo cual no es practico.
 
 ### Solucion
 
-Dos cambios son necesarios:
-
-#### 1. Actualizar el nombre del evento existente al guardar equipo
-
-En `src/components/events/EventTeamDialog.tsx`, cuando el evento ya existe (linea 233-237), tambien actualizar el campo `name` con el `dealName` recibido como prop.
-
-#### 2. Mostrar `nombre_del_evento` en la tabla de eventos
-
-En `src/pages/app/Events.tsx`, la columna "Nombre del Evento" ya muestra `deal.nombre_del_evento`. Esto esta correcto para la vista de eventos.
-
-El problema principal esta en la tabla de **boletas**, que muestra `events.name` desde la base de datos, y ese campo tiene el valor viejo.
+Agregar una sincronizacion automatica en la pagina de Eventos: cuando se cargan los deals de HubSpot, actualizar el campo `name` de los eventos existentes en la base de datos con el `nombre_del_evento` del deal correspondiente.
 
 ### Cambios
 
 | Archivo | Cambio |
 |---------|--------|
-| `src/components/events/EventTeamDialog.tsx` | Cuando el evento ya existe, actualizar su `name` con el `dealName` actual |
+| `src/pages/app/Events.tsx` | Despues de cargar los deals de HubSpot, ejecutar un update en la tabla `events` para sincronizar el `name` con `nombre_del_evento` de cada deal que tenga un evento local asociado |
 
 ### Detalle tecnico
 
-En `EventTeamDialog.tsx`, despues de encontrar el evento existente (linea 237), agregar un update:
+En `Events.tsx`, dentro del `queryFn` de `hubspot-deals` (o en un `useEffect` posterior), recorrer los deals obtenidos y para cada uno que tenga `nombre_del_evento`, ejecutar:
 
 ```text
-if (evt && dealName) {
-  await supabase.from('events').update({ name: dealName }).eq('id', evt.id);
-}
+await supabase
+  .from('events')
+  .update({ name: deal.nombre_del_evento })
+  .eq('hubspot_deal_id', deal.id);
 ```
 
-Esto corregira el nombre de los eventos existentes la proxima vez que se guarde una asignacion de equipo. Los 3 eventos actuales (`#5104`, `#5095`, `#5088`) se actualizaran automaticamente.
+Esto se ejecutara cada vez que se cargue la pagina de Eventos, asegurando que todos los nombres esten siempre actualizados sin intervencion manual. El costo es minimo (unas pocas queries de update que no cambian nada si el nombre ya es correcto).
+
