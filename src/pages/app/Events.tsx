@@ -216,7 +216,7 @@ export default function EventsPage() {
 
       <EventTeamDialog
         dealId={teamDeal?.id ?? null}
-        dealName={teamDeal?.dealname ?? null}
+        dealName={teamDeal?.nombre_del_evento ?? teamDeal?.dealname ?? null}
         open={teamDialogOpen}
         onOpenChange={setTeamDialogOpen}
       />
