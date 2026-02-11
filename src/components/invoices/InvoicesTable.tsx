@@ -7,6 +7,7 @@ import { format } from 'date-fns';
 export interface InvoiceRow {
   id: string;
   invoice_number: number;
+  numero_boleta: string | null;
   user_id: string;
   event_id: string;
   status: 'pendiente' | 'pagado' | 'rechazado';
@@ -52,6 +53,7 @@ export function InvoicesTable({ invoices, isAdmin, onEdit, onWhatsapp, onUpload 
             <TableHead>Nombre</TableHead>
             <TableHead>Rol</TableHead>
             <TableHead>ID Boleta</TableHead>
+            <TableHead>N° Boleta</TableHead>
             <TableHead>Estado</TableHead>
             <TableHead>Evento</TableHead>
             
@@ -63,7 +65,7 @@ export function InvoicesTable({ invoices, isAdmin, onEdit, onWhatsapp, onUpload 
         <TableBody>
           {invoices.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
+              <TableCell colSpan={9} className="text-center text-muted-foreground py-8">
                 No hay boletas para mostrar
               </TableCell>
             </TableRow>
@@ -93,6 +95,7 @@ export function InvoicesTable({ invoices, isAdmin, onEdit, onWhatsapp, onUpload 
                       <span className="font-medium">{invoiceId}</span>
                     )}
                   </TableCell>
+                  <TableCell>{inv.numero_boleta || '-'}</TableCell>
                   <TableCell>
                     <Badge variant="outline" className={sc?.className}>{sc?.label}</Badge>
                   </TableCell>

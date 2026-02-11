@@ -32,6 +32,7 @@ export function InvoiceEditDialog({ open, onOpenChange, invoice }: Props) {
   const [eventId, setEventId] = useState('');
   const [status, setStatus] = useState<'pendiente' | 'pagado' | 'rechazado'>('pendiente');
   const [amount, setAmount] = useState('');
+  const [numeroBoleta, setNumeroBoleta] = useState('');
   const [file, setFile] = useState<File | null>(null);
 
   useEffect(() => {
@@ -40,6 +41,7 @@ export function InvoiceEditDialog({ open, onOpenChange, invoice }: Props) {
       setEventId(invoice.event_id);
       setStatus(invoice.status);
       setAmount(String(invoice.amount));
+      setNumeroBoleta(invoice.numero_boleta || '');
       setFile(null);
     }
   }, [open, invoice]);
@@ -96,12 +98,14 @@ export function InvoiceEditDialog({ open, onOpenChange, invoice }: Props) {
           status,
           amount: parseInt(amount),
           file_url: fileUrl,
+          numero_boleta: numeroBoleta || null,
         }).eq('id', invoice.id);
         if (error) throw error;
       } else {
-        // Non-admin can only update file_url
+        // Non-admin can update file_url and numero_boleta
         const { error } = await supabase.from('invoices').update({
           file_url: fileUrl,
+          numero_boleta: numeroBoleta || null,
         }).eq('id', invoice.id);
         if (error) throw error;
       }
@@ -213,6 +217,15 @@ export function InvoiceEditDialog({ open, onOpenChange, invoice }: Props) {
               </div>
             </>
           )}
+
+          <div className="space-y-2">
+            <Label>Número de boleta</Label>
+            <Input
+              placeholder="Ingrese el número de su boleta"
+              value={numeroBoleta}
+              onChange={(e) => setNumeroBoleta(e.target.value)}
+            />
+          </div>
 
           <div className="space-y-2">
             <Label>Archivo de boleta</Label>
