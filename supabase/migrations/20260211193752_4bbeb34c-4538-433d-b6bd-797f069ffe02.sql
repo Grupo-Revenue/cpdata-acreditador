@@ -1,0 +1,1 @@
+ALTER TABLE public.invoices ADD COLUMN numero_boleta text DEFAULT NULL;

@@ -92,6 +92,7 @@ export type Database = {
           file_url: string | null
           id: string
           invoice_number: number
+          numero_boleta: string | null
           status: Database["public"]["Enums"]["invoice_status"]
           updated_at: string
           user_id: string
@@ -105,6 +106,7 @@ export type Database = {
           file_url?: string | null
           id?: string
           invoice_number?: number
+          numero_boleta?: string | null
           status?: Database["public"]["Enums"]["invoice_status"]
           updated_at?: string
           user_id: string
@@ -118,6 +120,7 @@ export type Database = {
           file_url?: string | null
           id?: string
           invoice_number?: number
+          numero_boleta?: string | null
           status?: Database["public"]["Enums"]["invoice_status"]
           updated_at?: string
           user_id?: string
