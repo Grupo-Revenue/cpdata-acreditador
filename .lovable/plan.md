@@ -1,36 +1,31 @@
 
 
-## Plan: Permitir guardar al deseleccionar usuarios
+## Plan: Ajustar columnas de boletas y nombre de evento
 
-### Problema
+### Cambios
 
-El boton "Guardar Asignacion" esta deshabilitado cuando no hay ningun supervisor ni acreditador seleccionado (linea 441). Esto impide desasignar a todos los usuarios de un evento, ya que el boton queda en estado `disabled`.
+#### 1. Eliminar columna "Fecha evento" de la tabla de boletas
 
-### Solucion
+En `src/components/invoices/InvoicesTable.tsx`:
+- Eliminar la columna "Fecha evento" del header
+- Eliminar la celda correspondiente del body
+- Actualizar el `colSpan` del estado vacio de 9 a 8
 
-Eliminar la condicion `selectedSupervisors.size === 0 && selectedAccreditors.size === 0` del atributo `disabled` del boton. Solo debe quedarse `disabled={saving}`.
+#### 2. Mostrar `nombre_del_evento` en vez de `dealname` como nombre del evento
 
-Esto permitira guardar incluso con 0 seleccionados, lo cual ejecutara correctamente:
-- La eliminacion de todas las asignaciones en `event_accreditors`
-- La eliminacion de las boletas correspondientes en `invoices`
+En `src/components/events/EventTeamDialog.tsx`:
+- Al crear el registro en la tabla `events`, pasar el `nombre_del_evento` del deal en lugar del `dealname`
+- Esto requiere recibir el nombre del evento como prop adicional o buscarlo del deal
 
-### Archivo afectado
-
-| Archivo | Cambio |
-|---------|--------|
-| `src/components/events/EventTeamDialog.tsx` (linea 441) | Quitar la validacion que deshabilita el boton cuando no hay seleccion |
+En `src/pages/app/Events.tsx`:
+- Pasar `teamDeal?.nombre_del_evento` como `dealName` al componente `EventTeamDialog`, en lugar de `teamDeal?.dealname`
 
 ### Detalle tecnico
 
-Cambio en linea 441:
+| Archivo | Cambio |
+|---------|--------|
+| `src/components/invoices/InvoicesTable.tsx` | Eliminar columna "Fecha evento", actualizar colSpan |
+| `src/pages/app/Events.tsx` | Cambiar `dealName={teamDeal?.dealname}` a `dealName={teamDeal?.nombre_del_evento}` |
 
-Antes:
-```
-disabled={saving || (selectedSupervisors.size === 0 && selectedAccreditors.size === 0)}
-```
-
-Despues:
-```
-disabled={saving}
-```
+No se requieren cambios en base de datos. Los registros de eventos existentes mantendran el nombre anterior; los nuevos usaran el nombre correcto del evento.
 
