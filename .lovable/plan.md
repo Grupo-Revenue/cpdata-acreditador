@@ -1,35 +1,40 @@
 
 
-## Fix: Desfase de fecha de emision entre tabla y edicion
+## Fix: Select de usuarios vacio en edicion de boleta + agregar busqueda
 
 ### Problema
 
-La fecha `emission_date` se almacena como `"2026-02-11"` en la base de datos. En la tabla de boletas, `new Date("2026-02-11")` lo interpreta como medianoche UTC, que en Chile (UTC-3) se convierte en 10 de febrero. El dialogo de edicion muestra el string tal cual ("2026-02-11"), mostrando el 11.
+La consulta de usuarios en `InvoiceEditDialog` usa un join `profiles:user_id(...)` en la tabla `user_roles`, que falla con error 400 porque PostgREST no puede resolver esa relacion. Resultado: el select aparece vacio.
 
 ### Solucion
 
-Parsear la fecha como fecha local en lugar de UTC en `InvoicesTable.tsx`.
+1. Usar la estrategia de dos consultas (ya establecida en el proyecto): primero obtener los `user_id` con rol supervisor/acreditador, luego consultar sus perfiles por separado.
+2. Reemplazar el `Select` de Radix por un **Combobox con busqueda** usando los componentes `Popover` + `Command` ya disponibles en el proyecto, permitiendo filtrar usuarios por nombre.
 
 ### Cambios
 
 | Archivo | Cambio |
 |---------|--------|
-| `src/components/invoices/InvoicesTable.tsx` | Reemplazar `new Date(inv.emission_date)` por un parser local que evite el desfase UTC |
+| `src/components/invoices/InvoiceEditDialog.tsx` | Corregir la query de usuarios con dos consultas separadas (user_roles + profiles). Reemplazar el Select de usuario por un Combobox con campo de busqueda usando Popover + Command. |
 
 ### Detalle tecnico
 
-Cambiar la linea que formatea la fecha de emision:
-
+**Query corregida:**
 ```text
-// Antes
-format(new Date(inv.emission_date), 'dd-MM-yyyy')
+// Paso 1: obtener user_ids con rol supervisor o acreditador
+const { data: rolesData } = await supabase
+  .from('user_roles')
+  .select('user_id')
+  .in('role', ['supervisor', 'acreditador']);
 
-// Despues
-format(new Date(inv.emission_date + 'T00:00:00'), 'dd-MM-yyyy')
+// Paso 2: obtener perfiles de esos usuarios
+const userIds = [...new Set(rolesData.map(r => r.user_id))];
+const { data: profilesData } = await supabase
+  .from('profiles')
+  .select('id, nombre, apellido')
+  .in('id', userIds);
 ```
 
-Al agregar `T00:00:00` (sin `Z`), JavaScript interpreta la fecha como medianoche en la zona horaria local en lugar de UTC, eliminando el desfase de un dia.
-
-### Importante
-Parsear la fecha como fecha local en lugar de UTC ocurra en todos los campos fecha del sistema, ya que se ocupara la fecha locar  siempre.
+**Combobox con busqueda:**
+Se usara el patron Popover + Command (componentes ya existentes en el proyecto) para mostrar un input de busqueda dentro del dropdown de usuarios. El filtrado sera por nombre completo (`nombre + apellido`).
 
