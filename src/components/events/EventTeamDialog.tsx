@@ -236,6 +236,10 @@ export function EventTeamDialog({ dealId, dealName, open, onOpenChange }: EventT
         .eq('hubspot_deal_id', dealId)
         .maybeSingle();
 
+      if (evt && dealName) {
+        await supabase.from('events').update({ name: dealName } as any).eq('id', evt.id);
+      }
+
       if (!evt) {
         const { data: newEvt, error: createErr } = await supabase
           .from('events')
