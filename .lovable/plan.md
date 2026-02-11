@@ -1,40 +1,44 @@
 
 
-## Fix: Select de usuarios vacio en edicion de boleta + agregar busqueda
+## Plan: Agregar campo "Numero de Boleta" ingresado por el usuario
 
-### Problema
+### Contexto
 
-La consulta de usuarios en `InvoiceEditDialog` usa un join `profiles:user_id(...)` en la tabla `user_roles`, que falla con error 400 porque PostgREST no puede resolver esa relacion. Resultado: el select aparece vacio.
-
-### Solucion
-
-1. Usar la estrategia de dos consultas (ya establecida en el proyecto): primero obtener los `user_id` con rol supervisor/acreditador, luego consultar sus perfiles por separado.
-2. Reemplazar el `Select` de Radix por un **Combobox con busqueda** usando los componentes `Popover` + `Command` ya disponibles en el proyecto, permitiendo filtrar usuarios por nombre.
+Actualmente existe un `invoice_number` auto-generado (B001, B002...) que sirve como ID interno. El usuario necesita un campo adicional donde el supervisor o acreditador ingrese el numero real de su boleta de honorarios al momento de subirla.
 
 ### Cambios
 
-| Archivo | Cambio |
-|---------|--------|
-| `src/components/invoices/InvoiceEditDialog.tsx` | Corregir la query de usuarios con dos consultas separadas (user_roles + profiles). Reemplazar el Select de usuario por un Combobox con campo de busqueda usando Popover + Command. |
+#### 1. Base de datos - Nueva columna
 
-### Detalle tecnico
+Agregar columna `numero_boleta` (text, nullable) a la tabla `invoices`. Inicia vacia y se llena cuando el usuario sube su boleta.
 
-**Query corregida:**
 ```text
-// Paso 1: obtener user_ids con rol supervisor o acreditador
-const { data: rolesData } = await supabase
-  .from('user_roles')
-  .select('user_id')
-  .in('role', ['supervisor', 'acreditador']);
-
-// Paso 2: obtener perfiles de esos usuarios
-const userIds = [...new Set(rolesData.map(r => r.user_id))];
-const { data: profilesData } = await supabase
-  .from('profiles')
-  .select('id, nombre, apellido')
-  .in('id', userIds);
+ALTER TABLE invoices ADD COLUMN numero_boleta text DEFAULT NULL;
 ```
 
-**Combobox con busqueda:**
-Se usara el patron Popover + Command (componentes ya existentes en el proyecto) para mostrar un input de busqueda dentro del dropdown de usuarios. El filtrado sera por nombre completo (`nombre + apellido`).
+Actualizar la politica RLS existente "Users can update own file_url" para permitir que los usuarios tambien actualicen `numero_boleta` (la politica actual ya permite UPDATE en la fila completa, solo el codigo frontend limita los campos).
+
+#### 2. InvoicesTable.tsx - Mostrar columna
+
+- Agregar columna "N Boleta" en la tabla entre "ID Boleta" y "Estado"
+- Mostrar el valor de `numero_boleta` o "-" si esta vacio
+- Agregar el campo al tipo `InvoiceRow`
+
+#### 3. InvoiceEditDialog.tsx - Campo editable
+
+- Agregar estado `numeroBoleta` al dialogo
+- Para **supervisores/acreditadores** (no admin): mostrar campo de texto "Numero de boleta" junto al campo de archivo, obligatorio al subir
+- Para **admin**: mostrar el campo como editable tambien
+- Incluir `numero_boleta` en el payload de update tanto para admin como para no-admin
+
+#### 4. EventTeamDialog.tsx - Sin cambios
+
+La creacion automatica de boletas al asignar equipo ya dejara `numero_boleta` como `null` por defecto, que es el comportamiento deseado.
+
+### Flujo resultante
+
+1. Admin asigna equipo al evento -> se crea registro de boleta con `numero_boleta = null`
+2. Supervisor/acreditador abre su boleta -> ve campo "Numero de boleta" + campo archivo
+3. Ingresa el numero y sube el archivo -> se actualiza `numero_boleta` y `file_url`
+4. En la tabla se muestra el numero ingresado en la columna "N Boleta"
 
