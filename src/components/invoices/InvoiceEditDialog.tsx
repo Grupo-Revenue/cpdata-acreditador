@@ -8,6 +8,10 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
+import { Check, ChevronsUpDown } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import type { InvoiceRow } from './InvoicesTable';
@@ -24,6 +28,7 @@ export function InvoiceEditDialog({ open, onOpenChange, invoice }: Props) {
   const queryClient = useQueryClient();
 
   const [userId, setUserId] = useState('');
+  const [userOpen, setUserOpen] = useState(false);
   const [eventId, setEventId] = useState('');
   const [status, setStatus] = useState<'pendiente' | 'pagado' | 'rechazado'>('pendiente');
   const [amount, setAmount] = useState('');
@@ -42,18 +47,19 @@ export function InvoiceEditDialog({ open, onOpenChange, invoice }: Props) {
   const { data: users = [] } = useQuery({
     queryKey: ['invoice-users'],
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data: rolesData, error: rolesError } = await supabase
         .from('user_roles')
-        .select('user_id, role, profiles:user_id(id, nombre, apellido)')
+        .select('user_id')
         .in('role', ['supervisor', 'acreditador']);
-      if (error) throw error;
-      const map = new Map<string, { id: string; nombre: string; apellido: string }>();
-      data?.forEach((r: any) => {
-        if (r.profiles && !map.has(r.user_id)) {
-          map.set(r.user_id, r.profiles);
-        }
-      });
-      return Array.from(map.values());
+      if (rolesError) throw rolesError;
+      const userIds = [...new Set((rolesData || []).map(r => r.user_id))];
+      if (userIds.length === 0) return [];
+      const { data: profilesData, error: profilesError } = await supabase
+        .from('profiles')
+        .select('id, nombre, apellido')
+        .in('id', userIds);
+      if (profilesError) throw profilesError;
+      return profilesData || [];
     },
     enabled: open && isAdmin,
   });
@@ -142,14 +148,34 @@ export function InvoiceEditDialog({ open, onOpenChange, invoice }: Props) {
             <>
               <div className="space-y-2">
                 <Label>Usuario</Label>
-                <Select value={userId} onValueChange={setUserId}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {users.map((u) => (
-                      <SelectItem key={u.id} value={u.id}>{u.nombre} {u.apellido}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Popover open={userOpen} onOpenChange={setUserOpen}>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" role="combobox" aria-expanded={userOpen} className="w-full justify-between font-normal">
+                      {userId ? users.find(u => u.id === userId)?.nombre + ' ' + users.find(u => u.id === userId)?.apellido : 'Seleccionar usuario...'}
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-full p-0" align="start">
+                    <Command>
+                      <CommandInput placeholder="Buscar usuario..." />
+                      <CommandList>
+                        <CommandEmpty>Sin resultados.</CommandEmpty>
+                        <CommandGroup>
+                          {users.map((u) => (
+                            <CommandItem
+                              key={u.id}
+                              value={`${u.nombre} ${u.apellido}`}
+                              onSelect={() => { setUserId(u.id); setUserOpen(false); }}
+                            >
+                              <Check className={cn("mr-2 h-4 w-4", userId === u.id ? "opacity-100" : "opacity-0")} />
+                              {u.nombre} {u.apellido}
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
               </div>
 
               <div className="space-y-2">
