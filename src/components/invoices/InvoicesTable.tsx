@@ -100,7 +100,7 @@ export function InvoicesTable({ invoices, isAdmin, onEdit, onWhatsapp, onUpload 
 
 
                   <TableCell>{formatCLP(inv.amount)}</TableCell>
-                  <TableCell>{format(new Date(inv.emission_date), 'dd-MM-yyyy')}</TableCell>
+                  <TableCell>{format(new Date(inv.emission_date + 'T00:00:00'), 'dd-MM-yyyy')}</TableCell>
                   <TableCell>
                     <div className="flex gap-1">
                       {isAdmin ? (
