@@ -73,6 +73,22 @@ export default function EventsPage() {
   const deals = data?.deals ?? [];
   const notConfigured = data?.error === 'hubspot_not_configured';
 
+  // Sync nombre_del_evento from HubSpot to local events table
+  useEffect(() => {
+    if (deals.length === 0) return;
+    const syncNames = async () => {
+      for (const deal of deals) {
+        if (deal.nombre_del_evento && deal.id) {
+          await supabase
+            .from('events')
+            .update({ name: deal.nombre_del_evento })
+            .eq('hubspot_deal_id', deal.id);
+        }
+      }
+    };
+    syncNames();
+  }, [deals]);
+
   const PAGE_SIZE = 5;
   const [currentPage, setCurrentPage] = useState(1);
   const [editingDeal, setEditingDeal] = useState<HubSpotDeal | null>(null);
