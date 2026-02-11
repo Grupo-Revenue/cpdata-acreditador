@@ -54,7 +54,7 @@ export function InvoicesTable({ invoices, isAdmin, onEdit, onWhatsapp, onUpload 
             <TableHead>ID Boleta</TableHead>
             <TableHead>Estado</TableHead>
             <TableHead>Evento</TableHead>
-            <TableHead>Fecha evento</TableHead>
+            
             <TableHead>Valor</TableHead>
             <TableHead>Fecha emisión</TableHead>
             <TableHead>Acciones</TableHead>
@@ -63,7 +63,7 @@ export function InvoicesTable({ invoices, isAdmin, onEdit, onWhatsapp, onUpload 
         <TableBody>
           {invoices.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={9} className="text-center text-muted-foreground py-8">
+              <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
                 No hay boletas para mostrar
               </TableCell>
             </TableRow>
@@ -97,11 +97,8 @@ export function InvoicesTable({ invoices, isAdmin, onEdit, onWhatsapp, onUpload 
                     <Badge variant="outline" className={sc?.className}>{sc?.label}</Badge>
                   </TableCell>
                   <TableCell>{inv.events?.name || '-'}</TableCell>
-                  <TableCell>
-                    {inv.events?.event_date
-                      ? format(new Date(inv.events.event_date), 'dd-MM-yyyy')
-                      : '-'}
-                  </TableCell>
+
+
                   <TableCell>{formatCLP(inv.amount)}</TableCell>
                   <TableCell>{format(new Date(inv.emission_date), 'dd-MM-yyyy')}</TableCell>
                   <TableCell>
