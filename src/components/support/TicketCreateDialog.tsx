@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
+import { Upload, X } from 'lucide-react';
 
 interface TicketCreateDialogProps {
   open: boolean;
@@ -17,9 +18,16 @@ interface TicketCreateDialogProps {
 export function TicketCreateDialog({ open, onOpenChange, onCreated }: TicketCreateDialogProps) {
   const [motivo, setMotivo] = useState('');
   const [priority, setPriority] = useState<string>('media');
+  const [file, setFile] = useState<File | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const { profile, roles } = useAuth();
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selected = e.target.files?.[0];
+    if (selected) setFile(selected);
+  };
 
   const handleSubmit = async () => {
     if (!motivo.trim()) {
@@ -29,7 +37,7 @@ export function TicketCreateDialog({ open, onOpenChange, onCreated }: TicketCrea
 
     setIsSubmitting(true);
     try {
-      const { error } = await supabase
+      const { data: newTicket, error } = await supabase
         .from('support_tickets')
         .insert({
           motivo: motivo.trim(),
@@ -40,13 +48,37 @@ export function TicketCreateDialog({ open, onOpenChange, onCreated }: TicketCrea
           creator_telefono: profile?.telefono || null,
           creator_rut: profile?.rut || '',
           creator_role: roles[0] || '',
-        });
+        })
+        .select('id')
+        .single();
 
       if (error) throw error;
+
+      // Upload file if selected
+      if (file && newTicket) {
+        const fileExt = file.name.split('.').pop();
+        const filePath = `${newTicket.id}/${Date.now()}.${fileExt}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from('ticket-evidence')
+          .upload(filePath, file);
+
+        if (uploadError) throw uploadError;
+
+        const { data: { publicUrl } } = supabase.storage
+          .from('ticket-evidence')
+          .getPublicUrl(filePath);
+
+        await supabase
+          .from('support_tickets')
+          .update({ evidence_url: publicUrl })
+          .eq('id', newTicket.id);
+      }
 
       toast({ title: 'Ticket creado', description: 'El ticket de soporte ha sido creado exitosamente' });
       setMotivo('');
       setPriority('media');
+      setFile(null);
       onOpenChange(false);
       onCreated();
     } catch (error: any) {
@@ -85,6 +117,30 @@ export function TicketCreateDialog({ open, onOpenChange, onCreated }: TicketCrea
                 <SelectItem value="baja">Baja</SelectItem>
               </SelectContent>
             </Select>
+          </div>
+          <div className="space-y-2">
+            <Label>Evidencia (opcional)</Label>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" type="button" onClick={() => fileInputRef.current?.click()}>
+                <Upload className="h-4 w-4 mr-2" />
+                Subir archivo
+              </Button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                className="hidden"
+                onChange={handleFileChange}
+                accept="image/*,.pdf,.doc,.docx"
+              />
+              {file && (
+                <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                  <span className="truncate max-w-[180px]">{file.name}</span>
+                  <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => setFile(null)}>
+                    <X className="h-3 w-3" />
+                  </Button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
         <DialogFooter>
