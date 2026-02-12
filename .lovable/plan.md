@@ -1,39 +1,36 @@
 
-## Agregar cambio de rol en la pagina de Perfil
+## Filtrar sidebar por rol activo en lugar de todos los roles
 
-### Objetivo
+### Problema
 
-Permitir a los usuarios con mas de un rol cambiar su rol activo directamente desde la pagina de perfil, sin necesidad de cerrar sesion.
+Actualmente el sidebar filtra los items de navegacion usando la lista completa de roles del usuario (`roles`), en lugar del rol activo (`activeRole`). Esto significa que un usuario con roles `superadmin` y `administracion`, al ingresar como `administracion`, sigue viendo "Configuracion" porque su lista de roles incluye `superadmin`.
 
-### Cambios
+### Solucion
+
+Un cambio de una sola linea en `src/components/layout/Sidebar.tsx`:
 
 | Archivo | Cambio |
 |---------|--------|
-| `src/pages/app/Profile.tsx` | Agregar una nueva Card entre la seccion de cuenta y la de informacion personal. Muestra el rol activo actual y, si el usuario tiene mas de un rol, un boton para abrir el `RoleSelectDialog` y cambiar de rol. Al seleccionar un nuevo rol, se actualiza el `activeRole` en el contexto y se redirige al dashboard correspondiente. |
+| `src/components/layout/Sidebar.tsx` | Cambiar el filtro de navegacion para usar `activeRole` en vez de `roles`. Si el item tiene restriccion de roles, verificar que `activeRole` este incluido en esa lista. |
 
 ### Detalle tecnico
 
-**Nueva seccion "Rol activo":**
+**Linea 46**: Agregar `activeRole` al destructuring de `useAuth()`.
 
-- Se ubica despues de la card "Informacion de cuenta"
-- Muestra el rol activo actual con su icono correspondiente (Shield, Settings, Eye, BadgeCheck)
-- Si el usuario tiene mas de 1 rol, muestra un boton "Cambiar rol"
-- Al hacer clic, abre el `RoleSelectDialog` ya existente
-- Al seleccionar un nuevo rol, se llama a `setActiveRole(role)` y se usa `useNavigate` para redirigir a `getDashboardForRole(role)`
-- Si el usuario tiene un solo rol, la card muestra el rol sin boton de cambio
-
-**Imports adicionales necesarios:**
-- `RoleSelectDialog` desde `@/components/auth/RoleSelectDialog`
-- `getDashboardForRole` desde `@/contexts/AuthContext`
-- `useNavigate` desde `react-router-dom`
-- Iconos: `Shield`, `Settings`, `Eye`, `BadgeCheck`, `RefreshCw` desde `lucide-react`
-
-**Estructura de la card:**
+**Linea 48-51**: Cambiar la logica de filtrado:
 
 ```text
-Card "Rol activo"
-  - Icono + titulo "Rol activo"
-  - Descripcion: "Actualmente operando como [rol]"
-  - Si tiene multiples roles: boton "Cambiar rol" que abre RoleSelectDialog
-  - Al seleccionar nuevo rol -> setActiveRole + navigate al dashboard
+// Antes (usa todos los roles del usuario):
+const filteredNavItems = navItems.filter(item => {
+  if (!item.roles) return true;
+  return item.roles.some(role => roles.includes(role as any));
+});
+
+// Despues (usa solo el rol activo):
+const filteredNavItems = navItems.filter(item => {
+  if (!item.roles) return true;
+  return activeRole ? item.roles.includes(activeRole) : false;
+});
 ```
+
+Con este cambio, al ingresar como `administracion`, no se vera "Configuracion" en el sidebar. Solo al ingresar como `superadmin` aparecera.
