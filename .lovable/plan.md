@@ -1,62 +1,47 @@
 
 
-## Ajustar vista de Soporte para supervisor y acreditador
+## Separar evidencia de creador y responsable en tickets de soporte
 
-### Situacion actual
+### Problema
 
-Las politicas RLS en `support_tickets` ya estan correctamente configuradas:
-- **Admins**: ven todos los tickets (`is_admin(auth.uid())`)
-- **Usuarios normales**: solo ven sus propios tickets (`created_by = auth.uid()`)
+Actualmente existe un solo campo `evidence_url` que se usa tanto para la evidencia del creador (supervisor/acreditador) como para la del responsable (admin/superadmin). Esto causa que si el admin sube evidencia, sobreescribe la del creador y viceversa. Ademas, ambas partes necesitan poder ver/descargar los archivos de la otra.
 
-Por lo tanto, la base de datos ya filtra correctamente. Sin embargo, la interfaz muestra elementos innecesarios para roles no-admin (supervisor/acreditador), como el buscador "por nombre del creador" y la columna "Creado por" en la tabla, cuando solo van a ver sus propios tickets.
+### Solucion
 
-### Cambios propuestos
+Agregar un nuevo campo `response_evidence_url` para la evidencia del responsable, manteniendo `evidence_url` como la evidencia del creador.
 
-| Archivo | Cambio |
-|---------|--------|
-| `src/pages/app/Support.tsx` | Ocultar el campo de busqueda "Buscar por nombre del creador" cuando el usuario no es admin, ya que solo vera sus propios tickets. Mantener el filtro de prioridad visible para todos. Cambiar el titulo de la card a "Mis Tickets" para no-admins. |
-| `src/components/support/TicketsTable.tsx` | Ocultar las columnas "Creado por" y "Responsable" cuando el usuario no es admin, ya que esa informacion no es relevante para quien solo ve sus propios tickets. Agregar un prop `showCreator` para controlar la visibilidad de esas columnas. |
+### Cambios
+
+| Archivo / Recurso | Cambio |
+|---|---|
+| **Migracion SQL** | Agregar columna `response_evidence_url TEXT` a `support_tickets` |
+| **TicketCreateDialog.tsx** | Sin cambios - ya usa `evidence_url` correctamente para la evidencia del creador |
+| **TicketEditDialog.tsx** | Separar la seccion de evidencia en dos: mostrar la evidencia del creador (solo lectura, con link para ver/descargar) y un campo de subida para la evidencia de respuesta (`response_evidence_url`) |
+| **TicketDetailDialog.tsx** | Mostrar ambas evidencias por separado: "Evidencia del creador" y "Evidencia de respuesta", cada una con su boton de ver/descargar |
+| **TicketsTable.tsx** | Sin cambios necesarios |
 
 ### Detalle tecnico
 
-**Support.tsx** - Condicionar filtro de busqueda:
+**1. Migracion SQL:**
 
 ```text
-// Solo mostrar el buscador por nombre si es admin
-{isAdmin && (
-  <div className="relative flex-1">
-    <Search ... />
-    <Input placeholder="Buscar por nombre del creador..." ... />
-  </div>
-)}
+ALTER TABLE support_tickets
+ADD COLUMN response_evidence_url TEXT;
 ```
 
-**TicketsTable.tsx** - Agregar prop para columnas:
+**2. TicketEditDialog.tsx** - Separar evidencias:
 
-```text
-interface TicketsTableProps {
-  tickets: SupportTicket[];
-  canEdit: boolean;
-  canView?: boolean;
-  showCreatorColumns?: boolean;  // nuevo prop, default true
-  onEdit: (ticket: SupportTicket) => void;
-  onView?: (ticket: SupportTicket) => void;
-}
-```
+- Mostrar la evidencia del creador (`evidence_url`) como un link de solo lectura con boton "Ver/Descargar"
+- Agregar un campo de subida separado para la evidencia de respuesta del responsable
+- Al subir archivo, guardar la URL en `response_evidence_url` en lugar de `evidence_url`
+- En el `handleSubmit`, enviar `response_evidence_url` en el update y no sobreescribir `evidence_url`
 
-- Si `showCreatorColumns` es `false`, ocultar las columnas "Creado por" y "Responsable" del header y del body
-- Ajustar el `colSpan` del estado vacio acorde
+**3. TicketDetailDialog.tsx** - Mostrar ambas evidencias:
 
-**Uso en Support.tsx:**
+- Seccion "Evidencia del creador" con link a `evidence_url` (si existe)
+- Seccion "Evidencia de respuesta" con link a `response_evidence_url` (si existe)
+- Ambos links abren el archivo en nueva pestana para ver/descargar
 
-```text
-<TicketsTable
-  tickets={pendingTickets}
-  canEdit={isAdmin}
-  canView={!isAdmin}
-  showCreatorColumns={isAdmin}
-  onEdit={handleEdit}
-  onView={handleView}
-/>
-```
+**4. TicketCreateDialog.tsx** - Sin cambios, sigue usando `evidence_url` para la evidencia que sube el creador.
 
+Con esto, supervisores y acreditadores podran ver la evidencia de respuesta del admin al consultar el detalle del ticket, y los admins podran ver la evidencia original del creador al editar el ticket.
