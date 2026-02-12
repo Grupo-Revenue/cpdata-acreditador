@@ -1,97 +1,39 @@
 
-
-## Selector de Rol al Iniciar Sesion
+## Agregar cambio de rol en la pagina de Perfil
 
 ### Objetivo
 
-Cuando un usuario con mas de un rol inicia sesion (o recarga la pagina), mostrar un dialogo modal para que seleccione con cual rol desea operar. Si el usuario tiene un solo rol, se salta este paso y entra directamente.
-
-### Flujo
-
-1. Usuario inicia sesion -> AuthContext carga roles
-2. `DashboardRedirect` detecta que el usuario tiene multiples roles
-3. Se muestra un dialogo modal con los roles disponibles como opciones
-4. El usuario selecciona un rol -> se guarda como `activeRole` en el contexto
-5. Se redirige al dashboard correspondiente al rol seleccionado
-
-### Concepto de "Rol Activo"
-
-Se agrega un nuevo estado `activeRole` al `AuthContext`. Este rol activo determina:
-- A cual dashboard se redirige
-- Que items del sidebar se muestran
-- Que permisos se aplican en las vistas
-
-El usuario podra cambiar de rol en cualquier momento desde el sidebar (sin cerrar sesion).
+Permitir a los usuarios con mas de un rol cambiar su rol activo directamente desde la pagina de perfil, sin necesidad de cerrar sesion.
 
 ### Cambios
 
 | Archivo | Cambio |
 |---------|--------|
-| `src/contexts/AuthContext.tsx` | Agregar estado `activeRole: AppRole | null` y funcion `setActiveRole`. Exponer ambos en el contexto. Modificar `isAdmin` para que use `activeRole` en lugar de revisar todos los roles. Agregar `getDefaultDashboard` que use `activeRole`. |
-| `src/components/auth/RoleSelectDialog.tsx` | **Nuevo componente**. Dialogo modal que muestra los roles del usuario como tarjetas seleccionables. Recibe los roles disponibles y un callback `onSelect`. No se puede cerrar sin seleccionar (sin boton X). |
-| `src/pages/dashboard/DashboardRedirect.tsx` | Si el usuario tiene mas de 1 rol y no tiene `activeRole` seleccionado, mostrar `RoleSelectDialog`. Si tiene 1 solo rol, asignarlo automaticamente como `activeRole`. Si ya tiene `activeRole`, redirigir al dashboard correspondiente. |
-| `src/components/layout/Sidebar.tsx` | Agregar boton/indicador del rol activo en el footer del sidebar, con opcion de cambiar rol (abre el mismo `RoleSelectDialog`). Filtrar items del sidebar segun `activeRole` en lugar de todos los roles. |
-| `src/components/auth/ProtectedRoute.tsx` | Actualizar verificacion de `requiredRoles` para comparar contra `activeRole` en lugar de todos los roles del usuario. |
+| `src/pages/app/Profile.tsx` | Agregar una nueva Card entre la seccion de cuenta y la de informacion personal. Muestra el rol activo actual y, si el usuario tiene mas de un rol, un boton para abrir el `RoleSelectDialog` y cambiar de rol. Al seleccionar un nuevo rol, se actualiza el `activeRole` en el contexto y se redirige al dashboard correspondiente. |
 
 ### Detalle tecnico
 
-**Nuevo estado en AuthContext:**
+**Nueva seccion "Rol activo":**
+
+- Se ubica despues de la card "Informacion de cuenta"
+- Muestra el rol activo actual con su icono correspondiente (Shield, Settings, Eye, BadgeCheck)
+- Si el usuario tiene mas de 1 rol, muestra un boton "Cambiar rol"
+- Al hacer clic, abre el `RoleSelectDialog` ya existente
+- Al seleccionar un nuevo rol, se llama a `setActiveRole(role)` y se usa `useNavigate` para redirigir a `getDashboardForRole(role)`
+- Si el usuario tiene un solo rol, la card muestra el rol sin boton de cambio
+
+**Imports adicionales necesarios:**
+- `RoleSelectDialog` desde `@/components/auth/RoleSelectDialog`
+- `getDashboardForRole` desde `@/contexts/AuthContext`
+- `useNavigate` desde `react-router-dom`
+- Iconos: `Shield`, `Settings`, `Eye`, `BadgeCheck`, `RefreshCw` desde `lucide-react`
+
+**Estructura de la card:**
 
 ```text
-const [activeRole, setActiveRole] = useState<AppRole | null>(null);
-
-// Se resetea al cerrar sesion
-const signOut = async () => {
-  setActiveRole(null);
-  await supabase.auth.signOut();
-  ...
-};
+Card "Rol activo"
+  - Icono + titulo "Rol activo"
+  - Descripcion: "Actualmente operando como [rol]"
+  - Si tiene multiples roles: boton "Cambiar rol" que abre RoleSelectDialog
+  - Al seleccionar nuevo rol -> setActiveRole + navigate al dashboard
 ```
-
-**RoleSelectDialog (nuevo componente):**
-
-- Dialogo no descartable (sin overlay click ni boton X)
-- Muestra cada rol como una tarjeta con icono y nombre
-- Al seleccionar, llama a `setActiveRole(role)` del contexto
-
-**Logica en DashboardRedirect:**
-
-```text
-if (roles.length === 1) {
-  setActiveRole(roles[0]);
-  return <Navigate to={getDefaultDashboard(roles[0])} />;
-}
-
-if (roles.length > 1 && !activeRole) {
-  return <RoleSelectDialog roles={roles} onSelect={setActiveRole} />;
-}
-
-if (activeRole) {
-  return <Navigate to={getDefaultDashboard(activeRole)} />;
-}
-```
-
-**Sidebar - Cambio de rol:**
-
-- Se muestra el rol activo actual como badge en el footer
-- Boton "Cambiar rol" que abre el RoleSelectDialog
-- Solo visible si el usuario tiene mas de 1 rol
-
-**ProtectedRoute - Verificacion por rol activo:**
-
-```text
-if (requiredRoles && requiredRoles.length > 0) {
-  const hasAccess = requiredRoles.includes(activeRole);
-  if (!hasAccess) return <Navigate to="/app/dashboard" />;
-}
-```
-
-### Iconos por rol
-
-| Rol | Icono |
-|-----|-------|
-| superadmin | Shield |
-| administracion | Settings |
-| supervisor | Eye |
-| acreditador | BadgeCheck |
-
