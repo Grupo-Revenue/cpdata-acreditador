@@ -26,9 +26,9 @@ interface HubSpotDeal {
 
 export default function EventsPage() {
   const { toast } = useToast();
-  const { hasRole, user } = useAuth();
-  const isAdmin = hasRole('superadmin') || hasRole('administracion');
-  const isSupervisor = hasRole('supervisor');
+  const { activeRole, user } = useAuth();
+  const isAdmin = activeRole === 'superadmin' || activeRole === 'administracion';
+  const isSupervisor = activeRole === 'supervisor';
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['hubspot-deals'],

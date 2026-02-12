@@ -18,7 +18,7 @@ interface TopbarProps {
 }
 
 export function Topbar({ onMenuClick, sidebarCollapsed }: TopbarProps) {
-  const { profile, signOut, roles } = useAuth();
+  const { profile, signOut, roles, activeRole } = useAuth();
 
   const initials = profile
     ? `${profile.nombre.charAt(0)}${profile.apellido.charAt(0)}`
@@ -31,18 +31,7 @@ export function Topbar({ onMenuClick, sidebarCollapsed }: TopbarProps) {
     acreditador: 'Acreditador',
   };
 
-  // Obtener el rol principal (el de mayor jerarquía)
-  const getPrimaryRole = () => {
-    const hierarchy: AppRole[] = ['superadmin', 'administracion', 'supervisor', 'acreditador'];
-    for (const role of hierarchy) {
-      if (roles.includes(role)) {
-        return roleLabels[role] || role;
-      }
-    }
-    return null;
-  };
-
-  const primaryRole = getPrimaryRole();
+  const primaryRole = activeRole ? (roleLabels[activeRole] || activeRole) : null;
 
   return (
     <header className="sticky top-0 z-30 h-16 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">

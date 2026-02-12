@@ -9,27 +9,25 @@ interface ProtectedRouteProps {
 }
 
 export function ProtectedRoute({ children, requiredRoles }: ProtectedRouteProps) {
-  const { user, isLoading, isApproved, isActive, roles } = useAuth();
+  const { user, isLoading, isApproved, isActive, activeRole } = useAuth();
   const location = useLocation();
 
   if (isLoading) {
     return <LoadingState fullScreen text="Verificando sesión..." />;
   }
 
-  // No hay usuario autenticado
   if (!user) {
     return <Navigate to="/auth/login" state={{ from: location }} replace />;
   }
 
-  // Usuario no aprobado o inactivo
   if (!isApproved || !isActive) {
     return <Navigate to="/auth/pending" replace />;
   }
 
-  // Verificar roles si se especifican
-  if (requiredRoles && requiredRoles.length > 0) {
-    const hasRequiredRole = requiredRoles.some(role => roles.includes(role as any));
-    if (!hasRequiredRole) {
+  // Verificar roles contra el rol activo
+  if (requiredRoles && requiredRoles.length > 0 && activeRole) {
+    const hasAccess = requiredRoles.includes(activeRole);
+    if (!hasAccess) {
       return <Navigate to="/app/dashboard" replace />;
     }
   }
