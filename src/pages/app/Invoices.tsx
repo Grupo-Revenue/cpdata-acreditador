@@ -6,9 +6,7 @@ import { PageHeader } from '@/components/ui/PageHeader';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { LoadingState } from '@/components/ui/LoadingState';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { FileText, Plus, Search } from 'lucide-react';
+import { FileText, Plus } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { InvoicesTable, type InvoiceRow } from '@/components/invoices/InvoicesTable';
 import { InvoiceCreateDialog } from '@/components/invoices/InvoiceCreateDialog';
@@ -17,8 +15,6 @@ import { InvoiceWhatsappDialog } from '@/components/invoices/InvoiceWhatsappDial
 
 export default function InvoicesPage() {
   const { isAdmin } = useAuth();
-  const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState<string>('all');
   const [createOpen, setCreateOpen] = useState(false);
   const [editInvoice, setEditInvoice] = useState<InvoiceRow | null>(null);
   const [whatsappInvoice, setWhatsappInvoice] = useState<InvoiceRow | null>(null);
@@ -76,13 +72,6 @@ export default function InvoicesPage() {
     },
   });
 
-  const filtered = invoices.filter((inv) => {
-    const name = inv.profiles ? `${inv.profiles.nombre} ${inv.profiles.apellido}` : '';
-    const matchesSearch = !search || name.toLowerCase().includes(search.toLowerCase());
-    const matchesStatus = statusFilter === 'all' || inv.status === statusFilter;
-    return matchesSearch && matchesStatus;
-  });
-
   return (
     <AppShell>
       <PageHeader
@@ -99,33 +88,9 @@ export default function InvoicesPage() {
         ) : undefined}
       />
 
-      {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-3 mb-4">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Buscar por nombre..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-9"
-          />
-        </div>
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-full sm:w-44">
-            <SelectValue placeholder="Estado" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todos</SelectItem>
-            <SelectItem value="pendiente">Pendiente</SelectItem>
-            <SelectItem value="pagado">Pagado</SelectItem>
-            <SelectItem value="rechazado">Rechazado</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-
       {isLoading ? (
         <LoadingState />
-      ) : filtered.length === 0 && !search && statusFilter === 'all' ? (
+      ) : invoices.length === 0 ? (
         <EmptyState
           icon={FileText}
           title="Sin boletas"
@@ -133,7 +98,7 @@ export default function InvoicesPage() {
         />
       ) : (
         <InvoicesTable
-          invoices={filtered}
+          invoices={invoices}
           isAdmin={isAdmin}
           paymentDays={paymentDays}
           onEdit={setEditInvoice}
