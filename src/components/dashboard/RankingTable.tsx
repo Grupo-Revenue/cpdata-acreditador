@@ -15,7 +15,11 @@ interface AccreditorRanking {
   ultimo_evento: string | null;
 }
 
-export function RankingTable() {
+interface RankingTableProps {
+  limit?: number;
+}
+
+export function RankingTable({ limit = 10 }: RankingTableProps) {
   const { data: ranking, isLoading } = useQuery({
     queryKey: ['accreditor-ranking'],
     queryFn: async () => {
@@ -78,7 +82,7 @@ export function RankingTable() {
       // Sort by completed events (descending)
       return rankingData
         .sort((a, b) => b.eventos_completados - a.eventos_completados)
-        .slice(0, 10);
+        .slice(0, limit);
     }
   });
 
