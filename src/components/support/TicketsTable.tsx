@@ -34,6 +34,7 @@ interface TicketsTableProps {
   tickets: SupportTicket[];
   canEdit: boolean;
   canView?: boolean;
+  showCreatorColumns?: boolean;
   onEdit: (ticket: SupportTicket) => void;
   onView?: (ticket: SupportTicket) => void;
 }
@@ -50,8 +51,10 @@ const priorityConfig: Record<string, { label: string; className: string }> = {
   baja: { label: 'Baja', className: 'bg-muted text-muted-foreground border-muted' },
 };
 
-export function TicketsTable({ tickets, canEdit, canView, onEdit, onView }: TicketsTableProps) {
+export function TicketsTable({ tickets, canEdit, canView, showCreatorColumns = true, onEdit, onView }: TicketsTableProps) {
   const showActions = canEdit || canView;
+  const baseCols = 4 + (showCreatorColumns ? 2 : 0);
+  const totalCols = baseCols + (showActions ? 1 : 0);
   return (
     <div className="rounded-md border">
       <Table>
@@ -59,8 +62,8 @@ export function TicketsTable({ tickets, canEdit, canView, onEdit, onView }: Tick
           <TableRow>
             <TableHead className="w-20">ID</TableHead>
             <TableHead>Motivo</TableHead>
-            <TableHead className="w-36">Creado por</TableHead>
-            <TableHead className="w-36">Responsable</TableHead>
+            {showCreatorColumns && <TableHead className="w-36">Creado por</TableHead>}
+            {showCreatorColumns && <TableHead className="w-36">Responsable</TableHead>}
             <TableHead className="w-28">Estado</TableHead>
             <TableHead className="w-28">Prioridad</TableHead>
             <TableHead className="w-32">Fecha</TableHead>
@@ -70,7 +73,7 @@ export function TicketsTable({ tickets, canEdit, canView, onEdit, onView }: Tick
         <TableBody>
           {tickets.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={showActions ? 8 : 7} className="text-center text-muted-foreground py-8">
+              <TableCell colSpan={totalCols} className="text-center text-muted-foreground py-8">
                 No hay tickets para mostrar
               </TableCell>
             </TableRow>
@@ -82,14 +85,18 @@ export function TicketsTable({ tickets, canEdit, canView, onEdit, onView }: Tick
                 <TableRow key={ticket.id}>
                   <TableCell className="font-medium">#{ticket.ticket_number}</TableCell>
                   <TableCell className="max-w-xs truncate">{ticket.motivo}</TableCell>
-                  <TableCell className="text-sm">
-                    {ticket.creator_nombre} {ticket.creator_apellido}
-                  </TableCell>
-                  <TableCell className="text-sm">
-                    {ticket.editor_nombre
-                      ? `${ticket.editor_nombre} ${ticket.editor_apellido}`
-                      : '-'}
-                  </TableCell>
+                  {showCreatorColumns && (
+                    <TableCell className="text-sm">
+                      {ticket.creator_nombre} {ticket.creator_apellido}
+                    </TableCell>
+                  )}
+                  {showCreatorColumns && (
+                    <TableCell className="text-sm">
+                      {ticket.editor_nombre
+                        ? `${ticket.editor_nombre} ${ticket.editor_apellido}`
+                        : '-'}
+                    </TableCell>
+                  )}
                   <TableCell>
                     <Badge variant="outline" className={sc?.className}>{sc?.label}</Badge>
                   </TableCell>
