@@ -118,19 +118,21 @@ export default function SupportPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Tickets de Soporte</CardTitle>
+          <CardTitle>{isAdmin ? 'Tickets de Soporte' : 'Mis Tickets'}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex flex-col sm:flex-row gap-3">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Buscar por nombre del creador..."
-                value={searchCreator}
-                onChange={e => setSearchCreator(e.target.value)}
-                className="pl-9"
-              />
-            </div>
+            {isAdmin && (
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Buscar por nombre del creador..."
+                  value={searchCreator}
+                  onChange={e => setSearchCreator(e.target.value)}
+                  className="pl-9"
+                />
+              </div>
+            )}
             <Select value={filterPriority} onValueChange={setFilterPriority}>
               <SelectTrigger className="w-full sm:w-[180px]">
                 <SelectValue placeholder="Prioridad" />
@@ -155,7 +157,7 @@ export default function SupportPage() {
               ) : pendingTickets.length === 0 ? (
                 <EmptyState icon={HeadphonesIcon} title="Sin tickets pendientes" description="No se encontraron tickets pendientes con los filtros aplicados." />
               ) : (
-                <TicketsTable tickets={pendingTickets} canEdit={isAdmin} canView={!isAdmin} onEdit={handleEdit} onView={handleView} />
+                <TicketsTable tickets={pendingTickets} canEdit={isAdmin} canView={!isAdmin} showCreatorColumns={isAdmin} onEdit={handleEdit} onView={handleView} />
               )}
             </TabsContent>
             <TabsContent value="resueltos">
@@ -164,7 +166,7 @@ export default function SupportPage() {
               ) : resolvedTickets.length === 0 ? (
                 <EmptyState icon={HeadphonesIcon} title="Sin tickets resueltos" description="No se encontraron tickets resueltos con los filtros aplicados." />
               ) : (
-                <TicketsTable tickets={resolvedTickets} canEdit={isAdmin} canView={!isAdmin} onEdit={handleEdit} onView={handleView} />
+                <TicketsTable tickets={resolvedTickets} canEdit={isAdmin} canView={!isAdmin} showCreatorColumns={isAdmin} onEdit={handleEdit} onView={handleView} />
               )}
             </TabsContent>
           </Tabs>
