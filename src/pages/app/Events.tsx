@@ -4,30 +4,12 @@ import { AppShell } from '@/components/layout/AppShell';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { LoadingState } from '@/components/ui/LoadingState';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Card, CardContent } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { Calendar, AlertCircle, Pencil, Users } from 'lucide-react';
-import { useEffect, useState } from 'react';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious, PaginationEllipsis } from '@/components/ui/pagination';
-import { EventEditDialog } from '@/components/events/EventEditDialog';
-import { EventTeamDialog } from '@/components/events/EventTeamDialog';
+import { Calendar, AlertCircle } from 'lucide-react';
+import { useEffect, useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-
-function getStageBadgeClass(stage: string): string {
-  const s = stage.toLowerCase();
-  if (s.includes('ganado') || s.includes('cerrado ganado') || s.includes('completado') || s.includes('firmado'))
-    return 'bg-success/10 text-success border-success/20';
-  if (s.includes('progreso') || s.includes('activ') || s.includes('en curso'))
-    return 'bg-primary/10 text-primary border-primary/20';
-  if (s.includes('pendiente') || s.includes('espera') || s.includes('revisión'))
-    return 'bg-warning/10 text-warning border-warning/20';
-  if (s.includes('perdido') || s.includes('cancelado') || s.includes('rechazado'))
-    return 'bg-destructive/10 text-destructive border-destructive/20';
-  return 'bg-muted text-muted-foreground border-muted';
-}
+import { EventsAdminTable } from '@/components/events/EventsAdminTable';
+import { EventsUserTable } from '@/components/events/EventsUserTable';
 
 interface HubSpotDeal {
   id: string;
@@ -44,9 +26,9 @@ interface HubSpotDeal {
 
 export default function EventsPage() {
   const { toast } = useToast();
-  const { hasRole } = useAuth();
-  const canEdit = hasRole('superadmin') || hasRole('administracion');
-  const canAssignTeam = hasRole('superadmin');
+  const { hasRole, user } = useAuth();
+  const isAdmin = hasRole('superadmin') || hasRole('administracion');
+  const isSupervisor = hasRole('supervisor');
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['hubspot-deals'],
@@ -70,14 +52,14 @@ export default function EventsPage() {
     }
   }, [error]);
 
-  const deals = data?.deals ?? [];
+  const allDeals = data?.deals ?? [];
   const notConfigured = data?.error === 'hubspot_not_configured';
 
   // Sync nombre_del_evento from HubSpot to local events table
   useEffect(() => {
-    if (deals.length === 0) return;
+    if (allDeals.length === 0) return;
     const syncNames = async () => {
-      for (const deal of deals) {
+      for (const deal of allDeals) {
         if (deal.nombre_del_evento && deal.id) {
           await supabase
             .from('events')
@@ -87,20 +69,29 @@ export default function EventsPage() {
       }
     };
     syncNames();
-  }, [deals]);
+  }, [allDeals]);
 
-  const PAGE_SIZE = 5;
-  const [currentPage, setCurrentPage] = useState(1);
-  const [editingDeal, setEditingDeal] = useState<HubSpotDeal | null>(null);
-  const [editDialogOpen, setEditDialogOpen] = useState(false);
-  const [teamDeal, setTeamDeal] = useState<HubSpotDeal | null>(null);
-  const [teamDialogOpen, setTeamDialogOpen] = useState(false);
-  const totalPages = Math.ceil(deals.length / PAGE_SIZE);
-  const paginatedDeals = deals.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+  // For supervisor/acreditador: fetch assigned deal IDs
+  const { data: assignedDealIds } = useQuery({
+    queryKey: ['assigned-deal-ids', user?.id],
+    enabled: !isAdmin && !!user?.id,
+    queryFn: async () => {
+      const { data: assignments } = await supabase
+        .from('event_accreditors')
+        .select('event_id, events(hubspot_deal_id)')
+        .eq('user_id', user!.id);
 
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [deals.length]);
+      return (assignments ?? [])
+        .map((a: any) => a.events?.hubspot_deal_id)
+        .filter(Boolean) as string[];
+    },
+  });
+
+  const userDeals = useMemo(() => {
+    if (isAdmin) return allDeals;
+    if (!assignedDealIds) return [];
+    return allDeals.filter((d) => assignedDealIds.includes(d.id));
+  }, [isAdmin, allDeals, assignedDealIds]);
 
   return (
     <AppShell>
@@ -121,121 +112,17 @@ export default function EventsPage() {
           title="HubSpot no configurado"
           description="Configura el token de HubSpot en la sección de Configuración para ver los eventos."
         />
-      ) : deals.length === 0 ? (
+      ) : userDeals.length === 0 ? (
         <EmptyState
           icon={Calendar}
           title="Sin eventos"
-          description="No se encontraron negocios en el pipeline y etapa configurados."
+          description={isAdmin ? "No se encontraron negocios en el pipeline y etapa configurados." : "No tienes eventos asignados."}
         />
+      ) : isAdmin ? (
+        <EventsAdminTable deals={userDeals} />
       ) : (
-        <>
-        <Card>
-          <CardContent className="p-0">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Id</TableHead>
-                  <TableHead>Nombre del Evento</TableHead>
-                  <TableHead>Tipo</TableHead>
-                  <TableHead>Asistentes</TableHead>
-                  <TableHead>Locación</TableHead>
-                  <TableHead>Horario</TableHead>
-                  <TableHead>Fecha Inicio</TableHead>
-                  <TableHead>Fecha Fin</TableHead>
-                   <TableHead>Etapa</TableHead>
-                   <TableHead className="w-[70px]">Acciones</TableHead>
-                 </TableRow>
-              </TableHeader>
-              <TableBody>
-                {paginatedDeals.map((deal) => (
-                  <TableRow key={deal.id}>
-                    <TableCell className="font-medium">{deal.dealname ?? '—'}</TableCell>
-                    <TableCell>{deal.nombre_del_evento ?? '—'}</TableCell>
-                    <TableCell>{deal.tipo_de_evento ?? '—'}</TableCell>
-                    <TableCell>{deal.cantidad_de_asistentes ?? '—'}</TableCell>
-                    <TableCell>{deal.locacion_del_evento ?? '—'}</TableCell>
-                    <TableCell>{deal.hora_de_inicio_y_fin_del_evento ?? '—'}</TableCell>
-                    <TableCell>{deal.fecha_inicio_del_evento ?? '—'}</TableCell>
-                    <TableCell>{deal.fecha_fin_del_evento ?? '—'}</TableCell>
-                    <TableCell>
-                       {deal.dealstage ? (
-                         <Badge variant="outline" className={getStageBadgeClass(deal.dealstage)}>
-                           {deal.dealstage}
-                         </Badge>
-                       ) : '—'}
-                     </TableCell>
-                     <TableCell className="flex gap-1">
-                        {canEdit && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => { setEditingDeal(deal); setEditDialogOpen(true); }}
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                        )}
-                        {canAssignTeam && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => { setTeamDeal(deal); setTeamDialogOpen(true); }}
-                          >
-                            <Users className="h-4 w-4" />
-                          </Button>
-                        )}
-                      </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
-
-        {totalPages > 1 && (
-          <Pagination className="mt-4">
-            <PaginationContent>
-              {currentPage > 1 && (
-                <PaginationItem>
-                  <PaginationPrevious href="#" onClick={(e) => { e.preventDefault(); setCurrentPage(p => p - 1); }} />
-                </PaginationItem>
-              )}
-              {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => {
-                if (totalPages <= 7 || page === 1 || page === totalPages || Math.abs(page - currentPage) <= 1) {
-                  return (
-                    <PaginationItem key={page}>
-                      <PaginationLink href="#" isActive={page === currentPage} onClick={(e) => { e.preventDefault(); setCurrentPage(page); }}>
-                        {page}
-                      </PaginationLink>
-                    </PaginationItem>
-                  );
-                }
-                if (page === 2 && currentPage > 3) return <PaginationEllipsis key="start-ellipsis" />;
-                if (page === totalPages - 1 && currentPage < totalPages - 2) return <PaginationEllipsis key="end-ellipsis" />;
-                return null;
-              })}
-              {currentPage < totalPages && (
-                <PaginationItem>
-                  <PaginationNext href="#" onClick={(e) => { e.preventDefault(); setCurrentPage(p => p + 1); }} />
-                </PaginationItem>
-              )}
-            </PaginationContent>
-          </Pagination>
-        )}
-      </>
+        <EventsUserTable deals={userDeals} isSupervisor={isSupervisor} />
       )}
-
-      <EventEditDialog
-        deal={editingDeal}
-        open={editDialogOpen}
-        onOpenChange={setEditDialogOpen}
-      />
-
-      <EventTeamDialog
-        dealId={teamDeal?.id ?? null}
-        dealName={teamDeal?.nombre_del_evento ?? teamDeal?.dealname ?? null}
-        open={teamDialogOpen}
-        onOpenChange={setTeamDialogOpen}
-      />
     </AppShell>
   );
 }
