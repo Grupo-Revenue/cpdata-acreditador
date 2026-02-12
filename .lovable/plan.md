@@ -1,70 +1,97 @@
 
 
-## Vista de Eventos para Supervisor y Acreditador
+## Selector de Rol al Iniciar Sesion
 
-### Contexto
+### Objetivo
 
-Actualmente la pagina de Eventos muestra todos los deals de HubSpot con acciones de edicion y asignacion de equipo (solo para admin/superadmin). Para los roles supervisor y acreditador se necesita una vista diferente que muestre solo los eventos en los que estan asignados, con columnas reducidas, filtros por columna y botones de accion distintos.
+Cuando un usuario con mas de un rol inicia sesion (o recarga la pagina), mostrar un dialogo modal para que seleccione con cual rol desea operar. Si el usuario tiene un solo rol, se salta este paso y entra directamente.
 
-### Enfoque
+### Flujo
 
-La pagina de Eventos detectara el rol del usuario y mostrara una vista diferente segun corresponda:
-- **Superadmin / Administracion**: Vista actual sin cambios (tabla completa con edicion y asignacion de equipo)
-- **Supervisor / Acreditador**: Vista nueva con solo sus eventos asignados, columnas reducidas, filtros y botones de accion
+1. Usuario inicia sesion -> AuthContext carga roles
+2. `DashboardRedirect` detecta que el usuario tiene multiples roles
+3. Se muestra un dialogo modal con los roles disponibles como opciones
+4. El usuario selecciona un rol -> se guarda como `activeRole` en el contexto
+5. Se redirige al dashboard correspondiente al rol seleccionado
 
-Para supervisor/acreditador, se obtienen los deals de HubSpot y se filtran cruzando con `event_accreditors` + `events` para mostrar solo los eventos asignados al usuario.
+### Concepto de "Rol Activo"
+
+Se agrega un nuevo estado `activeRole` al `AuthContext`. Este rol activo determina:
+- A cual dashboard se redirige
+- Que items del sidebar se muestran
+- Que permisos se aplican en las vistas
+
+El usuario podra cambiar de rol en cualquier momento desde el sidebar (sin cerrar sesion).
 
 ### Cambios
 
 | Archivo | Cambio |
 |---------|--------|
-| `src/pages/app/Events.tsx` | Detectar rol y renderizar vista admin o vista supervisor/acreditador. La vista supervisor/acreditador filtra deals por asignacion del usuario. |
-| `src/components/events/EventsUserTable.tsx` | **Nuevo componente** con la tabla para supervisor/acreditador: 6 columnas (Id, Nombre del Evento, Tipo, Locacion, Fecha Inicio, Horario), filtros de texto por columna, paginacion, y columna de acciones con botones "Firma digital" y "Gestion del evento" (solo supervisor). |
-
-### Columnas de la tabla supervisor/acreditador
-
-| Columna | Campo HubSpot | Filtro |
-|---------|--------------|--------|
-| Id | dealname | Texto |
-| Nombre del Evento | nombre_del_evento | Texto |
-| Tipo | tipo_de_evento | Texto |
-| Locacion | locacion_del_evento | Texto |
-| Fecha Inicio | fecha_inicio_del_evento | Texto |
-| Horario | hora_de_inicio_y_fin_del_evento | Texto |
-| Acciones | - | - |
-
-### Acciones por rol
-
-- **Firma digital**: Visible para supervisor y acreditador (funcionalidad pendiente, por ahora solo el boton)
-- **Gestion del evento**: Visible solo para supervisor (funcionalidad pendiente, por ahora solo el boton)
+| `src/contexts/AuthContext.tsx` | Agregar estado `activeRole: AppRole | null` y funcion `setActiveRole`. Exponer ambos en el contexto. Modificar `isAdmin` para que use `activeRole` en lugar de revisar todos los roles. Agregar `getDefaultDashboard` que use `activeRole`. |
+| `src/components/auth/RoleSelectDialog.tsx` | **Nuevo componente**. Dialogo modal que muestra los roles del usuario como tarjetas seleccionables. Recibe los roles disponibles y un callback `onSelect`. No se puede cerrar sin seleccionar (sin boton X). |
+| `src/pages/dashboard/DashboardRedirect.tsx` | Si el usuario tiene mas de 1 rol y no tiene `activeRole` seleccionado, mostrar `RoleSelectDialog`. Si tiene 1 solo rol, asignarlo automaticamente como `activeRole`. Si ya tiene `activeRole`, redirigir al dashboard correspondiente. |
+| `src/components/layout/Sidebar.tsx` | Agregar boton/indicador del rol activo en el footer del sidebar, con opcion de cambiar rol (abre el mismo `RoleSelectDialog`). Filtrar items del sidebar segun `activeRole` en lugar de todos los roles. |
+| `src/components/auth/ProtectedRoute.tsx` | Actualizar verificacion de `requiredRoles` para comparar contra `activeRole` en lugar de todos los roles del usuario. |
 
 ### Detalle tecnico
 
-**Filtrado de eventos asignados:**
+**Nuevo estado en AuthContext:**
 
 ```text
-// 1. Obtener event_ids asignados al usuario
-const { data: assignments } = await supabase
-  .from('event_accreditors')
-  .select('event_id, events(hubspot_deal_id)')
-  .eq('user_id', user.id);
+const [activeRole, setActiveRole] = useState<AppRole | null>(null);
 
-// 2. Extraer hubspot_deal_ids
-const assignedDealIds = assignments
-  .map(a => a.events?.hubspot_deal_id)
-  .filter(Boolean);
-
-// 3. Filtrar deals de HubSpot
-const userDeals = allDeals.filter(d => assignedDealIds.includes(d.id));
+// Se resetea al cerrar sesion
+const signOut = async () => {
+  setActiveRole(null);
+  await supabase.auth.signOut();
+  ...
+};
 ```
 
-**Filtros por columna:**
-- Inputs de texto encima de cada columna en el header de la tabla
-- Filtrado local en frontend (los datos ya estan cargados)
-- Se resetea la paginacion al cambiar un filtro
+**RoleSelectDialog (nuevo componente):**
 
-**Botones de accion:**
-- Icono de firma (PenTool) para "Firma digital"
-- Icono de gestion (ClipboardList) para "Gestion del evento" (solo supervisor)
-- Ambos sin funcionalidad por ahora (onClick placeholder con toast informativo)
+- Dialogo no descartable (sin overlay click ni boton X)
+- Muestra cada rol como una tarjeta con icono y nombre
+- Al seleccionar, llama a `setActiveRole(role)` del contexto
+
+**Logica en DashboardRedirect:**
+
+```text
+if (roles.length === 1) {
+  setActiveRole(roles[0]);
+  return <Navigate to={getDefaultDashboard(roles[0])} />;
+}
+
+if (roles.length > 1 && !activeRole) {
+  return <RoleSelectDialog roles={roles} onSelect={setActiveRole} />;
+}
+
+if (activeRole) {
+  return <Navigate to={getDefaultDashboard(activeRole)} />;
+}
+```
+
+**Sidebar - Cambio de rol:**
+
+- Se muestra el rol activo actual como badge en el footer
+- Boton "Cambiar rol" que abre el RoleSelectDialog
+- Solo visible si el usuario tiene mas de 1 rol
+
+**ProtectedRoute - Verificacion por rol activo:**
+
+```text
+if (requiredRoles && requiredRoles.length > 0) {
+  const hasAccess = requiredRoles.includes(activeRole);
+  if (!hasAccess) return <Navigate to="/app/dashboard" />;
+}
+```
+
+### Iconos por rol
+
+| Rol | Icono |
+|-----|-------|
+| superadmin | Shield |
+| administracion | Settings |
+| supervisor | Eye |
+| acreditador | BadgeCheck |
 
