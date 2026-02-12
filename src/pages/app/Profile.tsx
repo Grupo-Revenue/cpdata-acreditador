@@ -2,7 +2,8 @@ import { useState, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Camera, User, Mail, CreditCard, Phone, Users, Lock, Loader2, GraduationCap, Landmark } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Camera, User, Mail, CreditCard, Phone, Users, Lock, Loader2, GraduationCap, Landmark, Shield, Settings, Eye, BadgeCheck, RefreshCw } from 'lucide-react';
 import { AppShell } from '@/components/layout/AppShell';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -14,8 +15,9 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { useToast } from '@/hooks/use-toast';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth, getDashboardForRole, AppRole } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
+import { RoleSelectDialog } from '@/components/auth/RoleSelectDialog';
 import { BANCOS_CHILE, TIPOS_CUENTA } from '@/components/users/constants';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
@@ -38,10 +40,12 @@ const profileSchema = z.object({
 type ProfileFormValues = z.infer<typeof profileSchema>;
 
 export default function ProfilePage() {
-  const { profile, user, refreshProfile, roles } = useAuth();
+  const { profile, user, refreshProfile, roles, activeRole, setActiveRole } = useAuth();
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [isSaving, setIsSaving] = useState(false);
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
+  const [isRoleDialogOpen, setIsRoleDialogOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const form = useForm<ProfileFormValues>({
@@ -70,6 +74,19 @@ export default function ProfilePage() {
     administracion: 'Administración',
     supervisor: 'Supervisor',
     acreditador: 'Acreditador',
+  };
+
+  const roleIcons: Record<string, typeof Shield> = {
+    superadmin: Shield,
+    administracion: Settings,
+    supervisor: Eye,
+    acreditador: BadgeCheck,
+  };
+
+  const handleRoleSelect = (role: AppRole) => {
+    setActiveRole(role);
+    setIsRoleDialogOpen(false);
+    navigate(getDashboardForRole(role));
   };
 
   const handlePhotoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -301,6 +318,35 @@ export default function ProfilePage() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Rol activo */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2">
+              {activeRole && roleIcons[activeRole] ? (() => { const Icon = roleIcons[activeRole]; return <Icon className="h-5 w-5" />; })() : <Shield className="h-5 w-5" />}
+              Rol activo
+            </CardTitle>
+            <CardDescription>
+              Actualmente operando como <span className="font-medium text-foreground">{activeRole ? roleLabels[activeRole] || activeRole : 'Sin rol'}</span>
+            </CardDescription>
+          </CardHeader>
+          {roles.length > 1 && (
+            <CardContent>
+              <Button variant="outline" className="gap-2" onClick={() => setIsRoleDialogOpen(true)}>
+                <RefreshCw className="h-4 w-4" />
+                Cambiar rol
+              </Button>
+            </CardContent>
+          )}
+        </Card>
+
+        {isRoleDialogOpen && (
+          <RoleSelectDialog
+            open={isRoleDialogOpen}
+            roles={roles}
+            onSelect={handleRoleSelect}
+          />
+        )}
 
         {/* Editable Info */}
         <Card>
