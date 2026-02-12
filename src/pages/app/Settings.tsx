@@ -1,6 +1,7 @@
 import { AppShell } from '@/components/layout/AppShell';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { RolesManager } from '@/components/settings/RolesManager';
+import { PaymentDaySettings } from '@/components/settings/PaymentDaySettings';
 import { HubspotIntegration } from '@/components/settings/HubspotIntegration';
 import { MetaIntegration } from '@/components/settings/MetaIntegration';
 import { WhatsappTemplatesManager } from '@/components/settings/WhatsappTemplatesManager';
@@ -25,7 +26,8 @@ export default function SettingsPage() {
           <TabsTrigger value="whatsapp">Plantillas WhatsApp</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="general">
+        <TabsContent value="general" className="space-y-6">
+          <PaymentDaySettings />
           <RolesManager />
         </TabsContent>
 
