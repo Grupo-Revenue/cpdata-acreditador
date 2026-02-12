@@ -1,40 +1,70 @@
 
 
-## Nueva seccion "Dia de Pago" en Configuracion
+## Agregar columna "Fecha de Pago" en boletas y actualizar configuracion
 
 ### Resumen
 
-Agregar una seccion dentro de la pestana "General" de Configuracion que permita al superadmin seleccionar el dia de pago entre tres opciones fijas: dia 5, 15 o 25 del mes. El valor se almacenara en la tabla `settings` existente con la clave `payment_day`.
+Dos cambios principales:
+1. **Configuracion**: Cambiar el selector de dia de pago para que los 3 dias sean editables (no elegir uno de tres, sino poder modificar los valores de los 3 dias de pago del mes).
+2. **Boletas**: Agregar una columna "Fecha de pago" calculada automaticamente a partir de la fecha del evento y los dias de pago configurados. La logica: se busca el proximo dia de pago igual o posterior a la fecha del evento.
+
+### Logica de calculo
+
+Los dias de pago dividen el mes en ciclos. Dado un evento, la fecha de pago es el proximo dia de pago:
+
+| Fecha evento | Dias de pago (5,15,25) | Fecha de pago |
+|---|---|---|
+| 01-02-2026 | 5,15,25 | 05-02-2026 |
+| 15-05-2026 | 5,15,25 | 25-05-2026 |
+| 26-01-2026 | 5,15,25 | 05-02-2026 |
 
 ### Cambios
 
-| Archivo / Recurso | Cambio |
+| Archivo | Cambio |
 |---|---|
-| **Nuevo componente `src/components/settings/PaymentDaySettings.tsx`** | Componente con RadioGroup que muestra las 3 opciones, lee el valor actual de `settings` y lo actualiza al cambiar |
-| **`src/pages/app/Settings.tsx`** | Importar y agregar `PaymentDaySettings` debajo de `RolesManager` en la pestana General |
-
-No se necesita migracion SQL ya que la tabla `settings` es generica (key/value) y las politicas RLS ya permiten lectura a usuarios autenticados y escritura a superadmins.
+| `src/components/settings/PaymentDaySettings.tsx` | Reemplazar RadioGroup por 3 campos Input numericos editables. Guardar en settings como `"5,15,25"` (comma-separated). Descripcion actualizada. |
+| `src/pages/app/Invoices.tsx` | Agregar query para obtener los dias de pago desde `settings`. Pasar `paymentDays` como prop a `InvoicesTable`. |
+| `src/components/invoices/InvoicesTable.tsx` | Agregar prop `paymentDays: number[]`. Agregar columna "Fecha de pago". Implementar funcion `calcPaymentDate(eventDate, paymentDays)` que encuentra el proximo dia de pago. |
 
 ### Detalle tecnico
 
-**1. PaymentDaySettings.tsx**
+**1. PaymentDaySettings.tsx** - Tres inputs editables:
 
-- Usar `supabase` para consultar `settings` donde `key = 'payment_day'`
-- Si no existe el registro, crearlo con valor por defecto `'5'`
-- Mostrar un `Card` con titulo "Dia de Pago" y descripcion
-- Usar `RadioGroup` con 3 opciones:
-  - `5` - "Dia 5 del mes"
-  - `15` - "Dia 15 del mes"  
-  - `25` - "Dia 25 del mes"
-- Al cambiar la seleccion, hacer `upsert` en la tabla `settings` con `key = 'payment_day'`
-- Mostrar toast de confirmacion al guardar
+- Estado: `days: [5, 15, 25]` (array de 3 numeros)
+- Guardar en `settings` con key `payment_days` y value `"5,15,25"`
+- Validacion: valores entre 1 y 28, ordenados de menor a mayor, sin duplicados
+- Al guardar cualquier cambio, hacer upsert y mostrar toast
 
-**2. Settings.tsx** - Agregar en la pestana General:
+**2. Funcion de calculo `calcPaymentDate`:**
 
 ```text
-<TabsContent value="general" className="space-y-6">
-  <PaymentDaySettings />
-  <RolesManager />
-</TabsContent>
+function calcPaymentDate(eventDateStr: string, paymentDays: number[]): Date {
+  const eventDate = new Date(eventDateStr + 'T00:00:00');
+  const day = eventDate.getDate();
+  const sorted = [...paymentDays].sort((a, b) => a - b);
+  
+  // Buscar el proximo dia de pago en el mismo mes
+  for (const pd of sorted) {
+    if (pd > day) {
+      return new Date(eventDate.getFullYear(), eventDate.getMonth(), pd);
+    }
+  }
+  // Si no hay, es el primer dia de pago del mes siguiente
+  const next = new Date(eventDate.getFullYear(), eventDate.getMonth() + 1, sorted[0]);
+  return next;
+}
 ```
 
+**3. InvoicesTable.tsx** - Nueva columna:
+
+- Agregar `paymentDays: number[]` al interface de props
+- Agregar columna "Fecha de pago" despues de "Fecha emision"
+- Calcular usando `calcPaymentDate(inv.events?.event_date, paymentDays)`
+- Formatear como `dd-MM-yyyy`
+- Ajustar colSpan del estado vacio
+
+**4. Invoices.tsx** - Fetch de settings:
+
+- Agregar query para obtener `payment_days` desde la tabla `settings`
+- Parsear el valor comma-separated a `number[]`, default `[5, 15, 25]`
+- Pasar como prop a `InvoicesTable`
