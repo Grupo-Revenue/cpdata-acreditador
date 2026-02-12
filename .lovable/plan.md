@@ -1,58 +1,55 @@
 
 
-## Dashboard Supervisor - Metricas reales y ranking
+## Agregar subida de archivos al crear ticket de soporte
 
-### Objetivo
+### Contexto
 
-Reemplazar los datos estaticos del dashboard supervisor por metricas reales consultadas desde la base de datos, filtradas por los eventos asignados al supervisor autenticado.
+Actualmente el dialogo de creacion de tickets solo permite ingresar motivo y prioridad. El dialogo de edicion ya tiene logica de subida de archivos al bucket `ticket-evidence`. Se reutilizara ese mismo patron.
 
-### Metricas (4 tarjetas)
+### Problema
 
-1. **Eventos Hoy**: Cantidad de eventos con `event_date = hoy` donde el supervisor esta asignado en `event_accreditors`
-2. **Eventos Mes**: Cantidad de eventos del mes actual donde el supervisor esta asignado
-3. **Total Participados**: Cantidad total de eventos en los que el supervisor ha participado (todos los registros en `event_accreditors` para su `user_id`)
-4. **Boletas Pagadas**: Cantidad de boletas con `status = 'pagado'` donde `user_id` es el supervisor
-
-### Tabla Ranking Top 5
-
-Reutilizar la logica del componente `RankingTable` existente pero limitado a 5 resultados. Se creara un prop `limit` en `RankingTable` para controlar cuantos resultados mostrar (default 10 para superadmin, 5 para supervisor).
+Al crear el ticket aun no existe un `id` del registro para usarlo como ruta en el storage. Se debe primero insertar el ticket, obtener el `id` retornado, y luego subir el archivo usando ese `id` como carpeta.
 
 ### Cambios
 
 | Archivo | Cambio |
 |---------|--------|
-| `src/pages/dashboard/SupervisorDashboard.tsx` | Reescribir con queries reales usando `useAuth` para obtener el `user.id`, consultar `event_accreditors` + `events` para eventos hoy/mes/total, consultar `invoices` para boletas pagadas. Incluir `RankingTable` con limite de 5. |
-| `src/components/dashboard/RankingTable.tsx` | Agregar prop opcional `limit` (default 10) para controlar `.slice(0, limit)` |
+| `src/components/support/TicketCreateDialog.tsx` | Agregar campo de subida de archivo (imagenes, PDF, docs). Tras insertar el ticket, si hay archivo seleccionado, subirlo al bucket `ticket-evidence` usando el `id` del ticket recien creado y actualizar `evidence_url` en el registro. |
 
 ### Detalle tecnico
 
-**Queries del supervisor:**
+**Flujo de creacion con archivo:**
+
+1. El usuario completa motivo, prioridad y opcionalmente selecciona un archivo
+2. Al hacer clic en "Crear Ticket":
+   - Se inserta el ticket en `support_tickets` con `evidence_url = null`
+   - Se obtiene el `id` del ticket creado usando `.select('id').single()`
+   - Si hay archivo seleccionado, se sube a `ticket-evidence/{ticket_id}/{timestamp}.{ext}`
+   - Se obtiene la URL publica y se actualiza el registro con `evidence_url`
+3. Se muestra confirmacion
+
+**Codigo clave (patron tomado de TicketEditDialog):**
 
 ```text
-// Eventos asignados al supervisor
-const { data: assignments } = await supabase
-  .from('event_accreditors')
-  .select('event_id, events(event_date)')
-  .eq('user_id', userId);
+// Insert ticket y obtener id
+const { data: newTicket, error } = await supabase
+  .from('support_tickets')
+  .insert({ motivo, priority, ... })
+  .select('id')
+  .single();
 
-// Filtrar en frontend: hoy, mes, total
-const today = new Date().toISOString().split('T')[0];
-const eventsToday = assignments.filter(a => a.events?.event_date === today);
-const eventsMonth = assignments.filter(a => {
-  const d = a.events?.event_date;
-  return d && d >= monthStart && d <= monthEnd;
-});
-const totalEvents = assignments.length;
-
-// Boletas pagadas
-const { count } = await supabase
-  .from('invoices')
-  .select('*', { count: 'exact', head: true })
-  .eq('user_id', userId)
-  .eq('status', 'pagado');
+// Si hay archivo, subirlo
+if (file && newTicket) {
+  const filePath = `${newTicket.id}/${Date.now()}.${ext}`;
+  await supabase.storage.from('ticket-evidence').upload(filePath, file);
+  const { publicUrl } = supabase.storage.from('ticket-evidence').getPublicUrl(filePath);
+  await supabase.from('support_tickets').update({ evidence_url: publicUrl }).eq('id', newTicket.id);
+}
 ```
 
-**Layout:**
-- 4 tarjetas de metricas arriba (grid 4 columnas)
-- Tabla de ranking top 5 abajo (ancho completo)
+**UI del campo archivo:**
+- Boton "Subir archivo" con icono Upload (mismo estilo que TicketEditDialog)
+- Acepta imagenes y documentos: `accept="image/*,.pdf,.doc,.docx"`
+- Muestra nombre del archivo seleccionado antes de enviar
+- Estado de carga con texto "Subiendo..."
 
