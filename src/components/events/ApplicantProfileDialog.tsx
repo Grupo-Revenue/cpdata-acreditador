@@ -80,7 +80,14 @@ export function ApplicantProfileDialog({ profile, onClose }: ApplicantProfileDia
           <div className="grid grid-cols-2 gap-3">
             <Field label="Teléfono" value={profile.telefono} />
             <Field label="Referencia de contacto" value={profile.referencia_contacto} />
-            <Field label="Idioma" value={profile.idioma} />
+            <div className="space-y-1">
+              <p className="text-xs font-medium text-muted-foreground">Idiomas</p>
+              <div className="flex flex-wrap gap-1.5 rounded-md bg-muted px-3 py-2 min-h-[36px]">
+                {profile.idioma ? profile.idioma.split(',').map(s => s.trim()).filter(Boolean).map((lang, i) => (
+                  <Badge key={i} variant="secondary">{lang}</Badge>
+                )) : <span className="text-sm">—</span>}
+              </div>
+            </div>
             <Field label="Altura" value={profile.altura} />
           </div>
         </div>
