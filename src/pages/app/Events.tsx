@@ -5,11 +5,13 @@ import { PageHeader } from '@/components/ui/PageHeader';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { LoadingState } from '@/components/ui/LoadingState';
 import { useToast } from '@/hooks/use-toast';
-import { Calendar, AlertCircle } from 'lucide-react';
-import { useEffect, useMemo } from 'react';
+import { Calendar, AlertCircle, UserCheck } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { EventsAdminTable } from '@/components/events/EventsAdminTable';
 import { EventsUserTable } from '@/components/events/EventsUserTable';
+import { EventApplicantsDialog } from '@/components/events/EventApplicantsDialog';
+import { Button } from '@/components/ui/button';
 
 interface HubSpotDeal {
   id: string;
@@ -29,6 +31,7 @@ export default function EventsPage() {
   const { activeRole, user } = useAuth();
   const isAdmin = activeRole === 'superadmin' || activeRole === 'administracion';
   const isSupervisor = activeRole === 'supervisor';
+  const [applicantsOpen, setApplicantsOpen] = useState(false);
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['hubspot-deals'],
@@ -95,14 +98,22 @@ export default function EventsPage() {
 
   return (
     <AppShell>
-      <PageHeader
-        title="Eventos"
-        description="Gestión de eventos y acreditaciones"
-        breadcrumbs={[
-          { label: 'Dashboard', href: '/app/dashboard' },
-          { label: 'Eventos' },
-        ]}
-      />
+      <div className="flex items-center justify-between">
+        <PageHeader
+          title="Eventos"
+          description="Gestión de eventos y acreditaciones"
+          breadcrumbs={[
+            { label: 'Dashboard', href: '/app/dashboard' },
+            { label: 'Eventos' },
+          ]}
+        />
+        {isAdmin && (
+          <Button onClick={() => setApplicantsOpen(true)} variant="outline">
+            <UserCheck className="h-4 w-4 mr-2" />
+            Postulantes
+          </Button>
+        )}
+      </div>
 
       {isLoading ? (
         <LoadingState text="Cargando eventos..." className="py-12" />
@@ -122,6 +133,10 @@ export default function EventsPage() {
         <EventsAdminTable deals={userDeals} />
       ) : (
         <EventsUserTable deals={userDeals} isSupervisor={isSupervisor} />
+      )}
+
+      {isAdmin && (
+        <EventApplicantsDialog open={applicantsOpen} onOpenChange={setApplicantsOpen} />
       )}
     </AppShell>
   );

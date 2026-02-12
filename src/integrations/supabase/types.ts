@@ -16,6 +16,8 @@ export type Database = {
     Tables: {
       event_accreditors: {
         Row: {
+          application_status: Database["public"]["Enums"]["application_status"]
+          contract_status: Database["public"]["Enums"]["contract_status"]
           created_at: string
           event_id: string
           id: string
@@ -23,6 +25,8 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          application_status?: Database["public"]["Enums"]["application_status"]
+          contract_status?: Database["public"]["Enums"]["contract_status"]
           created_at?: string
           event_id: string
           id?: string
@@ -30,6 +34,8 @@ export type Database = {
           user_id: string
         }
         Update: {
+          application_status?: Database["public"]["Enums"]["application_status"]
+          contract_status?: Database["public"]["Enums"]["contract_status"]
           created_at?: string
           event_id?: string
           id?: string
@@ -433,7 +439,9 @@ export type Database = {
     Enums: {
       accreditor_assignment_status: "assigned" | "completed"
       app_role: "superadmin" | "administracion" | "supervisor" | "acreditador"
+      application_status: "pendiente" | "aceptado" | "rechazado"
       approval_status: "pending" | "rejected" | "approved"
+      contract_status: "pendiente" | "firmado" | "rechazado"
       event_status: "pending" | "in_progress" | "completed" | "cancelled"
       invoice_status: "pendiente" | "pagado" | "rechazado"
       ticket_priority: "alta" | "media" | "baja"
@@ -567,7 +575,9 @@ export const Constants = {
     Enums: {
       accreditor_assignment_status: ["assigned", "completed"],
       app_role: ["superadmin", "administracion", "supervisor", "acreditador"],
+      application_status: ["pendiente", "aceptado", "rechazado"],
       approval_status: ["pending", "rejected", "approved"],
+      contract_status: ["pendiente", "firmado", "rechazado"],
       event_status: ["pending", "in_progress", "completed", "cancelled"],
       invoice_status: ["pendiente", "pagado", "rechazado"],
       ticket_priority: ["alta", "media", "baja"],
