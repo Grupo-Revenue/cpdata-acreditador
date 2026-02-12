@@ -1,20 +1,14 @@
 import { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { CalendarDays } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/sonner';
 import { LoadingState } from '@/components/ui/LoadingState';
 
-const PAYMENT_DAY_OPTIONS = [
-  { value: '5', label: 'Día 5 del mes' },
-  { value: '15', label: 'Día 15 del mes' },
-  { value: '25', label: 'Día 25 del mes' },
-];
-
 export function PaymentDaySettings() {
-  const [value, setValue] = useState<string>('5');
+  const [days, setDays] = useState<[number, number, number]>([5, 15, 25]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -22,26 +16,46 @@ export function PaymentDaySettings() {
       const { data } = await supabase
         .from('settings')
         .select('value')
-        .eq('key', 'payment_day')
+        .eq('key', 'payment_days')
         .maybeSingle();
-      if (data?.value) setValue(data.value);
+      if (data?.value) {
+        const parsed = data.value.split(',').map(Number);
+        if (parsed.length === 3 && parsed.every((n) => n >= 1 && n <= 28)) {
+          setDays(parsed as [number, number, number]);
+        }
+      }
       setLoading(false);
     }
     fetch();
   }, []);
 
-  const handleChange = async (newValue: string) => {
-    setValue(newValue);
+  const handleChange = async (index: number, raw: string) => {
+    const num = parseInt(raw, 10);
+    if (isNaN(num) || num < 1 || num > 28) return;
+
+    const updated = [...days] as [number, number, number];
+    updated[index] = num;
+
+    // Validate: no duplicates
+    if (new Set(updated).size !== 3) {
+      toast.error('Los días no pueden repetirse');
+      return;
+    }
+
+    // Sort ascending
+    const sorted = [...updated].sort((a, b) => a - b) as [number, number, number];
+    setDays(sorted);
+
     const { error } = await supabase
       .from('settings')
       .upsert(
-        { key: 'payment_day', value: newValue, description: 'Día de pago mensual' },
+        { key: 'payment_days', value: sorted.join(','), description: 'Días de pago mensuales' },
         { onConflict: 'key' }
       );
     if (error) {
-      toast.error('Error al guardar el día de pago');
+      toast.error('Error al guardar los días de pago');
     } else {
-      toast.success('Día de pago actualizado');
+      toast.success('Días de pago actualizados');
     }
   };
 
@@ -60,23 +74,29 @@ export function PaymentDaySettings() {
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <CalendarDays className="w-5 h-5" />
-          Día de Pago
+          Días de Pago
         </CardTitle>
         <CardDescription>
-          Selecciona el día del mes en que se realizan los pagos
+          Define los 3 días del mes en que se realizan los pagos (valores entre 1 y 28)
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <RadioGroup value={value} onValueChange={handleChange} className="flex flex-col gap-3">
-          {PAYMENT_DAY_OPTIONS.map((opt) => (
-            <div key={opt.value} className="flex items-center space-x-2">
-              <RadioGroupItem value={opt.value} id={`pay-${opt.value}`} />
-              <Label htmlFor={`pay-${opt.value}`} className="cursor-pointer">
-                {opt.label}
-              </Label>
+        <div className="flex gap-4">
+          {days.map((day, i) => (
+            <div key={i} className="flex flex-col gap-1.5">
+              <Label htmlFor={`pay-day-${i}`}>Día {i + 1}</Label>
+              <Input
+                id={`pay-day-${i}`}
+                type="number"
+                min={1}
+                max={28}
+                value={day}
+                onChange={(e) => handleChange(i, e.target.value)}
+                className="w-20"
+              />
             </div>
           ))}
-        </RadioGroup>
+        </div>
       </CardContent>
     </Card>
   );

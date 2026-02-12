@@ -23,6 +23,22 @@ export default function InvoicesPage() {
   const [editInvoice, setEditInvoice] = useState<InvoiceRow | null>(null);
   const [whatsappInvoice, setWhatsappInvoice] = useState<InvoiceRow | null>(null);
 
+  const { data: paymentDays = [5, 15, 25] } = useQuery({
+    queryKey: ['payment_days'],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('settings')
+        .select('value')
+        .eq('key', 'payment_days')
+        .maybeSingle();
+      if (data?.value) {
+        const parsed = data.value.split(',').map(Number);
+        if (parsed.length === 3 && parsed.every((n) => n >= 1 && n <= 28)) return parsed;
+      }
+      return [5, 15, 25];
+    },
+  });
+
   const { data: invoices = [], isLoading } = useQuery({
     queryKey: ['invoices'],
     queryFn: async () => {
@@ -119,6 +135,7 @@ export default function InvoicesPage() {
         <InvoicesTable
           invoices={filtered}
           isAdmin={isAdmin}
+          paymentDays={paymentDays}
           onEdit={setEditInvoice}
           onWhatsapp={setWhatsappInvoice}
           onUpload={setEditInvoice}

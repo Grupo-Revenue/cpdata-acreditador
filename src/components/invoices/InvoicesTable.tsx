@@ -25,6 +25,7 @@ export interface InvoiceRow {
 interface InvoicesTableProps {
   invoices: InvoiceRow[];
   isAdmin: boolean;
+  paymentDays: number[];
   onEdit: (invoice: InvoiceRow) => void;
   onWhatsapp: (invoice: InvoiceRow) => void;
   onUpload: (invoice: InvoiceRow) => void;
@@ -44,7 +45,20 @@ function formatInvoiceId(num: number): string {
   return 'B' + String(num).padStart(3, '0');
 }
 
-export function InvoicesTable({ invoices, isAdmin, onEdit, onWhatsapp, onUpload }: InvoicesTableProps) {
+function calcPaymentDate(eventDateStr: string, paymentDays: number[]): Date {
+  const eventDate = new Date(eventDateStr + 'T00:00:00');
+  const day = eventDate.getDate();
+  const sorted = [...paymentDays].sort((a, b) => a - b);
+
+  for (const pd of sorted) {
+    if (pd > day) {
+      return new Date(eventDate.getFullYear(), eventDate.getMonth(), pd);
+    }
+  }
+  return new Date(eventDate.getFullYear(), eventDate.getMonth() + 1, sorted[0]);
+}
+
+export function InvoicesTable({ invoices, isAdmin, paymentDays, onEdit, onWhatsapp, onUpload }: InvoicesTableProps) {
   return (
     <div className="rounded-md border">
       <Table>
@@ -59,13 +73,14 @@ export function InvoicesTable({ invoices, isAdmin, onEdit, onWhatsapp, onUpload 
             
             <TableHead>Valor</TableHead>
             <TableHead>Fecha emisión</TableHead>
+            <TableHead>Fecha de pago</TableHead>
             <TableHead>Acciones</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {invoices.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={9} className="text-center text-muted-foreground py-8">
+              <TableCell colSpan={10} className="text-center text-muted-foreground py-8">
                 No hay boletas para mostrar
               </TableCell>
             </TableRow>
@@ -104,6 +119,11 @@ export function InvoicesTable({ invoices, isAdmin, onEdit, onWhatsapp, onUpload 
 
                   <TableCell>{formatCLP(inv.amount)}</TableCell>
                   <TableCell>{format(new Date(inv.emission_date + 'T00:00:00'), 'dd-MM-yyyy')}</TableCell>
+                  <TableCell>
+                    {inv.events?.event_date
+                      ? format(calcPaymentDate(inv.events.event_date, paymentDays), 'dd-MM-yyyy')
+                      : '-'}
+                  </TableCell>
                   <TableCell>
                     <div className="flex gap-1">
                       {isAdmin ? (
