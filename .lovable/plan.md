@@ -1,44 +1,58 @@
 
 
-## Plan: Agregar campo "Numero de Boleta" ingresado por el usuario
+## Dashboard Supervisor - Metricas reales y ranking
 
-### Contexto
+### Objetivo
 
-Actualmente existe un `invoice_number` auto-generado (B001, B002...) que sirve como ID interno. El usuario necesita un campo adicional donde el supervisor o acreditador ingrese el numero real de su boleta de honorarios al momento de subirla.
+Reemplazar los datos estaticos del dashboard supervisor por metricas reales consultadas desde la base de datos, filtradas por los eventos asignados al supervisor autenticado.
+
+### Metricas (4 tarjetas)
+
+1. **Eventos Hoy**: Cantidad de eventos con `event_date = hoy` donde el supervisor esta asignado en `event_accreditors`
+2. **Eventos Mes**: Cantidad de eventos del mes actual donde el supervisor esta asignado
+3. **Total Participados**: Cantidad total de eventos en los que el supervisor ha participado (todos los registros en `event_accreditors` para su `user_id`)
+4. **Boletas Pagadas**: Cantidad de boletas con `status = 'pagado'` donde `user_id` es el supervisor
+
+### Tabla Ranking Top 5
+
+Reutilizar la logica del componente `RankingTable` existente pero limitado a 5 resultados. Se creara un prop `limit` en `RankingTable` para controlar cuantos resultados mostrar (default 10 para superadmin, 5 para supervisor).
 
 ### Cambios
 
-#### 1. Base de datos - Nueva columna
+| Archivo | Cambio |
+|---------|--------|
+| `src/pages/dashboard/SupervisorDashboard.tsx` | Reescribir con queries reales usando `useAuth` para obtener el `user.id`, consultar `event_accreditors` + `events` para eventos hoy/mes/total, consultar `invoices` para boletas pagadas. Incluir `RankingTable` con limite de 5. |
+| `src/components/dashboard/RankingTable.tsx` | Agregar prop opcional `limit` (default 10) para controlar `.slice(0, limit)` |
 
-Agregar columna `numero_boleta` (text, nullable) a la tabla `invoices`. Inicia vacia y se llena cuando el usuario sube su boleta.
+### Detalle tecnico
+
+**Queries del supervisor:**
 
 ```text
-ALTER TABLE invoices ADD COLUMN numero_boleta text DEFAULT NULL;
+// Eventos asignados al supervisor
+const { data: assignments } = await supabase
+  .from('event_accreditors')
+  .select('event_id, events(event_date)')
+  .eq('user_id', userId);
+
+// Filtrar en frontend: hoy, mes, total
+const today = new Date().toISOString().split('T')[0];
+const eventsToday = assignments.filter(a => a.events?.event_date === today);
+const eventsMonth = assignments.filter(a => {
+  const d = a.events?.event_date;
+  return d && d >= monthStart && d <= monthEnd;
+});
+const totalEvents = assignments.length;
+
+// Boletas pagadas
+const { count } = await supabase
+  .from('invoices')
+  .select('*', { count: 'exact', head: true })
+  .eq('user_id', userId)
+  .eq('status', 'pagado');
 ```
 
-Actualizar la politica RLS existente "Users can update own file_url" para permitir que los usuarios tambien actualicen `numero_boleta` (la politica actual ya permite UPDATE en la fila completa, solo el codigo frontend limita los campos).
-
-#### 2. InvoicesTable.tsx - Mostrar columna
-
-- Agregar columna "N Boleta" en la tabla entre "ID Boleta" y "Estado"
-- Mostrar el valor de `numero_boleta` o "-" si esta vacio
-- Agregar el campo al tipo `InvoiceRow`
-
-#### 3. InvoiceEditDialog.tsx - Campo editable
-
-- Agregar estado `numeroBoleta` al dialogo
-- Para **supervisores/acreditadores** (no admin): mostrar campo de texto "Numero de boleta" junto al campo de archivo, obligatorio al subir
-- Para **admin**: mostrar el campo como editable tambien
-- Incluir `numero_boleta` en el payload de update tanto para admin como para no-admin
-
-#### 4. EventTeamDialog.tsx - Sin cambios
-
-La creacion automatica de boletas al asignar equipo ya dejara `numero_boleta` como `null` por defecto, que es el comportamiento deseado.
-
-### Flujo resultante
-
-1. Admin asigna equipo al evento -> se crea registro de boleta con `numero_boleta = null`
-2. Supervisor/acreditador abre su boleta -> ve campo "Numero de boleta" + campo archivo
-3. Ingresa el numero y sube el archivo -> se actualiza `numero_boleta` y `file_url`
-4. En la tabla se muestra el numero ingresado en la columna "N Boleta"
+**Layout:**
+- 4 tarjetas de metricas arriba (grid 4 columnas)
+- Tabla de ranking top 5 abajo (ancho completo)
 
