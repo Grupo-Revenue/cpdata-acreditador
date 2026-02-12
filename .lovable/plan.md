@@ -1,52 +1,62 @@
 
 
-## Dashboard de Administracion igual al de Superadmin
+## Ajustar vista de Soporte para supervisor y acreditador
 
-### Problema
+### Situacion actual
 
-El dashboard de administracion (`AdminDashboard`) muestra contenido estatico basico (stats hardcodeados y una card vacia de "Proximos Eventos"), mientras que el de superadmin (`SuperadminDashboard`) tiene metricas reales desde HubSpot, conteo de usuarios pendientes, ranking de acreditadores y accesos rapidos.
+Las politicas RLS en `support_tickets` ya estan correctamente configuradas:
+- **Admins**: ven todos los tickets (`is_admin(auth.uid())`)
+- **Usuarios normales**: solo ven sus propios tickets (`created_by = auth.uid()`)
 
-### Solucion
+Por lo tanto, la base de datos ya filtra correctamente. Sin embargo, la interfaz muestra elementos innecesarios para roles no-admin (supervisor/acreditador), como el buscador "por nombre del creador" y la columna "Creado por" en la tabla, cuando solo van a ver sus propios tickets.
 
-Reemplazar el contenido de `AdminDashboard` para que reutilice el mismo componente `SuperadminDashboard`, simplemente cambiando el titulo del PageHeader.
+### Cambios propuestos
 
 | Archivo | Cambio |
 |---------|--------|
-| `src/pages/dashboard/AdminDashboard.tsx` | Reemplazar todo el contenido actual por una importacion y renderizado de `SuperadminDashboard`, pasando un prop opcional para cambiar el titulo a "Dashboard Administracion". Alternativamente, hacer que `AdminDashboard` importe y renderice directamente la misma logica. |
-| `src/pages/dashboard/SuperadminDashboard.tsx` | Agregar un prop opcional `title` y `description` para permitir que el componente sea reutilizado con diferentes titulos. Por defecto mantiene "Dashboard Superadmin". |
+| `src/pages/app/Support.tsx` | Ocultar el campo de busqueda "Buscar por nombre del creador" cuando el usuario no es admin, ya que solo vera sus propios tickets. Mantener el filtro de prioridad visible para todos. Cambiar el titulo de la card a "Mis Tickets" para no-admins. |
+| `src/components/support/TicketsTable.tsx` | Ocultar las columnas "Creado por" y "Responsable" cuando el usuario no es admin, ya que esa informacion no es relevante para quien solo ve sus propios tickets. Agregar un prop `showCreator` para controlar la visibilidad de esas columnas. |
 
 ### Detalle tecnico
 
-**SuperadminDashboard.tsx** - Agregar props opcionales:
+**Support.tsx** - Condicionar filtro de busqueda:
 
 ```text
-interface SuperadminDashboardProps {
-  title?: string;
-  description?: string;
-}
+// Solo mostrar el buscador por nombre si es admin
+{isAdmin && (
+  <div className="relative flex-1">
+    <Search ... />
+    <Input placeholder="Buscar por nombre del creador..." ... />
+  </div>
+)}
+```
 
-export default function SuperadminDashboard({
-  title = 'Dashboard Superadmin',
-  description = 'Vista general del sistema',
-}: SuperadminDashboardProps) {
-  // ... resto del componente sin cambios, usando title y description en PageHeader
+**TicketsTable.tsx** - Agregar prop para columnas:
+
+```text
+interface TicketsTableProps {
+  tickets: SupportTicket[];
+  canEdit: boolean;
+  canView?: boolean;
+  showCreatorColumns?: boolean;  // nuevo prop, default true
+  onEdit: (ticket: SupportTicket) => void;
+  onView?: (ticket: SupportTicket) => void;
 }
 ```
 
-**AdminDashboard.tsx** - Simplificar a:
+- Si `showCreatorColumns` es `false`, ocultar las columnas "Creado por" y "Responsable" del header y del body
+- Ajustar el `colSpan` del estado vacio acorde
+
+**Uso en Support.tsx:**
 
 ```text
-import SuperadminDashboard from './SuperadminDashboard';
-
-export default function AdminDashboard() {
-  return (
-    <SuperadminDashboard
-      title="Dashboard Administracion"
-      description="Gestion de eventos y personal"
-    />
-  );
-}
+<TicketsTable
+  tickets={pendingTickets}
+  canEdit={isAdmin}
+  canView={!isAdmin}
+  showCreatorColumns={isAdmin}
+  onEdit={handleEdit}
+  onView={handleView}
+/>
 ```
-
-Esto elimina toda la duplicacion y asegura que ambos dashboards se mantengan sincronizados automaticamente ante futuros cambios.
 
