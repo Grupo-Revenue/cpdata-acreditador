@@ -15,6 +15,7 @@ import { useToast } from '@/hooks/use-toast';
 import { UserWithRoles } from './types';
 import { ApprovalStatus } from '@/contexts/AuthContext';
 import { BANCOS_CHILE, TIPOS_CUENTA } from './constants';
+import { LanguageTagsInput } from '@/components/ui/LanguageTagsInput';
 
 interface UserEditDialogProps {
   user: UserWithRoles | null;
@@ -156,9 +157,9 @@ export function UserEditDialog({ user, open, onOpenChange, onSuccess }: UserEdit
             {/* Información adicional */}
             <Label className="text-base font-semibold">Información adicional</Label>
             <div className="grid grid-cols-2 gap-4">
-              <div className="grid gap-2">
-                <Label htmlFor="idioma">Idioma</Label>
-                <Input id="idioma" value={formData.idioma} onChange={(e) => set('idioma', e.target.value)} />
+              <div className="grid gap-2 col-span-2">
+                <Label>Idiomas</Label>
+                <LanguageTagsInput value={formData.idioma} onChange={(v) => set('idioma', v)} />
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="altura">Altura</Label>

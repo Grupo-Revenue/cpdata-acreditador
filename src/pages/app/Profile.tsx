@@ -4,6 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useNavigate } from 'react-router-dom';
 import { Camera, User, Mail, CreditCard, Phone, Users, Lock, Loader2, GraduationCap, Landmark, Shield, Settings, Eye, BadgeCheck, RefreshCw } from 'lucide-react';
+import { LanguageTagsInput } from '@/components/ui/LanguageTagsInput';
 import { AppShell } from '@/components/layout/AppShell';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -447,7 +448,7 @@ export default function ProfilePage() {
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                 <div className="grid gap-4 sm:grid-cols-2">
                   <FormField control={form.control} name="idioma" render={({ field }) => (
-                    <FormItem><FormLabel>Idioma</FormLabel><FormControl><Input placeholder="Ej: Español" {...field} /></FormControl><FormMessage /></FormItem>
+                    <FormItem className="col-span-2 sm:col-span-1"><FormLabel>Idiomas</FormLabel><FormControl><LanguageTagsInput value={field.value || ''} onChange={field.onChange} /></FormControl><FormMessage /></FormItem>
                   )} />
                   <FormField control={form.control} name="altura" render={({ field }) => (
                     <FormItem><FormLabel>Altura</FormLabel><FormControl><Input placeholder="Ej: 1.75" {...field} /></FormControl><FormMessage /></FormItem>

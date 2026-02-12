@@ -27,6 +27,7 @@ import { AppRole } from '@/contexts/AuthContext';
 import { Loader2 } from 'lucide-react';
 import { useRoles } from '@/hooks/useRoles';
 import { BANCOS_CHILE, TIPOS_CUENTA } from './constants';
+import { LanguageTagsInput } from '@/components/ui/LanguageTagsInput';
 
 interface UserCreateDialogProps {
   open: boolean;
@@ -200,9 +201,9 @@ export function UserCreateDialog({ open, onOpenChange, onSuccess }: UserCreateDi
           <div>
             <Label className="text-base font-semibold">Información adicional</Label>
             <div className="grid grid-cols-2 gap-4 mt-2">
-              <div className="space-y-2">
-                <Label htmlFor="idioma">Idioma</Label>
-                <Input id="idioma" value={idioma} onChange={(e) => setIdioma(e.target.value)} disabled={isLoading} placeholder="Ej: Español" />
+              <div className="space-y-2 col-span-2">
+                <Label>Idiomas</Label>
+                <LanguageTagsInput value={idioma} onChange={setIdioma} disabled={isLoading} />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="altura">Altura</Label>
