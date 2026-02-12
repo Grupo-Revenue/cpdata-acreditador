@@ -17,7 +17,15 @@ import { useNavigate } from 'react-router-dom';
 import { RankingTable } from '@/components/dashboard/RankingTable';
 import { startOfWeek, endOfWeek } from 'date-fns';
 
-export default function SuperadminDashboard() {
+interface SuperadminDashboardProps {
+  title?: string;
+  description?: string;
+}
+
+export default function SuperadminDashboard({
+  title = 'Dashboard Superadmin',
+  description = 'Vista general del sistema',
+}: SuperadminDashboardProps) {
   const navigate = useNavigate();
 
   // Query para usuarios pendientes
@@ -132,8 +140,8 @@ export default function SuperadminDashboard() {
   return (
     <AppShell>
       <PageHeader
-        title="Dashboard Superadmin"
-        description="Vista general del sistema"
+        title={title}
+        description={description}
         breadcrumbs={[
           { label: 'Dashboard' },
         ]}
