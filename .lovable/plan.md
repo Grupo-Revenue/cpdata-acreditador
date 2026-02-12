@@ -1,55 +1,70 @@
 
 
-## Agregar subida de archivos al crear ticket de soporte
+## Vista de Eventos para Supervisor y Acreditador
 
 ### Contexto
 
-Actualmente el dialogo de creacion de tickets solo permite ingresar motivo y prioridad. El dialogo de edicion ya tiene logica de subida de archivos al bucket `ticket-evidence`. Se reutilizara ese mismo patron.
+Actualmente la pagina de Eventos muestra todos los deals de HubSpot con acciones de edicion y asignacion de equipo (solo para admin/superadmin). Para los roles supervisor y acreditador se necesita una vista diferente que muestre solo los eventos en los que estan asignados, con columnas reducidas, filtros por columna y botones de accion distintos.
 
-### Problema
+### Enfoque
 
-Al crear el ticket aun no existe un `id` del registro para usarlo como ruta en el storage. Se debe primero insertar el ticket, obtener el `id` retornado, y luego subir el archivo usando ese `id` como carpeta.
+La pagina de Eventos detectara el rol del usuario y mostrara una vista diferente segun corresponda:
+- **Superadmin / Administracion**: Vista actual sin cambios (tabla completa con edicion y asignacion de equipo)
+- **Supervisor / Acreditador**: Vista nueva con solo sus eventos asignados, columnas reducidas, filtros y botones de accion
+
+Para supervisor/acreditador, se obtienen los deals de HubSpot y se filtran cruzando con `event_accreditors` + `events` para mostrar solo los eventos asignados al usuario.
 
 ### Cambios
 
 | Archivo | Cambio |
 |---------|--------|
-| `src/components/support/TicketCreateDialog.tsx` | Agregar campo de subida de archivo (imagenes, PDF, docs). Tras insertar el ticket, si hay archivo seleccionado, subirlo al bucket `ticket-evidence` usando el `id` del ticket recien creado y actualizar `evidence_url` en el registro. |
+| `src/pages/app/Events.tsx` | Detectar rol y renderizar vista admin o vista supervisor/acreditador. La vista supervisor/acreditador filtra deals por asignacion del usuario. |
+| `src/components/events/EventsUserTable.tsx` | **Nuevo componente** con la tabla para supervisor/acreditador: 6 columnas (Id, Nombre del Evento, Tipo, Locacion, Fecha Inicio, Horario), filtros de texto por columna, paginacion, y columna de acciones con botones "Firma digital" y "Gestion del evento" (solo supervisor). |
+
+### Columnas de la tabla supervisor/acreditador
+
+| Columna | Campo HubSpot | Filtro |
+|---------|--------------|--------|
+| Id | dealname | Texto |
+| Nombre del Evento | nombre_del_evento | Texto |
+| Tipo | tipo_de_evento | Texto |
+| Locacion | locacion_del_evento | Texto |
+| Fecha Inicio | fecha_inicio_del_evento | Texto |
+| Horario | hora_de_inicio_y_fin_del_evento | Texto |
+| Acciones | - | - |
+
+### Acciones por rol
+
+- **Firma digital**: Visible para supervisor y acreditador (funcionalidad pendiente, por ahora solo el boton)
+- **Gestion del evento**: Visible solo para supervisor (funcionalidad pendiente, por ahora solo el boton)
 
 ### Detalle tecnico
 
-**Flujo de creacion con archivo:**
-
-1. El usuario completa motivo, prioridad y opcionalmente selecciona un archivo
-2. Al hacer clic en "Crear Ticket":
-   - Se inserta el ticket en `support_tickets` con `evidence_url = null`
-   - Se obtiene el `id` del ticket creado usando `.select('id').single()`
-   - Si hay archivo seleccionado, se sube a `ticket-evidence/{ticket_id}/{timestamp}.{ext}`
-   - Se obtiene la URL publica y se actualiza el registro con `evidence_url`
-3. Se muestra confirmacion
-
-**Codigo clave (patron tomado de TicketEditDialog):**
+**Filtrado de eventos asignados:**
 
 ```text
-// Insert ticket y obtener id
-const { data: newTicket, error } = await supabase
-  .from('support_tickets')
-  .insert({ motivo, priority, ... })
-  .select('id')
-  .single();
+// 1. Obtener event_ids asignados al usuario
+const { data: assignments } = await supabase
+  .from('event_accreditors')
+  .select('event_id, events(hubspot_deal_id)')
+  .eq('user_id', user.id);
 
-// Si hay archivo, subirlo
-if (file && newTicket) {
-  const filePath = `${newTicket.id}/${Date.now()}.${ext}`;
-  await supabase.storage.from('ticket-evidence').upload(filePath, file);
-  const { publicUrl } = supabase.storage.from('ticket-evidence').getPublicUrl(filePath);
-  await supabase.from('support_tickets').update({ evidence_url: publicUrl }).eq('id', newTicket.id);
-}
+// 2. Extraer hubspot_deal_ids
+const assignedDealIds = assignments
+  .map(a => a.events?.hubspot_deal_id)
+  .filter(Boolean);
+
+// 3. Filtrar deals de HubSpot
+const userDeals = allDeals.filter(d => assignedDealIds.includes(d.id));
 ```
 
-**UI del campo archivo:**
-- Boton "Subir archivo" con icono Upload (mismo estilo que TicketEditDialog)
-- Acepta imagenes y documentos: `accept="image/*,.pdf,.doc,.docx"`
-- Muestra nombre del archivo seleccionado antes de enviar
-- Estado de carga con texto "Subiendo..."
+**Filtros por columna:**
+- Inputs de texto encima de cada columna en el header de la tabla
+- Filtrado local en frontend (los datos ya estan cargados)
+- Se resetea la paginacion al cambiar un filtro
+
+**Botones de accion:**
+- Icono de firma (PenTool) para "Firma digital"
+- Icono de gestion (ClipboardList) para "Gestion del evento" (solo supervisor)
+- Ambos sin funcionalidad por ahora (onClick placeholder con toast informativo)
 
