@@ -1,36 +1,52 @@
 
-## Filtrar sidebar por rol activo en lugar de todos los roles
+
+## Dashboard de Administracion igual al de Superadmin
 
 ### Problema
 
-Actualmente el sidebar filtra los items de navegacion usando la lista completa de roles del usuario (`roles`), en lugar del rol activo (`activeRole`). Esto significa que un usuario con roles `superadmin` y `administracion`, al ingresar como `administracion`, sigue viendo "Configuracion" porque su lista de roles incluye `superadmin`.
+El dashboard de administracion (`AdminDashboard`) muestra contenido estatico basico (stats hardcodeados y una card vacia de "Proximos Eventos"), mientras que el de superadmin (`SuperadminDashboard`) tiene metricas reales desde HubSpot, conteo de usuarios pendientes, ranking de acreditadores y accesos rapidos.
 
 ### Solucion
 
-Un cambio de una sola linea en `src/components/layout/Sidebar.tsx`:
+Reemplazar el contenido de `AdminDashboard` para que reutilice el mismo componente `SuperadminDashboard`, simplemente cambiando el titulo del PageHeader.
 
 | Archivo | Cambio |
 |---------|--------|
-| `src/components/layout/Sidebar.tsx` | Cambiar el filtro de navegacion para usar `activeRole` en vez de `roles`. Si el item tiene restriccion de roles, verificar que `activeRole` este incluido en esa lista. |
+| `src/pages/dashboard/AdminDashboard.tsx` | Reemplazar todo el contenido actual por una importacion y renderizado de `SuperadminDashboard`, pasando un prop opcional para cambiar el titulo a "Dashboard Administracion". Alternativamente, hacer que `AdminDashboard` importe y renderice directamente la misma logica. |
+| `src/pages/dashboard/SuperadminDashboard.tsx` | Agregar un prop opcional `title` y `description` para permitir que el componente sea reutilizado con diferentes titulos. Por defecto mantiene "Dashboard Superadmin". |
 
 ### Detalle tecnico
 
-**Linea 46**: Agregar `activeRole` al destructuring de `useAuth()`.
-
-**Linea 48-51**: Cambiar la logica de filtrado:
+**SuperadminDashboard.tsx** - Agregar props opcionales:
 
 ```text
-// Antes (usa todos los roles del usuario):
-const filteredNavItems = navItems.filter(item => {
-  if (!item.roles) return true;
-  return item.roles.some(role => roles.includes(role as any));
-});
+interface SuperadminDashboardProps {
+  title?: string;
+  description?: string;
+}
 
-// Despues (usa solo el rol activo):
-const filteredNavItems = navItems.filter(item => {
-  if (!item.roles) return true;
-  return activeRole ? item.roles.includes(activeRole) : false;
-});
+export default function SuperadminDashboard({
+  title = 'Dashboard Superadmin',
+  description = 'Vista general del sistema',
+}: SuperadminDashboardProps) {
+  // ... resto del componente sin cambios, usando title y description en PageHeader
+}
 ```
 
-Con este cambio, al ingresar como `administracion`, no se vera "Configuracion" en el sidebar. Solo al ingresar como `superadmin` aparecera.
+**AdminDashboard.tsx** - Simplificar a:
+
+```text
+import SuperadminDashboard from './SuperadminDashboard';
+
+export default function AdminDashboard() {
+  return (
+    <SuperadminDashboard
+      title="Dashboard Administracion"
+      description="Gestion de eventos y personal"
+    />
+  );
+}
+```
+
+Esto elimina toda la duplicacion y asegura que ambos dashboards se mantengan sincronizados automaticamente ante futuros cambios.
+
