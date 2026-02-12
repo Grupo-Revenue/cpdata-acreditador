@@ -26,6 +26,8 @@ interface AuthContextType {
   user: User | null;
   profile: Profile | null;
   roles: AppRole[];
+  activeRole: AppRole | null;
+  setActiveRole: (role: AppRole | null) => void;
   isLoading: boolean;
   isApproved: boolean;
   isActive: boolean;
@@ -55,6 +57,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [roles, setRoles] = useState<AppRole[]>([]);
+  const [activeRole, setActiveRole] = useState<AppRole | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
 
@@ -228,6 +231,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const signOut = async () => {
+    setActiveRole(null);
     await supabase.auth.signOut();
     setProfile(null);
     setRoles([]);
@@ -248,7 +252,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const hasRole = (role: AppRole) => roles.includes(role);
 
-  const isAdmin = hasRole('superadmin') || hasRole('administracion');
+  const isAdmin = activeRole === 'superadmin' || activeRole === 'administracion';
   const isApproved = profile?.approval_status === 'approved';
   const isActive = profile?.is_active ?? false;
 
@@ -259,6 +263,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         user,
         profile,
         roles,
+        activeRole,
+        setActiveRole,
         isLoading,
         isApproved,
         isActive,
@@ -300,4 +306,14 @@ export function getDefaultDashboard(roles: AppRole[]): string {
   if (roles.includes('supervisor')) return '/app/dashboard/supervisor';
   if (roles.includes('acreditador')) return '/app/dashboard/acreditador';
   return '/app/dashboard';
+}
+
+export function getDashboardForRole(role: AppRole): string {
+  switch (role) {
+    case 'superadmin': return '/app/dashboard/superadmin';
+    case 'administracion': return '/app/dashboard/admin';
+    case 'supervisor': return '/app/dashboard/supervisor';
+    case 'acreditador': return '/app/dashboard/acreditador';
+    default: return '/app/dashboard';
+  }
 }
