@@ -43,11 +43,11 @@ interface SidebarProps {
 
 export function Sidebar({ collapsed, onCollapse }: SidebarProps) {
   const location = useLocation();
-  const { roles, signOut, profile } = useAuth();
+  const { roles, activeRole, signOut, profile } = useAuth();
 
   const filteredNavItems = navItems.filter(item => {
     if (!item.roles) return true;
-    return item.roles.some(role => roles.includes(role as any));
+    return activeRole ? item.roles.includes(activeRole) : false;
   });
 
   const NavItemComponent = ({ item }: { item: NavItem }) => {
