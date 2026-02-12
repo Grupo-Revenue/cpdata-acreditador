@@ -1,52 +1,46 @@
 
 
-## Boton "Ver Perfil" en tabla de Postulantes
+## Soporte para multiples idiomas por usuario
 
 ### Resumen
 
-Agregar un boton con icono de "ojo" en la columna de Acciones de la tabla de Postulantes que abre un dialogo de solo lectura mostrando toda la informacion del perfil del usuario, incluyendo su foto de perfil (avatar).
+Cambiar el campo "Idioma" de un input de texto simple a un sistema de etiquetas (tags/chips) que permita agregar multiples idiomas. No se requieren cambios en la base de datos ya que el campo `idioma` (tipo `text`) almacenara los valores separados por coma (ej: `"Español, Inglés, Portugués"`).
 
-### Cambios
+### Archivos a modificar
 
 | Archivo | Cambio |
 |---|---|
-| `src/components/events/EventApplicantsDialog.tsx` | Agregar boton "Ver perfil", estado para el dialogo de perfil, y un nuevo sub-dialogo de visualizacion |
+| `src/pages/app/Profile.tsx` | Reemplazar input de idioma por componente de tags con input + boton agregar |
+| `src/components/users/UserCreateDialog.tsx` | Mismo cambio: input de tags para idioma |
+| `src/components/users/UserEditDialog.tsx` | Mismo cambio: input de tags para idioma |
+| `src/components/events/ApplicantProfileDialog.tsx` | Mostrar idiomas como badges individuales en vez de texto plano |
 
 ### Detalle tecnico
 
-**1. Ampliar la query de profiles** para traer todos los campos necesarios:
-- Cambiar el select de `'id, nombre, apellido, ranking'` a `'id, nombre, apellido, ranking, rut, email, telefono, referencia_contacto, idioma, altura, universidad, carrera, banco, numero_cuenta, tipo_cuenta, foto_url'`
+**Formato de almacenamiento:** Se mantiene el campo `idioma` como `text` en la tabla `profiles`. Los multiples idiomas se almacenan separados por coma: `"Español, Inglés, Portugués"`. Esto evita migraciones de base de datos.
 
-**2. Agregar estado para el perfil seleccionado:**
-- `const [viewingProfile, setViewingProfile] = useState<ProfileData | null>(null)`
+**Componente de entrada (en Profile, UserCreate, UserEdit):**
+- Un input de texto con un boton "Agregar" al lado
+- Al presionar Enter o clic en "Agregar", el idioma se anade como un chip/badge debajo del input
+- Cada chip tiene una "X" para eliminarlo
+- Al guardar, los idiomas se unen con coma y se almacenan como texto
+- Al cargar, el texto se separa por coma para mostrar los chips existentes
 
-**3. Ampliar la interfaz Applicant** (o crear una interfaz separada para el perfil completo) para incluir todos los campos del perfil que se almacenan en el profileMap.
+**Visualizacion (ApplicantProfileDialog):**
+- En vez de mostrar el texto plano, separar por coma y renderizar cada idioma como un `Badge` individual
 
-**4. Agregar boton "Ver perfil"** en la columna Acciones (junto a Aceptar y Rechazar):
-- Icono `Eye` de lucide-react
-- Al hacer clic, busca el perfil completo en el profileMap y abre el dialogo
-
-**5. Crear sub-dialogo de perfil** (dentro del mismo archivo, como un segundo `Dialog`):
-- Avatar con foto de perfil (usando componentes `Avatar`, `AvatarImage`, `AvatarFallback`)
-- Nombre completo y rol como encabezado
-- Secciones organizadas en grilla de solo lectura:
-  - **Cuenta**: RUT, Email
-  - **Personal**: Telefono, Referencia de contacto, Idioma, Altura
-  - **Academico**: Universidad, Carrera
-  - **Bancario**: Banco, Numero de cuenta, Tipo de cuenta
-  - **Ranking**: Valor numerico
-- Todos los campos son de solo lectura (texto con fondo muted, sin inputs editables)
-- Boton "Cerrar" en el footer
-
-### Flujo
+### Flujo de interaccion
 
 ```text
-Tabla Postulantes
-  |-- Columna Acciones
-        |-- Boton Eye (Ver perfil)
-              |-- Abre Dialog con info completa del usuario
-              |-- Avatar + Nombre + Rol
-              |-- Datos personales, academicos, bancarios (solo lectura)
-              |-- Boton Cerrar
+Usuario escribe "Inglés" en el input
+  |-- Presiona Enter o clic en "Agregar"
+  |-- Aparece chip [Inglés x]
+  |-- Escribe "Portugués" y agrega
+  |-- Chips: [Inglés x] [Portugués x]
+  |-- Al guardar: se almacena "Inglés, Portugués" en DB
 ```
 
+### Notas
+- No se requiere migracion de base de datos
+- Los datos existentes (un solo idioma) siguen siendo compatibles ya que al separar por coma se obtiene un arreglo con un solo elemento
+- La edge function `create-user` no necesita cambios ya que recibe el campo como texto
