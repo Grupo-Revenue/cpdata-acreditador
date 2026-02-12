@@ -1,70 +1,101 @@
 
 
-## Agregar columna "Fecha de Pago" en boletas y actualizar configuracion
+## Modulo de Postulantes en Eventos
 
 ### Resumen
 
-Dos cambios principales:
-1. **Configuracion**: Cambiar el selector de dia de pago para que los 3 dias sean editables (no elegir uno de tres, sino poder modificar los valores de los 3 dias de pago del mes).
-2. **Boletas**: Agregar una columna "Fecha de pago" calculada automaticamente a partir de la fecha del evento y los dias de pago configurados. La logica: se busca el proximo dia de pago igual o posterior a la fecha del evento.
+Agregar un boton "Postulantes" en la pagina de Eventos (solo para superadmin y administracion) que abre un dialogo con una tabla de todos los acreditadores y supervisores asignados a eventos, con estados de postulacion/contrato, filtros por columna, acciones de aceptar/rechazar, y validacion de conflicto por fecha.
 
-### Logica de calculo
+### Cambios en Base de Datos
 
-Los dias de pago dividen el mes en ciclos. Dado un evento, la fecha de pago es el proximo dia de pago:
+Se necesitan dos nuevas columnas en `event_accreditors` y dos nuevos enums:
 
-| Fecha evento | Dias de pago (5,15,25) | Fecha de pago |
-|---|---|---|
-| 01-02-2026 | 5,15,25 | 05-02-2026 |
-| 15-05-2026 | 5,15,25 | 25-05-2026 |
-| 26-01-2026 | 5,15,25 | 05-02-2026 |
+| Cambio | Detalle |
+|---|---|
+| Nuevo enum `application_status` | `pendiente`, `aceptado`, `rechazado` |
+| Nuevo enum `contract_status` | `pendiente`, `firmado`, `rechazado` |
+| Nueva columna `application_status` en `event_accreditors` | Default `pendiente` |
+| Nueva columna `contract_status` en `event_accreditors` | Default `pendiente` |
 
-### Cambios
+Las nuevas columnas se asignan automaticamente con valor `pendiente` al insertar (default de PostgreSQL), por lo que las asignaciones existentes y futuras desde `EventTeamDialog` ya tendran los valores correctos sin modificar ese componente.
+
+### Archivos a modificar/crear
 
 | Archivo | Cambio |
 |---|---|
-| `src/components/settings/PaymentDaySettings.tsx` | Reemplazar RadioGroup por 3 campos Input numericos editables. Guardar en settings como `"5,15,25"` (comma-separated). Descripcion actualizada. |
-| `src/pages/app/Invoices.tsx` | Agregar query para obtener los dias de pago desde `settings`. Pasar `paymentDays` como prop a `InvoicesTable`. |
-| `src/components/invoices/InvoicesTable.tsx` | Agregar prop `paymentDays: number[]`. Agregar columna "Fecha de pago". Implementar funcion `calcPaymentDate(eventDate, paymentDays)` que encuentra el proximo dia de pago. |
+| **Migracion SQL** | Crear enums y agregar columnas a `event_accreditors` |
+| `src/components/events/EventApplicantsDialog.tsx` | **Nuevo** - Dialogo con tabla de postulantes, filtros y acciones |
+| `src/pages/app/Events.tsx` | Agregar boton "Postulantes" visible solo para admin/superadmin, estado para abrir el dialogo |
+| `src/components/events/EventsAdminTable.tsx` | Sin cambios |
 
 ### Detalle tecnico
 
-**1. PaymentDaySettings.tsx** - Tres inputs editables:
-
-- Estado: `days: [5, 15, 25]` (array de 3 numeros)
-- Guardar en `settings` con key `payment_days` y value `"5,15,25"`
-- Validacion: valores entre 1 y 28, ordenados de menor a mayor, sin duplicados
-- Al guardar cualquier cambio, hacer upsert y mostrar toast
-
-**2. Funcion de calculo `calcPaymentDate`:**
+**1. Migracion SQL:**
 
 ```text
-function calcPaymentDate(eventDateStr: string, paymentDays: number[]): Date {
-  const eventDate = new Date(eventDateStr + 'T00:00:00');
-  const day = eventDate.getDate();
-  const sorted = [...paymentDays].sort((a, b) => a - b);
-  
-  // Buscar el proximo dia de pago en el mismo mes
-  for (const pd of sorted) {
-    if (pd > day) {
-      return new Date(eventDate.getFullYear(), eventDate.getMonth(), pd);
-    }
-  }
-  // Si no hay, es el primer dia de pago del mes siguiente
-  const next = new Date(eventDate.getFullYear(), eventDate.getMonth() + 1, sorted[0]);
-  return next;
-}
+CREATE TYPE public.application_status AS ENUM ('pendiente', 'aceptado', 'rechazado');
+CREATE TYPE public.contract_status AS ENUM ('pendiente', 'firmado', 'rechazado');
+
+ALTER TABLE public.event_accreditors
+  ADD COLUMN application_status application_status NOT NULL DEFAULT 'pendiente',
+  ADD COLUMN contract_status contract_status NOT NULL DEFAULT 'pendiente';
 ```
 
-**3. InvoicesTable.tsx** - Nueva columna:
+**2. EventApplicantsDialog.tsx** - Componente nuevo:
 
-- Agregar `paymentDays: number[]` al interface de props
-- Agregar columna "Fecha de pago" despues de "Fecha emision"
-- Calcular usando `calcPaymentDate(inv.events?.event_date, paymentDays)`
-- Formatear como `dd-MM-yyyy`
-- Ajustar colSpan del estado vacio
+- Query principal: obtener todos los registros de `event_accreditors` con join a `profiles` (nombre, apellido, ranking) y `events` (name, event_date)
+- Query secundaria: obtener roles de cada usuario desde `user_roles` para determinar si es Supervisor o Acreditador
+- Columnas de la tabla:
+  - Nombre (nombre + apellido del perfil)
+  - Evento (nombre del evento)
+  - Rol (Supervisor / Acreditador)
+  - Estado de Postulacion (pendiente / aceptado / rechazado)
+  - Estado de Contrato (pendiente / firmado / rechazado)
+  - Promedio de Ranking (campo `ranking` del perfil)
+  - Acciones (botones Aceptar / Rechazar)
+- Filtros externos (fila de inputs/selects encima de la tabla):
+  - Nombre: Input texto
+  - Evento: Select con opciones dinamicas
+  - Rol: Select (Supervisor / Acreditador)
+  - Estado Postulacion: Select (pendiente / aceptado / rechazado)
+  - Estado Contrato: Select (pendiente / firmado / rechazado)
+  - Ranking: Input texto (filtro por valor)
+- Paginacion local de 10 registros por pagina
 
-**4. Invoices.tsx** - Fetch de settings:
+**3. Logica de Aceptar:**
 
-- Agregar query para obtener `payment_days` desde la tabla `settings`
-- Parsear el valor comma-separated a `number[]`, default `[5, 15, 25]`
-- Pasar como prop a `InvoicesTable`
+Al hacer clic en "Aceptar" para un postulante:
+1. Consultar si el usuario ya tiene otro `event_accreditors` con `application_status = 'aceptado'` en un evento con la misma `event_date`
+2. Si existe conflicto: mostrar toast de advertencia "Este postulante ya esta asignado a otro evento en la misma fecha" y no permitir la accion
+3. Si no hay conflicto: actualizar `application_status` a `aceptado` en `event_accreditors` y refrescar la tabla
+
+**4. Logica de Rechazar:**
+
+- Actualizar `application_status` a `rechazado` directamente, sin validacion de fecha
+- Refrescar la tabla despues de la actualizacion
+
+**5. Events.tsx** - Boton Postulantes:
+
+- Agregar un boton "Postulantes" junto al `PageHeader`, visible solo cuando `isAdmin` es true
+- Al hacer clic, abrir `EventApplicantsDialog`
+- Usar icono `UserCheck` de lucide-react
+
+### Flujo de datos
+
+```text
+Events.tsx
+  |-- Boton "Postulantes" (solo admin)
+  |-- EventApplicantsDialog
+        |-- Query: event_accreditors + profiles + events
+        |-- Query: user_roles (para determinar rol)
+        |-- Filtros externos por columna
+        |-- Tabla con acciones Aceptar/Rechazar
+        |-- Validacion de conflicto por fecha al aceptar
+```
+
+### Notas importantes
+
+- Los botones de Aceptar/Rechazar modifican `application_status`. El campo `contract_status` queda visible en la tabla pero no se modifica desde esta vista (se gestionara en una fase posterior o manualmente).
+- La tabla actualiza dinamicamente via `queryClient.invalidateQueries` despues de cada accion, sin recargar la pagina.
+- El campo `ranking` del perfil se muestra directamente como "Promedio de Ranking Total" ya que es el unico valor de ranking disponible en la tabla `profiles`.
+
