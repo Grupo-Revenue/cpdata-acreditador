@@ -280,6 +280,7 @@ export type Database = {
           motivo: string
           observaciones: string | null
           priority: Database["public"]["Enums"]["ticket_priority"]
+          response_evidence_url: string | null
           status: Database["public"]["Enums"]["ticket_status"]
           ticket_number: number
           updated_at: string
@@ -305,6 +306,7 @@ export type Database = {
           motivo: string
           observaciones?: string | null
           priority?: Database["public"]["Enums"]["ticket_priority"]
+          response_evidence_url?: string | null
           status?: Database["public"]["Enums"]["ticket_status"]
           ticket_number?: number
           updated_at?: string
@@ -330,6 +332,7 @@ export type Database = {
           motivo?: string
           observaciones?: string | null
           priority?: Database["public"]["Enums"]["ticket_priority"]
+          response_evidence_url?: string | null
           status?: Database["public"]["Enums"]["ticket_status"]
           ticket_number?: number
           updated_at?: string

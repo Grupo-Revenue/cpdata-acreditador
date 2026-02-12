@@ -24,6 +24,7 @@ interface SupportTicket {
   priority: 'alta' | 'media' | 'baja';
   observaciones: string | null;
   evidence_url: string | null;
+  response_evidence_url: string | null;
   created_by: string;
   created_at: string;
   updated_at: string;

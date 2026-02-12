@@ -9,7 +9,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { format } from 'date-fns';
-import { Upload } from 'lucide-react';
+import { Upload, ExternalLink } from 'lucide-react';
 
 interface SupportTicket {
   id: string;
@@ -19,6 +19,7 @@ interface SupportTicket {
   priority: 'alta' | 'media' | 'baja';
   observaciones: string | null;
   evidence_url: string | null;
+  response_evidence_url: string | null;
   created_by: string;
   created_at: string;
   updated_at: string;
@@ -51,7 +52,7 @@ export function TicketEditDialog({ open, onOpenChange, ticket, onUpdated }: Tick
   const [observaciones, setObservaciones] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
-  const [evidenceUrl, setEvidenceUrl] = useState<string | null>(null);
+  const [responseEvidenceUrl, setResponseEvidenceUrl] = useState<string | null>(null);
   const { toast } = useToast();
   const { profile, roles, user } = useAuth();
 
@@ -61,7 +62,7 @@ export function TicketEditDialog({ open, onOpenChange, ticket, onUpdated }: Tick
       setPriority(ticket.priority);
       setStatus(ticket.status);
       setObservaciones(ticket.observaciones || '');
-      setEvidenceUrl(ticket.evidence_url);
+      setResponseEvidenceUrl(ticket.response_evidence_url);
     }
   }, [ticket]);
 
@@ -84,8 +85,8 @@ export function TicketEditDialog({ open, onOpenChange, ticket, onUpdated }: Tick
         .from('ticket-evidence')
         .getPublicUrl(filePath);
 
-      setEvidenceUrl(publicUrl);
-      toast({ title: 'Archivo subido', description: 'La evidencia se ha subido correctamente' });
+      setResponseEvidenceUrl(publicUrl);
+      toast({ title: 'Archivo subido', description: 'La evidencia de respuesta se ha subido correctamente' });
     } catch (error: any) {
       toast({ title: 'Error al subir archivo', description: error.message, variant: 'destructive' });
     } finally {
@@ -105,7 +106,7 @@ export function TicketEditDialog({ open, onOpenChange, ticket, onUpdated }: Tick
           priority: priority as 'alta' | 'media' | 'baja',
           status: status as 'pendiente' | 'resuelto' | 'inactivo',
           observaciones: observaciones.trim() || null,
-          evidence_url: evidenceUrl,
+          response_evidence_url: responseEvidenceUrl,
           updated_by: user?.id || null,
           editor_nombre: profile?.nombre || null,
           editor_apellido: profile?.apellido || null,
@@ -208,8 +209,24 @@ export function TicketEditDialog({ open, onOpenChange, ticket, onUpdated }: Tick
             <Label htmlFor="observaciones">Observaciones</Label>
             <Textarea id="observaciones" placeholder="Agregar observaciones..." value={observaciones} onChange={(e) => setObservaciones(e.target.value)} rows={3} />
           </div>
+          {/* Evidencia del creador (solo lectura) */}
+          {ticket.evidence_url && (
+            <div className="space-y-2">
+              <Label>Evidencia del creador</Label>
+              <div>
+                <Button variant="outline" size="sm" asChild>
+                  <a href={ticket.evidence_url} target="_blank" rel="noopener noreferrer">
+                    <ExternalLink className="h-4 w-4 mr-2" />
+                    Ver / Descargar
+                  </a>
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* Evidencia de respuesta del responsable */}
           <div className="space-y-2">
-            <Label>Evidencia</Label>
+            <Label>Evidencia de respuesta</Label>
             <div className="flex items-center gap-2">
               <Button variant="outline" size="sm" asChild disabled={isUploading}>
                 <label className="cursor-pointer">
@@ -218,9 +235,9 @@ export function TicketEditDialog({ open, onOpenChange, ticket, onUpdated }: Tick
                   <input type="file" className="hidden" onChange={handleFileUpload} accept="image/*,.pdf,.doc,.docx" />
                 </label>
               </Button>
-              {evidenceUrl && (
-                <a href={evidenceUrl} target="_blank" rel="noopener noreferrer" className="text-sm text-primary underline">
-                  Ver evidencia
+              {responseEvidenceUrl && (
+                <a href={responseEvidenceUrl} target="_blank" rel="noopener noreferrer" className="text-sm text-primary underline">
+                  Ver evidencia de respuesta
                 </a>
               )}
             </div>

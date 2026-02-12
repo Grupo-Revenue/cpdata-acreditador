@@ -13,6 +13,7 @@ interface SupportTicket {
   priority: 'alta' | 'media' | 'baja';
   observaciones: string | null;
   evidence_url: string | null;
+  response_evidence_url: string | null;
   created_by: string;
   created_at: string;
   updated_at: string;
@@ -142,16 +143,32 @@ export function TicketDetailDialog({ open, onOpenChange, ticket }: TicketDetailD
             </>
           )}
 
-          {/* Evidencia */}
+          {/* Evidencia del creador */}
           {ticket.evidence_url && (
             <>
               <Separator />
               <div>
-                <h4 className="text-sm font-semibold mb-2">Evidencia adjunta</h4>
+                <h4 className="text-sm font-semibold mb-2">Evidencia del creador</h4>
                 <Button variant="outline" size="sm" asChild>
                   <a href={ticket.evidence_url} target="_blank" rel="noopener noreferrer">
                     <ExternalLink className="h-4 w-4 mr-2" />
-                    Ver archivo
+                    Ver / Descargar
+                  </a>
+                </Button>
+              </div>
+            </>
+          )}
+
+          {/* Evidencia de respuesta */}
+          {ticket.response_evidence_url && (
+            <>
+              <Separator />
+              <div>
+                <h4 className="text-sm font-semibold mb-2">Evidencia de respuesta</h4>
+                <Button variant="outline" size="sm" asChild>
+                  <a href={ticket.response_evidence_url} target="_blank" rel="noopener noreferrer">
+                    <ExternalLink className="h-4 w-4 mr-2" />
+                    Ver / Descargar
                   </a>
                 </Button>
               </div>
