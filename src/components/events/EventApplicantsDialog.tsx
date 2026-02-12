@@ -28,7 +28,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Check, X, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Check, X, ChevronLeft, ChevronRight, Eye } from 'lucide-react';
+import { ApplicantProfileDialog, ProfileData } from './ApplicantProfileDialog';
 
 interface EventApplicantsDialogProps {
   open: boolean;
@@ -69,6 +70,7 @@ export function EventApplicantsDialog({ open, onOpenChange }: EventApplicantsDia
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [page, setPage] = useState(0);
+  const [viewingProfile, setViewingProfile] = useState<ProfileData | null>(null);
   const [filters, setFilters] = useState({
     nombre: '',
     evento: '__all__',
@@ -98,7 +100,7 @@ export function EventApplicantsDialog({ open, onOpenChange }: EventApplicantsDia
     queryFn: async () => {
       const { data, error } = await supabase
         .from('profiles')
-        .select('id, nombre, apellido, ranking')
+        .select('id, nombre, apellido, ranking, rut, email, telefono, referencia_contacto, idioma, altura, universidad, carrera, banco, numero_cuenta, tipo_cuenta, foto_url')
         .in('id', userIds);
       if (error) throw error;
       return data;
@@ -330,6 +332,36 @@ export function EventApplicantsDialog({ open, onOpenChange }: EventApplicantsDia
                         <Button
                           variant="ghost"
                           size="icon"
+                          className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                          onClick={() => {
+                            const profile = profiles?.find((p) => p.id === a.user_id);
+                            if (profile) {
+                              setViewingProfile({
+                                nombre: profile.nombre,
+                                apellido: profile.apellido,
+                                rut: profile.rut,
+                                email: profile.email,
+                                telefono: profile.telefono,
+                                referencia_contacto: profile.referencia_contacto,
+                                idioma: profile.idioma,
+                                altura: profile.altura,
+                                universidad: profile.universidad,
+                                carrera: profile.carrera,
+                                banco: profile.banco,
+                                numero_cuenta: profile.numero_cuenta,
+                                tipo_cuenta: profile.tipo_cuenta,
+                                ranking: profile.ranking,
+                                foto_url: profile.foto_url,
+                                role: a.role,
+                              });
+                            }
+                          }}
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
                           className="h-7 w-7 text-success hover:text-success/80"
                           onClick={() => handleAccept(a)}
                           disabled={a.application_status === 'aceptado'}
@@ -368,6 +400,11 @@ export function EventApplicantsDialog({ open, onOpenChange }: EventApplicantsDia
           </>
         )}
       </DialogContent>
+
+      <ApplicantProfileDialog
+        profile={viewingProfile}
+        onClose={() => setViewingProfile(null)}
+      />
     </Dialog>
   );
 }
