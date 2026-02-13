@@ -1,64 +1,38 @@
 
 
-## Comentarios de Asistencia + Vista de Comentarios en Ranking
+## Ajuste de vista "Gestion de Evento" para escritorio y movil
 
-### Resumen
+### Problema
 
-Agregar un campo de comentarios en el dialogo de Gestion de Evento (supervisor) para cada acreditador al registrar asistencia, y un boton en la tabla de Ranking para que administradores/superadmin puedan ver el historial de comentarios de cada usuario.
+El dialogo actual usa una tabla con 7 columnas (Acreditador, Asistencia, Puntos, Comentarios, Fecha, Hora Ingreso, Accion) dentro de un `max-w-4xl`. Esto causa que el contenido se corte horizontalmente, especialmente en pantallas pequenas.
 
-### Cambios
+### Solucion
 
-| Elemento | Detalle |
+Reemplazar el layout de tabla por un diseno basado en tarjetas (cards) responsivas que se adapten correctamente a cualquier pantalla.
+
+| Archivo | Cambio |
 |---|---|
-| **Nueva tabla `attendance_comments`** | Almacena comentarios por registro de asistencia |
-| **Migracion SQL** | Crear tabla, indices y politicas RLS |
-| **EventManagementDialog.tsx** | Agregar campo Textarea de comentario por acreditador en la seccion de asistencia |
-| **RankingTable.tsx** | Agregar boton para ver comentarios (solo admin/superadmin), con dialogo que muestra el historial |
-| **Nuevo componente `AttendanceCommentsDialog.tsx`** | Dialogo que lista los comentarios de un usuario con fecha, evento y contenido |
-
----
+| `src/components/events/EventManagementDialog.tsx` | Redisenar la seccion de asistencia y gastos con layout responsivo |
 
 ### Detalle tecnico
 
-#### 1. Nueva tabla `attendance_comments`
+**1. Seccion de Asistencia - Layout responsivo:**
+- Reemplazar la `Table` de asistencia por tarjetas individuales por acreditador
+- Cada tarjeta mostrara:
+  - Nombre del acreditador como titulo
+  - Grid responsivo (`grid-cols-2 sm:grid-cols-3`) con los campos: Asistencia (Select), Puntos, Fecha, Hora Ingreso
+  - Textarea de comentarios ocupando el ancho completo debajo
+  - Boton de guardar individual
+- En escritorio se vera como una lista ordenada de tarjetas con campos en linea
+- En movil cada campo se apilara verticalmente
 
-```text
-attendance_comments
-├── id (uuid, PK, default gen_random_uuid())
-├── attendance_record_id (uuid, FK -> attendance_records.id, NOT NULL)
-├── user_id (uuid, NOT NULL) -- el acreditador/supervisor comentado
-├── comment (text, NOT NULL)
-├── created_by (uuid, NOT NULL, default auth.uid()) -- el supervisor que escribe
-├── created_at (timestamptz, default now())
-```
+**2. Dialog container:**
+- Cambiar `max-w-4xl` a `max-w-3xl w-[95vw]` para mejor adaptacion
+- Mantener `max-h-[90vh] overflow-y-auto`
 
-Politicas RLS:
-- Admins (is_admin) pueden ver todos los comentarios (SELECT)
-- Supervisores pueden insertar comentarios en eventos donde estan asignados (INSERT)
-- Supervisores pueden ver comentarios que ellos crearon (SELECT)
+**3. Seccion de Gastos:**
+- Ya usa `flex-wrap` por lo que funciona razonablemente, pero ajustar los inputs para que se apilen en movil usando clases responsivas
 
-#### 2. EventManagementDialog.tsx
-
-- Agregar campo `comment` al interface `AttendanceRow`
-- Agregar una columna "Comentarios" en la tabla de asistencia con un Textarea pequeno
-- Al guardar asistencia (saveAttendance), si hay comentario no vacio, insertar en `attendance_comments`
-- Cargar comentarios existentes al abrir el dialogo
-- Campo deshabilitado cuando el evento esta cerrado
-
-#### 3. RankingTable.tsx
-
-- Agregar una columna de accion visible solo para admin/superadmin
-- Boton con icono MessageSquare que abre el dialogo de comentarios
-- Pasar `activeRole` desde useAuth para controlar visibilidad
-
-#### 4. Nuevo componente `AttendanceCommentsDialog.tsx`
-
-- Recibe `userId`, `userName` como props
-- Consulta `attendance_comments` filtrado por `user_id`, unido con datos del evento (nombre) y del supervisor que comento
-- Lista cronologica con: fecha, nombre del evento, comentario, quien lo escribio
-- Acceso de solo lectura
-
-#### 5. Pagina Ranking.tsx
-
-- Sin cambios significativos, el RankingTable se encarga de todo internamente
+**4. Botones de accion:**
+- "Guardar toda la asistencia" y "Cerrar proyecto" se mantienen al final con ancho completo en movil
 
