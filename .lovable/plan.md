@@ -1,46 +1,31 @@
 
 
-## Soporte para multiples idiomas por usuario
+## Filtros externos en EventsUserTable
 
 ### Resumen
 
-Cambiar el campo "Idioma" de un input de texto simple a un sistema de etiquetas (tags/chips) que permita agregar multiples idiomas. No se requieren cambios en la base de datos ya que el campo `idioma` (tipo `text`) almacenara los valores separados por coma (ej: `"Español, Inglés, Portugués"`).
+Mover los filtros de la tabla de eventos (vista supervisor/acreditador) desde dentro del `TableHeader` hacia una fila externa de inputs por encima de la tabla, siguiendo el mismo patron de diseno usado en el dialogo de Postulantes (`EventApplicantsDialog`).
 
-### Archivos a modificar
+### Cambios
 
 | Archivo | Cambio |
 |---|---|
-| `src/pages/app/Profile.tsx` | Reemplazar input de idioma por componente de tags con input + boton agregar |
-| `src/components/users/UserCreateDialog.tsx` | Mismo cambio: input de tags para idioma |
-| `src/components/users/UserEditDialog.tsx` | Mismo cambio: input de tags para idioma |
-| `src/components/events/ApplicantProfileDialog.tsx` | Mostrar idiomas como badges individuales en vez de texto plano |
+| `src/components/events/EventsUserTable.tsx` | Mover los 6 inputs de filtro fuera del `TableHeader` a un `div` con grid encima del `Card` |
 
 ### Detalle tecnico
 
-**Formato de almacenamiento:** Se mantiene el campo `idioma` como `text` en la tabla `profiles`. Los multiples idiomas se almacenan separados por coma: `"Español, Inglés, Portugués"`. Esto evita migraciones de base de datos.
+**Antes (actual):** Los filtros estan en una segunda fila `<TableRow>` dentro de `<TableHeader>`, con cada input dentro de un `<TableHead>`.
 
-**Componente de entrada (en Profile, UserCreate, UserEdit):**
-- Un input de texto con un boton "Agregar" al lado
-- Al presionar Enter o clic en "Agregar", el idioma se anade como un chip/badge debajo del input
-- Cada chip tiene una "X" para eliminarlo
-- Al guardar, los idiomas se unen con coma y se almacenan como texto
-- Al cargar, el texto se separa por coma para mostrar los chips existentes
+**Despues:** Los filtros se mueven a un `div` con clase `grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2 mb-4` ubicado antes del `<Card>`, con cada input usando un placeholder descriptivo:
 
-**Visualizacion (ApplicantProfileDialog):**
-- En vez de mostrar el texto plano, separar por coma y renderizar cada idioma como un `Badge` individual
+- Id (dealname)
+- Nombre del Evento
+- Tipo
+- Locacion
+- Fecha Inicio
+- Horario
 
-### Flujo de interaccion
+Cada input mantiene las mismas clases (`h-8 text-xs`) y la misma logica de filtrado. Solo cambia la ubicacion en el DOM: de dentro del header de la tabla a un bloque externo superior.
 
-```text
-Usuario escribe "Inglés" en el input
-  |-- Presiona Enter o clic en "Agregar"
-  |-- Aparece chip [Inglés x]
-  |-- Escribe "Portugués" y agrega
-  |-- Chips: [Inglés x] [Portugués x]
-  |-- Al guardar: se almacena "Inglés, Portugués" en DB
-```
+La tabla queda con una sola fila de encabezados (sin la fila de filtros), identica visualmente al patron de `EventApplicantsDialog`.
 
-### Notas
-- No se requiere migracion de base de datos
-- Los datos existentes (un solo idioma) siguen siendo compatibles ya que al separar por coma se obtiene un arreglo con un solo elemento
-- La edge function `create-user` no necesita cambios ya que recibe el campo como texto
