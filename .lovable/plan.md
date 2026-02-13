@@ -1,22 +1,38 @@
 
 
-## Actualizar URLs de Accesos Rapidos en Dashboard Superadmin
+## Agregar tabla de tickets recientes al Dashboard Superadmin
 
 ### Resumen
 
-Actualizar las tres URLs de los botones de accesos rapidos en el dashboard de superadmin para que redirijan a los enlaces correctos proporcionados por el usuario.
+Agregar una nueva seccion en el dashboard de superadmin que muestre los tickets de soporte mas recientes, separados en dos pestanas: pendientes y resueltos.
 
 ### Cambios
 
 | Archivo | Cambio |
 |---|---|
-| `src/pages/dashboard/SuperadminDashboard.tsx` | Actualizar las 3 URLs y convertir Cotizacion a enlace externo |
+| `src/components/dashboard/RecentTicketsTable.tsx` | Crear nuevo componente reutilizable que consulta los ultimos tickets y los muestra con tabs Pendientes/Resueltos |
+| `src/pages/dashboard/SuperadminDashboard.tsx` | Importar y agregar el componente debajo del grid actual (ranking + accesos rapidos) |
 
 ### Detalle tecnico
 
-Modificar las constantes y el arreglo `quickLinks` en el archivo:
+**Nuevo componente `RecentTicketsTable`:**
+- Query con `useQuery` a `support_tickets` ordenado por `created_at desc`, limite de 10 registros
+- Usa `Tabs` con dos pestanas: "Pendientes" (status = pendiente) y "Resueltos" (status = resuelto o inactivo)
+- Tabla compacta con columnas: #ID, Motivo (truncado), Creado por, Prioridad (badge), Fecha
+- Badges de prioridad con los mismos estilos del modulo de soporte (alta=destructive, media=warning, baja=muted)
+- Estado de carga con Skeleton, estado vacio con icono y mensaje
+- Card con `lg:col-span-3` para ocupar todo el ancho debajo del grid existente
 
-1. **Trello**: Cambiar `TRELLO_URL` de `https://trello.com` a `https://id.atlassian.com/login?application=trello&continue=https%3A%2F%2Ftrello.com%2Fauth%2Fatlassian%2Fcallback%3Fdisplay%3DeyJ2ZXJpZmljYXRpb25TdHJhdGVneSI6InNvZnQifQ%253D%253D&display=eyJ2ZXJpZmljYXRpb25TdHJhdGVneSI6InNvZnQifQ%3D%3D`
-2. **HubSpot**: Cambiar `HUBSPOT_URL` de `https://app.hubspot.com` a `https://app.hubspot.com/login/`
-3. **Cotizacion**: Cambiar de enlace interno (`/app/quotes`, `isExternal: false`) a enlace externo (`https://cpdata.lovable.app`, `isExternal: true`)
+**Modificacion en `SuperadminDashboard`:**
+- Importar `RecentTicketsTable`
+- Agregar debajo del grid de ranking/accesos rapidos:
+
+```text
+Layout resultante:
+  Stats Grid (4 tarjetas)
+  Grid 3 cols:
+    |-- RankingTable (col-span-2)
+    |-- Accesos Rapidos (col-span-1)
+  RecentTicketsTable (ancho completo)
+```
 
