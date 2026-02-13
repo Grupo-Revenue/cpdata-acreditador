@@ -1,30 +1,26 @@
 
 
-## Mejorar el diseño del editor de FAQs
+## Agregar indicador de accion en la tarjeta de FAQs
 
 ### Problema
 
-El boton de eliminar (icono de basura) esta posicionado de forma absoluta (`absolute top-2 right-2`) sobre cada tarjeta de FAQ, lo que causa que se superponga con los campos de texto y se vea desordenado.
+La tarjeta de Preguntas Frecuentes en el dashboard de acreditador es visualmente llamativa, pero no tiene un texto claro que indique al usuario que debe hacer clic para ver las FAQs.
 
 ### Solucion
 
-Redisenar cada tarjeta de FAQ para usar un layout con header organizado que incluya un numero de pregunta y el boton de eliminar alineados en la misma fila, seguido de los campos de entrada.
+Agregar un texto de llamada a la accion debajo de la descripcion existente, como "Haz clic para ver" con un icono de flecha, para que el usuario entienda que la tarjeta es interactiva.
 
-### Cambios
+### Cambio
 
 | Archivo | Cambio |
 |---|---|
-| `src/components/settings/FaqSettings.tsx` | Redisenar el layout de cada FAQ card |
+| `src/pages/dashboard/AcreditadorDashboard.tsx` | Agregar un texto/boton de accion debajo de "Revisa las respuestas a las dudas mas comunes" |
 
 ### Detalle tecnico
 
-En `FaqSettings.tsx`, reemplazar el layout actual de cada FAQ (div con `relative` y boton `absolute`) por:
+En `AcreditadorDashboard.tsx`, dentro del `CardContent` de la tarjeta de FAQs, agregar despues del `<p>` existente:
 
-1. Un **header** con `flex items-center justify-between` que contenga:
-   - Etiqueta "Pregunta N" a la izquierda (texto pequeno en muted)
-   - Boton de eliminar a la derecha, alineado naturalmente en el flow
-2. Los campos `Input` (pregunta) y `Textarea` (respuesta) debajo, sin necesidad de padding extra para evitar el boton
-3. Eliminar `relative` del contenedor y `absolute` del boton
-
-Esto mantiene el boton de eliminar visible y accesible sin superponerse a los campos de texto.
+- Un elemento con texto "Haz clic para ver" o "Ver preguntas" con un icono de flecha (`ChevronRight` o `ArrowRight`) al lado
+- Estilo: fondo semi-transparente (`bg-white/20 rounded-full px-4 py-2`), texto blanco, con efecto hover sutil
+- Esto refuerza visualmente que la tarjeta es clickeable sin cambiar el diseno general
 
