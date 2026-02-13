@@ -121,11 +121,13 @@ export function DigitalSignatureDialog({ open, onOpenChange, eventId, dealName, 
     doc.text(lines, 20, 35);
     const y = 35 + lines.length * 6;
     doc.setFontSize(10);
-    doc.text('─────────────────────────────────────', 20, y + 10);
+    doc.setDrawColor(0);
+    doc.setLineWidth(0.5);
+    doc.line(20, y + 10, 190, y + 10);
     doc.text(`Firmado por: ${signature.signer_name}`, 20, y + 18);
     doc.text(`Fecha: ${signedDate.toLocaleDateString('es-CL')}`, 20, y + 24);
     doc.text(`Hora: ${signedDate.toLocaleTimeString('es-CL')}`, 20, y + 30);
-    doc.text('─────────────────────────────────────', 20, y + 36);
+    doc.line(20, y + 36, 190, y + 36);
     doc.save(`contrato-${dealName ?? 'evento'}-${signature.signer_name}.pdf`);
   };
 
