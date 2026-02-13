@@ -7,6 +7,7 @@ import { HubspotIntegration } from '@/components/settings/HubspotIntegration';
 import { MetaIntegration } from '@/components/settings/MetaIntegration';
 import { WhatsappTemplatesManager } from '@/components/settings/WhatsappTemplatesManager';
 import { FaqSettings } from '@/components/settings/FaqSettings';
+import { DigitalSignatureSettings } from '@/components/settings/DigitalSignatureSettings';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 export default function SettingsPage() {
@@ -27,6 +28,7 @@ export default function SettingsPage() {
           <TabsTrigger value="integrations">Integraciones</TabsTrigger>
           <TabsTrigger value="whatsapp">Plantillas WhatsApp</TabsTrigger>
           <TabsTrigger value="faqs">FAQs</TabsTrigger>
+          <TabsTrigger value="firma-digital">Firma Digital</TabsTrigger>
         </TabsList>
 
         <TabsContent value="general" className="space-y-6">
@@ -46,6 +48,10 @@ export default function SettingsPage() {
 
         <TabsContent value="faqs">
           <FaqSettings />
+        </TabsContent>
+
+        <TabsContent value="firma-digital">
+          <DigitalSignatureSettings />
         </TabsContent>
       </Tabs>
     </AppShell>

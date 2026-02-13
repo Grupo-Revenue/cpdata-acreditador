@@ -96,6 +96,44 @@ export type Database = {
           },
         ]
       }
+      digital_signatures: {
+        Row: {
+          contract_text: string
+          created_at: string
+          event_id: string
+          id: string
+          signed_at: string
+          signer_name: string
+          user_id: string
+        }
+        Insert: {
+          contract_text: string
+          created_at?: string
+          event_id: string
+          id?: string
+          signed_at?: string
+          signer_name: string
+          user_id: string
+        }
+        Update: {
+          contract_text?: string
+          created_at?: string
+          event_id?: string
+          id?: string
+          signed_at?: string
+          signer_name?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "digital_signatures_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       event_accreditors: {
         Row: {
           application_status: Database["public"]["Enums"]["application_status"]
