@@ -1,59 +1,28 @@
 
 
-## Dashboard de Acreditador con datos reales y sistema de FAQs
+## Hacer el boton de Preguntas Frecuentes mas llamativo
 
 ### Resumen
 
-Reemplazar el dashboard estatico del acreditador con metricas reales (eventos semana, mes, total participados y monto ganado), incluir la tabla de ranking top 5, y agregar un sistema de FAQs editable desde Configuracion (superadmin) que se muestre con un boton de acceso directo en el dashboard.
+Reemplazar el boton simple `outline` de FAQs por una Card completa y visualmente atractiva que ocupe el espacio al lado del ranking, con gradiente, icono grande, titulo destacado y descripcion, para que los acreditadores lo noten facilmente.
 
 ### Cambios
 
 | Archivo | Cambio |
 |---|---|
-| `src/pages/dashboard/AcreditadorDashboard.tsx` | Reescribir con queries reales a `event_accreditors`, `invoices` y `settings`. Agregar `RankingTable` con limit 5 y boton/dialogo de FAQs |
-| `src/components/settings/FaqSettings.tsx` | Nuevo componente para gestionar FAQs (CRUD con Accordion) guardado en `settings` con key `faqs` como JSON |
-| `src/pages/app/Settings.tsx` | Agregar `FaqSettings` en la pestana General |
-| `src/components/dashboard/FaqDialog.tsx` | Nuevo dialogo que muestra las FAQs en formato Accordion para los acreditadores |
+| `src/pages/dashboard/AcreditadorDashboard.tsx` | Reemplazar el `Button` de FAQs por una Card con gradiente primario, icono grande, texto descriptivo y efecto hover |
 
 ### Detalle tecnico
 
-#### 1. AcreditadorDashboard.tsx
+Reemplazar el bloque actual (lineas 136-141) que contiene un simple `Button variant="outline"` por una Card interactiva con:
 
-Consultas con `useQuery`:
-- **Eventos semana**: Filtrar `event_accreditors` del usuario donde `events.event_date` este entre el lunes y domingo de la semana actual
-- **Eventos mes**: Filtrar donde `events.event_date` este en el mes actual
-- **Total participados**: Contar todos los registros en `event_accreditors` del usuario
-- **Monto ganado**: Sumar `amount` de `invoices` del usuario con status `pagado`
+- Fondo con gradiente primario (`gradient-primary`) y texto blanco
+- Icono `HelpCircle` grande (w-12 h-12) centrado
+- Titulo "Preguntas Frecuentes" en texto grande y bold
+- Subtitulo descriptivo: "Revisa las respuestas a las dudas mas comunes"
+- Cursor pointer y efecto `hover-lift` para indicar que es clickeable
+- Animacion `animate-fade-in-up` consistente con el resto del dashboard
+- `onClick` que abre el `FaqDialog` existente
 
-Tarjetas de estadisticas:
-1. Eventos Semana (Calendar)
-2. Eventos Mes (CalendarDays)
-3. Total Participados (CheckCircle)
-4. Monto Ganado (DollarSign) - formateado como moneda CLP
+La Card ocupara la columna derecha del grid de 2 columnas junto al `RankingTable`, dandole presencia visual equivalente.
 
-Debajo de las tarjetas:
-- `RankingTable` con `limit={5}` (componente existente reutilizado)
-- Boton "Preguntas Frecuentes" con icono `HelpCircle` que abre el `FaqDialog`
-
-#### 2. FaqSettings.tsx (nuevo)
-
-Similar a `GlosaModelSettings`:
-- Card con titulo "Preguntas Frecuentes (FAQs)"
-- Almacena en `settings` con key `faqs`, valor como JSON string: `[{ pregunta: "...", respuesta: "..." }]`
-- Interfaz para agregar, editar y eliminar pares pregunta/respuesta
-- Cada FAQ tiene dos campos: Input para pregunta, Textarea para respuesta
-- Botones para agregar nueva FAQ y eliminar existentes
-- Boton "Guardar" que hace upsert
-
-#### 3. Settings.tsx
-
-Importar y renderizar `FaqSettings` en la pestana General, despues de `RolesManager`.
-
-#### 4. FaqDialog.tsx (nuevo)
-
-- Dialog con titulo "Preguntas Frecuentes"
-- Lee las FAQs de `settings` con key `faqs`
-- Renderiza cada par pregunta/respuesta usando el componente `Accordion` existente
-- Si no hay FAQs configuradas, muestra mensaje vacio
-
-No se requieren migraciones de base de datos ya que se reutiliza la tabla `settings` existente con nuevos keys.
