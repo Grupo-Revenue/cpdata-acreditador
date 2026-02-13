@@ -13,7 +13,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { Input } from '@/components/ui/input';
-import { Wallet, Lock, Unlock, CheckCircle, XCircle, DollarSign, Plus, Trash2, Upload } from 'lucide-react';
+import { Wallet, Lock, Unlock, CheckCircle, XCircle, DollarSign, Plus, Trash2, Upload, Search } from 'lucide-react';
 
 export default function ReimbursementsPage() {
   const { activeRole, user } = useAuth();
@@ -26,6 +26,7 @@ export default function ReimbursementsPage() {
   const [confirmAction, setConfirmAction] = useState<{ type: string; eventId: string; expenseId?: string } | null>(null);
   const [processing, setProcessing] = useState(false);
   const [showAddForm, setShowAddForm] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
   const [newExpenseName, setNewExpenseName] = useState('');
   const [newExpenseAmount, setNewExpenseAmount] = useState('');
   const [newExpenseFile, setNewExpenseFile] = useState<File | null>(null);
@@ -239,7 +240,23 @@ export default function ReimbursementsPage() {
         />
       ) : (
         <div className="space-y-6">
-          {events.map(event => {
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Buscar por nombre de evento..."
+              value={searchTerm}
+              onChange={e => setSearchTerm(e.target.value)}
+              className="pl-9"
+            />
+          </div>
+          {events
+            .filter(event => event.name.toLowerCase().includes(searchTerm.toLowerCase()))
+            .length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-8">Sin resultados para la búsqueda</p>
+          ) : (
+          events
+            .filter(event => event.name.toLowerCase().includes(searchTerm.toLowerCase()))
+            .map(event => {
             const eventExpenses = expenses?.filter(e => e.event_id === event.id) ?? [];
             if (!isSuperadmin && !isSupervisor && eventExpenses.length === 0) return null;
             const isReimbursementClosed = !!event.reimbursement_closed_at;
@@ -380,7 +397,7 @@ export default function ReimbursementsPage() {
                 </CardContent>
               </Card>
             );
-          })}
+          }))}
         </div>
       )}
 
