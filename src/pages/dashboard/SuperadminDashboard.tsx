@@ -15,6 +15,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
 import { RankingTable } from '@/components/dashboard/RankingTable';
+import { RecentTicketsTable } from '@/components/dashboard/RecentTicketsTable';
 import { startOfWeek, endOfWeek } from 'date-fns';
 
 interface SuperadminDashboardProps {
@@ -204,6 +205,11 @@ export default function SuperadminDashboard({
             </CardContent>
           </Card>
         </div>
+      </div>
+
+      {/* Recent Tickets */}
+      <div className="mt-6">
+        <RecentTicketsTable />
       </div>
     </AppShell>
   );
