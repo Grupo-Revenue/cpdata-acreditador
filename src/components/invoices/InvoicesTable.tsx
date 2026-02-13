@@ -20,6 +20,7 @@ export interface InvoiceRow {
   created_by: string;
   created_at: string;
   updated_at: string;
+  payment_date: string | null;
   profiles: { nombre: string; apellido: string; telefono: string | null } | null;
   roles: string[];
   events: { name: string; event_date: string } | null;
@@ -106,9 +107,11 @@ export function InvoicesTable({ invoices, isAdmin, paymentDays, onEdit, onWhatsa
       const name = inv.profiles ? `${inv.profiles.nombre} ${inv.profiles.apellido}` : '';
       const invoiceId = formatInvoiceId(inv.invoice_number);
       const roles = inv.roles.join(', ');
-      const paymentDateStr = inv.events?.event_date
-        ? format(calcPaymentDate(inv.events.event_date, paymentDays), 'dd-MM-yyyy')
-        : '';
+      const paymentDateStr = inv.payment_date
+        ? formatDateSafe(inv.payment_date)
+        : inv.events?.event_date
+          ? format(calcPaymentDate(inv.events.event_date, paymentDays), 'dd-MM-yyyy')
+          : '';
 
       const match = (value: string, filter: string) =>
         !filter || value.toLowerCase().includes(filter.toLowerCase());
@@ -259,9 +262,11 @@ export function InvoicesTable({ invoices, isAdmin, paymentDays, onEdit, onWhatsa
                     <TableCell>{formatCLP(inv.amount)}</TableCell>
                     <TableCell>{formatDateSafe(inv.emission_date)}</TableCell>
                     <TableCell>
-                      {inv.events?.event_date
-                        ? format(calcPaymentDate(inv.events.event_date, paymentDays), 'dd-MM-yyyy')
-                        : '-'}
+                      {inv.payment_date
+                        ? formatDateSafe(inv.payment_date)
+                        : inv.events?.event_date
+                          ? format(calcPaymentDate(inv.events.event_date, paymentDays), 'dd-MM-yyyy')
+                          : '-'}
                     </TableCell>
                     <TableCell>
                       <div className="flex gap-1">

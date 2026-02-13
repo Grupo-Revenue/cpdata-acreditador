@@ -26,6 +26,7 @@ export function InvoiceCreateDialog({ open, onOpenChange }: Props) {
   const [status, setStatus] = useState<'pendiente' | 'pagado' | 'rechazado'>('pendiente');
   const [amount, setAmount] = useState('');
   const [emissionDate, setEmissionDate] = useState(new Date().toISOString().split('T')[0]);
+  const [paymentDate, setPaymentDate] = useState('');
   const [file, setFile] = useState<File | null>(null);
 
   useEffect(() => {
@@ -35,6 +36,7 @@ export function InvoiceCreateDialog({ open, onOpenChange }: Props) {
       setStatus('pendiente');
       setAmount('');
       setEmissionDate(new Date().toISOString().split('T')[0]);
+      setPaymentDate('');
       setFile(null);
     }
   }, [open]);
@@ -91,7 +93,8 @@ export function InvoiceCreateDialog({ open, onOpenChange }: Props) {
         emission_date: emissionDate,
         file_url: fileUrl,
         created_by: user!.id,
-      });
+        payment_date: paymentDate || null,
+      } as any);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -165,6 +168,14 @@ export function InvoiceCreateDialog({ open, onOpenChange }: Props) {
           <div className="space-y-2">
             <Label>Fecha de emisión</Label>
             <Input type="date" value={emissionDate} onChange={(e) => setEmissionDate(e.target.value)} />
+          </div>
+
+          <div className="space-y-2">
+            <Label>Fecha de pago (opcional)</Label>
+            <Input type="date" value={paymentDate} onChange={(e) => setPaymentDate(e.target.value)} />
+            <p className="text-xs text-muted-foreground">
+              Si se deja vacío, se calculará automáticamente.
+            </p>
           </div>
 
           <div className="space-y-2">
