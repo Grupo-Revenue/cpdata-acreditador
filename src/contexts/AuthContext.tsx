@@ -57,9 +57,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [roles, setRoles] = useState<AppRole[]>([]);
-  const [activeRole, setActiveRole] = useState<AppRole | null>(null);
+  const VALID_ROLES: AppRole[] = ['superadmin', 'administracion', 'supervisor', 'acreditador'];
+
+  const getStoredRole = (): AppRole | null => {
+    try {
+      const stored = localStorage.getItem('activeRole');
+      if (stored && VALID_ROLES.includes(stored as AppRole)) {
+        return stored as AppRole;
+      }
+    } catch {}
+    return null;
+  };
+
+  const [activeRole, _setActiveRole] = useState<AppRole | null>(getStoredRole);
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
+
+  const handleSetActiveRole = (role: AppRole | null) => {
+    _setActiveRole(role);
+    try {
+      if (role) {
+        localStorage.setItem('activeRole', role);
+      } else {
+        localStorage.removeItem('activeRole');
+      }
+    } catch {}
+  };
 
   const fetchProfile = async (userId: string) => {
     try {
@@ -85,7 +108,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .eq('user_id', userId);
 
       if (error) throw error;
-      setRoles((data?.map(r => r.role) || []) as AppRole[]);
+      const fetchedRoles = (data?.map(r => r.role) || []) as AppRole[];
+      setRoles(fetchedRoles);
+
+      // Validate stored activeRole against fetched roles
+      const stored = getStoredRole();
+      if (stored && !fetchedRoles.includes(stored)) {
+        handleSetActiveRole(null);
+      }
     } catch (error) {
       console.error('Error fetching roles:', error);
       setRoles([]);
@@ -231,7 +261,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const signOut = async () => {
-    setActiveRole(null);
+    handleSetActiveRole(null);
     await supabase.auth.signOut();
     setProfile(null);
     setRoles([]);
@@ -264,7 +294,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         profile,
         roles,
         activeRole,
-        setActiveRole,
+        setActiveRole: handleSetActiveRole,
         isLoading,
         isApproved,
         isActive,
