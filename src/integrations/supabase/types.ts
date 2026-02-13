@@ -14,6 +14,41 @@ export type Database = {
   }
   public: {
     Tables: {
+      attendance_comments: {
+        Row: {
+          attendance_record_id: string
+          comment: string
+          created_at: string
+          created_by: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          attendance_record_id: string
+          comment: string
+          created_at?: string
+          created_by?: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          attendance_record_id?: string
+          comment?: string
+          created_at?: string
+          created_by?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "attendance_comments_attendance_record_id_fkey"
+            columns: ["attendance_record_id"]
+            isOneToOne: false
+            referencedRelation: "attendance_records"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       attendance_records: {
         Row: {
           attendance_date: string
