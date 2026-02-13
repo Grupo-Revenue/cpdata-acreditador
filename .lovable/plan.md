@@ -1,28 +1,18 @@
 
+## Colocar FAQ al lado del Ranking en el Dashboard Acreditador
 
-## Hacer el boton de Preguntas Frecuentes mas llamativo
+### Problema
 
-### Resumen
+El componente `RankingTable` tiene la clase `lg:col-span-2` que hace que ocupe todo el ancho del grid, empujando la card de FAQs debajo en lugar de al lado.
 
-Reemplazar el boton simple `outline` de FAQs por una Card completa y visualmente atractiva que ocupe el espacio al lado del ranking, con gradiente, icono grande, titulo destacado y descripcion, para que los acreditadores lo noten facilmente.
-
-### Cambios
+### Cambio
 
 | Archivo | Cambio |
 |---|---|
-| `src/pages/dashboard/AcreditadorDashboard.tsx` | Reemplazar el `Button` de FAQs por una Card con gradiente primario, icono grande, texto descriptivo y efecto hover |
+| `src/components/dashboard/RankingTable.tsx` | Eliminar la clase `lg:col-span-2` del Card principal del ranking |
 
 ### Detalle tecnico
 
-Reemplazar el bloque actual (lineas 136-141) que contiene un simple `Button variant="outline"` por una Card interactiva con:
+En `src/components/dashboard/RankingTable.tsx` (linea 84), el Card raiz tiene la clase `lg:col-span-2`. Al eliminarla, el ranking ocupara solo una columna del grid de 2 columnas definido en `AcreditadorDashboard.tsx`, permitiendo que la card de Preguntas Frecuentes se muestre a su lado en pantallas grandes.
 
-- Fondo con gradiente primario (`gradient-primary`) y texto blanco
-- Icono `HelpCircle` grande (w-12 h-12) centrado
-- Titulo "Preguntas Frecuentes" en texto grande y bold
-- Subtitulo descriptivo: "Revisa las respuestas a las dudas mas comunes"
-- Cursor pointer y efecto `hover-lift` para indicar que es clickeable
-- Animacion `animate-fade-in-up` consistente con el resto del dashboard
-- `onClick` que abre el `FaqDialog` existente
-
-La Card ocupara la columna derecha del grid de 2 columnas junto al `RankingTable`, dandole presencia visual equivalente.
-
+**Nota**: Este cambio tambien afecta otros dashboards que usan `RankingTable`. Si se desea mantener el comportamiento de ancho completo en otros dashboards, se puede pasar la clase como prop en lugar de eliminarla directamente. Sin embargo, revisando los dashboards existentes (Admin, Supervisor), el ranking siempre esta en un grid de 2 columnas, por lo que eliminar `col-span-2` es consistente.
