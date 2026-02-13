@@ -76,6 +76,14 @@ export function EventsUserTable({ deals, isSupervisor }: EventsUserTableProps) {
 
   return (
     <>
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2 mb-4">
+        <Input placeholder="Filtrar Id..." value={filters.dealname} onChange={(e) => updateFilter('dealname', e.target.value)} className="h-8 text-xs" />
+        <Input placeholder="Filtrar Nombre..." value={filters.nombre_del_evento} onChange={(e) => updateFilter('nombre_del_evento', e.target.value)} className="h-8 text-xs" />
+        <Input placeholder="Filtrar Tipo..." value={filters.tipo_de_evento} onChange={(e) => updateFilter('tipo_de_evento', e.target.value)} className="h-8 text-xs" />
+        <Input placeholder="Filtrar Locación..." value={filters.locacion_del_evento} onChange={(e) => updateFilter('locacion_del_evento', e.target.value)} className="h-8 text-xs" />
+        <Input placeholder="Filtrar Fecha..." value={filters.fecha_inicio_del_evento} onChange={(e) => updateFilter('fecha_inicio_del_evento', e.target.value)} className="h-8 text-xs" />
+        <Input placeholder="Filtrar Horario..." value={filters.hora_de_inicio_y_fin_del_evento} onChange={(e) => updateFilter('hora_de_inicio_y_fin_del_evento', e.target.value)} className="h-8 text-xs" />
+      </div>
       <Card>
         <CardContent className="p-0">
           <Table>
@@ -88,27 +96,6 @@ export function EventsUserTable({ deals, isSupervisor }: EventsUserTableProps) {
                 <TableHead>Fecha Inicio</TableHead>
                 <TableHead>Horario</TableHead>
                 <TableHead className="w-[100px]">Acciones</TableHead>
-              </TableRow>
-              <TableRow>
-                <TableHead className="py-1">
-                  <Input placeholder="Filtrar..." value={filters.dealname} onChange={(e) => updateFilter('dealname', e.target.value)} className="h-8 text-xs" />
-                </TableHead>
-                <TableHead className="py-1">
-                  <Input placeholder="Filtrar..." value={filters.nombre_del_evento} onChange={(e) => updateFilter('nombre_del_evento', e.target.value)} className="h-8 text-xs" />
-                </TableHead>
-                <TableHead className="py-1">
-                  <Input placeholder="Filtrar..." value={filters.tipo_de_evento} onChange={(e) => updateFilter('tipo_de_evento', e.target.value)} className="h-8 text-xs" />
-                </TableHead>
-                <TableHead className="py-1">
-                  <Input placeholder="Filtrar..." value={filters.locacion_del_evento} onChange={(e) => updateFilter('locacion_del_evento', e.target.value)} className="h-8 text-xs" />
-                </TableHead>
-                <TableHead className="py-1">
-                  <Input placeholder="Filtrar..." value={filters.fecha_inicio_del_evento} onChange={(e) => updateFilter('fecha_inicio_del_evento', e.target.value)} className="h-8 text-xs" />
-                </TableHead>
-                <TableHead className="py-1">
-                  <Input placeholder="Filtrar..." value={filters.hora_de_inicio_y_fin_del_evento} onChange={(e) => updateFilter('hora_de_inicio_y_fin_del_evento', e.target.value)} className="h-8 text-xs" />
-                </TableHead>
-                <TableHead className="py-1" />
               </TableRow>
             </TableHeader>
             <TableBody>
