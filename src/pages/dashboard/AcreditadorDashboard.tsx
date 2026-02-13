@@ -1,40 +1,100 @@
+import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { startOfWeek, endOfWeek, startOfMonth, endOfMonth, format } from 'date-fns';
 import { AppShell } from '@/components/layout/AppShell';
 import { PageHeader } from '@/components/ui/PageHeader';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { 
-  Calendar, 
-  FileText, 
-  Trophy,
-  Clock
+import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
+import { RankingTable } from '@/components/dashboard/RankingTable';
+import { FaqDialog } from '@/components/dashboard/FaqDialog';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
+import {
+  Calendar,
+  CalendarDays,
+  CheckCircle,
+  DollarSign,
+  HelpCircle,
 } from 'lucide-react';
 
 export default function AcreditadorDashboard() {
+  const { user } = useAuth();
+  const [faqOpen, setFaqOpen] = useState(false);
+
+  const now = new Date();
+  const weekStart = format(startOfWeek(now, { weekStartsOn: 1 }), 'yyyy-MM-dd');
+  const weekEnd = format(endOfWeek(now, { weekStartsOn: 1 }), 'yyyy-MM-dd');
+  const monthStart = format(startOfMonth(now), 'yyyy-MM-dd');
+  const monthEnd = format(endOfMonth(now), 'yyyy-MM-dd');
+
+  const { data: eventsWeek, isLoading: l1 } = useQuery({
+    queryKey: ['acred-events-week', user?.id, weekStart],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('event_accreditors')
+        .select('id, events!inner(event_date)')
+        .eq('user_id', user!.id)
+        .gte('events.event_date', weekStart)
+        .lte('events.event_date', weekEnd);
+      if (error) throw error;
+      return data?.length ?? 0;
+    },
+    enabled: !!user,
+  });
+
+  const { data: eventsMonth, isLoading: l2 } = useQuery({
+    queryKey: ['acred-events-month', user?.id, monthStart],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('event_accreditors')
+        .select('id, events!inner(event_date)')
+        .eq('user_id', user!.id)
+        .gte('events.event_date', monthStart)
+        .lte('events.event_date', monthEnd);
+      if (error) throw error;
+      return data?.length ?? 0;
+    },
+    enabled: !!user,
+  });
+
+  const { data: totalEvents, isLoading: l3 } = useQuery({
+    queryKey: ['acred-events-total', user?.id],
+    queryFn: async () => {
+      const { count, error } = await supabase
+        .from('event_accreditors')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', user!.id);
+      if (error) throw error;
+      return count ?? 0;
+    },
+    enabled: !!user,
+  });
+
+  const { data: totalEarned, isLoading: l4 } = useQuery({
+    queryKey: ['acred-earned', user?.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('invoices')
+        .select('amount')
+        .eq('user_id', user!.id)
+        .eq('status', 'pagado');
+      if (error) throw error;
+      return (data || []).reduce((sum, inv) => sum + (inv.amount || 0), 0);
+    },
+    enabled: !!user,
+  });
+
+  const isLoading = l1 || l2 || l3 || l4;
+
   const stats = [
+    { title: 'Eventos Semana', value: eventsWeek ?? 0, icon: Calendar, color: 'text-primary', bgColor: 'bg-primary/10' },
+    { title: 'Eventos Mes', value: eventsMonth ?? 0, icon: CalendarDays, color: 'text-warning', bgColor: 'bg-warning/10' },
+    { title: 'Total Participados', value: totalEvents ?? 0, icon: CheckCircle, color: 'text-accent', bgColor: 'bg-accent/10' },
     {
-      title: 'Mis Eventos',
-      value: '3',
-      icon: Calendar,
-      color: 'text-primary',
-      bgColor: 'bg-primary/10',
-    },
-    {
-      title: 'Boletas Pendientes',
-      value: '5',
-      icon: FileText,
-      color: 'text-warning',
-      bgColor: 'bg-warning/10',
-    },
-    {
-      title: 'Mi Ranking',
-      value: '#12',
-      icon: Trophy,
-      color: 'text-accent',
-      bgColor: 'bg-accent/10',
-    },
-    {
-      title: 'Horas Este Mes',
-      value: '48h',
-      icon: Clock,
+      title: 'Monto Ganado',
+      value: `$${(totalEarned ?? 0).toLocaleString('es-CL')}`,
+      icon: DollarSign,
       color: 'text-success',
       bgColor: 'bg-success/10',
     },
@@ -45,9 +105,7 @@ export default function AcreditadorDashboard() {
       <PageHeader
         title="Mi Dashboard"
         description="Resumen de tu actividad"
-        breadcrumbs={[
-          { label: 'Dashboard' },
-        ]}
+        breadcrumbs={[{ label: 'Dashboard' }]}
       />
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
@@ -57,7 +115,11 @@ export default function AcreditadorDashboard() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground">{stat.title}</p>
-                  <p className="text-3xl font-bold mt-1">{stat.value}</p>
+                  {isLoading ? (
+                    <Skeleton className="h-9 w-16 mt-1" />
+                  ) : (
+                    <p className="text-3xl font-bold mt-1">{stat.value}</p>
+                  )}
                 </div>
                 <div className={`p-3 rounded-xl ${stat.bgColor}`}>
                   <stat.icon className={`w-6 h-6 ${stat.color}`} />
@@ -69,28 +131,17 @@ export default function AcreditadorDashboard() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card className="animate-fade-in-up animation-delay-200">
-          <CardHeader>
-            <CardTitle>Próximos Eventos</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-muted-foreground text-center py-8">
-              Tus eventos asignados aparecerán aquí.
-            </p>
-          </CardContent>
-        </Card>
+        <RankingTable limit={5} />
 
-        <Card className="animate-fade-in-up animation-delay-300">
-          <CardHeader>
-            <CardTitle>Boletas Pendientes</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-muted-foreground text-center py-8">
-              Tus boletas por enviar aparecerán aquí.
-            </p>
-          </CardContent>
-        </Card>
+        <div className="flex items-start">
+          <Button variant="outline" size="lg" onClick={() => setFaqOpen(true)}>
+            <HelpCircle className="w-5 h-5 mr-2" />
+            Preguntas Frecuentes
+          </Button>
+        </div>
       </div>
+
+      <FaqDialog open={faqOpen} onOpenChange={setFaqOpen} />
     </AppShell>
   );
 }
