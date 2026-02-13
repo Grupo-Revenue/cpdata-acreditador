@@ -26,13 +26,13 @@ export default function SettingsPage() {
           <TabsTrigger value="general">General</TabsTrigger>
           <TabsTrigger value="integrations">Integraciones</TabsTrigger>
           <TabsTrigger value="whatsapp">Plantillas WhatsApp</TabsTrigger>
+          <TabsTrigger value="faqs">FAQs</TabsTrigger>
         </TabsList>
 
         <TabsContent value="general" className="space-y-6">
           <PaymentDaySettings />
           <GlosaModelSettings />
           <RolesManager />
-          <FaqSettings />
         </TabsContent>
 
         <TabsContent value="integrations" className="space-y-6">
@@ -42,6 +42,10 @@ export default function SettingsPage() {
 
         <TabsContent value="whatsapp">
           <WhatsappTemplatesManager />
+        </TabsContent>
+
+        <TabsContent value="faqs">
+          <FaqSettings />
         </TabsContent>
       </Tabs>
     </AppShell>
