@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Card, CardContent } from '@/components/ui/card';
@@ -7,9 +7,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious, PaginationEllipsis } from '@/components/ui/pagination';
-import { PenTool, ClipboardList } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
+import { PenTool, ClipboardList, Download } from 'lucide-react';
 import { EventManagementDialog } from './EventManagementDialog';
+import { DigitalSignatureDialog } from './DigitalSignatureDialog';
 
 interface HubSpotDeal {
   id: string;
@@ -33,10 +33,12 @@ interface EventsUserTableProps {
 const PAGE_SIZE = 5;
 
 export function EventsUserTable({ deals, isSupervisor, userId }: EventsUserTableProps) {
-  const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [currentPage, setCurrentPage] = useState(1);
   const [managementOpen, setManagementOpen] = useState(false);
   const [selectedDeal, setSelectedDeal] = useState<HubSpotDeal | null>(null);
+  const [signatureDeal, setSignatureDeal] = useState<HubSpotDeal | null>(null);
+  const [signatureOpen, setSignatureOpen] = useState(false);
   const [filters, setFilters] = useState({
     dealname: '',
     nombre_del_evento: '',
@@ -71,6 +73,27 @@ export function EventsUserTable({ deals, isSupervisor, userId }: EventsUserTable
     },
   });
 
+  // Fetch existing signatures for this user
+  const { data: signatureMap } = useQuery({
+    queryKey: ['user-signatures', userId],
+    enabled: !!userId,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('digital_signatures')
+        .select('event_id, events(hubspot_deal_id)')
+        .eq('user_id', userId!);
+
+      const map: Record<string, boolean> = {};
+      for (const row of data ?? []) {
+        const ev = (row as any).events;
+        if (ev?.hubspot_deal_id) {
+          map[ev.hubspot_deal_id] = true;
+        }
+      }
+      return map;
+    },
+  });
+
   const getDisplayStatus = (dealId: string) => {
     const info = statusMap?.[dealId];
     if (!info) return { label: '—', color: '' };
@@ -84,6 +107,8 @@ export function EventsUserTable({ deals, isSupervisor, userId }: EventsUserTable
     const info = statusMap?.[dealId];
     return info?.applicationStatus === 'aceptado' && info?.eventStatus !== 'completed';
   };
+
+  const hasSigned = (dealId: string) => !!signatureMap?.[dealId];
 
   const filteredDeals = useMemo(() => {
     return deals.filter((deal) => {
@@ -105,7 +130,6 @@ export function EventsUserTable({ deals, isSupervisor, userId }: EventsUserTable
   const totalPages = Math.ceil(filteredDeals.length / PAGE_SIZE);
   const paginatedDeals = filteredDeals.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
-  // Reset page when filters change
   useEffect(() => {
     setCurrentPage(1);
   }, [filters]);
@@ -114,8 +138,9 @@ export function EventsUserTable({ deals, isSupervisor, userId }: EventsUserTable
     setFilters((prev) => ({ ...prev, [key]: value }));
   };
 
-  const handleFirmaDigital = () => {
-    toast({ title: 'Firma digital', description: 'Funcionalidad próximamente disponible.' });
+  const handleSignatureClick = (deal: HubSpotDeal) => {
+    setSignatureDeal(deal);
+    setSignatureOpen(true);
   };
 
   const handleGestionEvento = (deal: HubSpotDeal) => {
@@ -159,6 +184,8 @@ export function EventsUserTable({ deals, isSupervisor, userId }: EventsUserTable
               ) : (
                 paginatedDeals.map((deal) => {
                   const status = getDisplayStatus(deal.id);
+                  const signed = hasSigned(deal.id);
+                  const signEnabled = isSignEnabled(deal.id);
                   return (
                     <TableRow key={deal.id}>
                       <TableCell className="font-medium">{deal.dealname ?? '—'}</TableCell>
@@ -173,9 +200,15 @@ export function EventsUserTable({ deals, isSupervisor, userId }: EventsUserTable
                         </Badge>
                       </TableCell>
                       <TableCell className="flex gap-1">
-                        <Button variant="ghost" size="icon" onClick={handleFirmaDigital} title="Firma digital" disabled={!isSignEnabled(deal.id)}>
-                          <PenTool className="h-4 w-4" />
-                        </Button>
+                        {signed ? (
+                          <Button variant="ghost" size="icon" onClick={() => handleSignatureClick(deal)} title="Descargar contrato">
+                            <Download className="h-4 w-4" />
+                          </Button>
+                        ) : (
+                          <Button variant="ghost" size="icon" onClick={() => handleSignatureClick(deal)} title="Firma digital" disabled={!signEnabled}>
+                            <PenTool className="h-4 w-4" />
+                          </Button>
+                        )}
                         {isSupervisor && (
                           <Button variant="ghost" size="icon" onClick={() => handleGestionEvento(deal)} title="Gestión del evento">
                             <ClipboardList className="h-4 w-4" />
@@ -228,6 +261,17 @@ export function EventsUserTable({ deals, isSupervisor, userId }: EventsUserTable
           onOpenChange={setManagementOpen}
           hubspotDealId={selectedDeal.id}
           dealName={selectedDeal.nombre_del_evento}
+        />
+      )}
+
+      {userId && (
+        <DigitalSignatureDialog
+          open={signatureOpen}
+          onOpenChange={setSignatureOpen}
+          eventId={signatureDeal?.id ?? null}
+          dealName={signatureDeal?.nombre_del_evento ?? signatureDeal?.dealname ?? null}
+          userId={userId}
+          onSigned={() => queryClient.invalidateQueries({ queryKey: ['user-signatures', userId] })}
         />
       )}
     </>

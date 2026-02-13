@@ -4,8 +4,10 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious, PaginationEllipsis } from '@/components/ui/pagination';
-import { Pencil, Users } from 'lucide-react';
+import { Pencil, Users, Download, FileDown } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 import { EventEditDialog } from '@/components/events/EventEditDialog';
 import { EventTeamDialog } from '@/components/events/EventTeamDialog';
 
@@ -41,8 +43,19 @@ interface EventsAdminTableProps {
 
 const PAGE_SIZE = 5;
 
+function generateContractText(sig: { contract_text: string; signer_name: string; signed_at: string }) {
+  const signedDate = new Date(sig.signed_at);
+  return `${sig.contract_text}\n\n` +
+    `─────────────────────────────────────\n` +
+    `Firmado por: ${sig.signer_name}\n` +
+    `Fecha: ${signedDate.toLocaleDateString('es-CL')}\n` +
+    `Hora: ${signedDate.toLocaleTimeString('es-CL')}\n` +
+    `─────────────────────────────────────`;
+}
+
 export function EventsAdminTable({ deals }: EventsAdminTableProps) {
   const { hasRole } = useAuth();
+  const { toast } = useToast();
   const canEdit = hasRole('superadmin') || hasRole('administracion');
   const canAssignTeam = hasRole('superadmin');
 
@@ -59,8 +72,102 @@ export function EventsAdminTable({ deals }: EventsAdminTableProps) {
     setCurrentPage(1);
   }, [deals.length]);
 
+  const downloadContractsForDeal = async (deal: HubSpotDeal) => {
+    // Get internal event
+    const { data: eventData } = await supabase
+      .from('events')
+      .select('id')
+      .eq('hubspot_deal_id', deal.id)
+      .maybeSingle();
+
+    if (!eventData) {
+      toast({ title: 'Sin contratos', description: 'No se encontró el evento local.', variant: 'destructive' });
+      return;
+    }
+
+    const { data: signatures } = await supabase
+      .from('digital_signatures')
+      .select('contract_text, signer_name, signed_at')
+      .eq('event_id', eventData.id);
+
+    if (!signatures || signatures.length === 0) {
+      toast({ title: 'Sin contratos', description: 'No hay contratos firmados para este evento.' });
+      return;
+    }
+
+    if (signatures.length === 1) {
+      const content = generateContractText(signatures[0]);
+      const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `contrato-${deal.nombre_del_evento ?? deal.dealname ?? 'evento'}-${signatures[0].signer_name}.txt`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } else {
+      // Multiple: concatenate all
+      const allContent = signatures.map((sig) => generateContractText(sig)).join('\n\n\n========================================\n\n\n');
+      const blob = new Blob([allContent], { type: 'text/plain;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `contratos-${deal.nombre_del_evento ?? deal.dealname ?? 'evento'}.txt`;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+  };
+
+  const downloadAllContracts = async () => {
+    // Get all hubspot deal ids
+    const dealIds = deals.map((d) => d.id);
+    const { data: events } = await supabase
+      .from('events')
+      .select('id, hubspot_deal_id, name')
+      .in('hubspot_deal_id', dealIds);
+
+    if (!events || events.length === 0) {
+      toast({ title: 'Sin contratos', description: 'No se encontraron eventos locales.' });
+      return;
+    }
+
+    const eventIds = events.map((e) => e.id);
+    const { data: signatures } = await supabase
+      .from('digital_signatures')
+      .select('contract_text, signer_name, signed_at, event_id')
+      .in('event_id', eventIds);
+
+    if (!signatures || signatures.length === 0) {
+      toast({ title: 'Sin contratos', description: 'No hay contratos firmados.' });
+      return;
+    }
+
+    const eventNameMap: Record<string, string> = {};
+    for (const ev of events) {
+      eventNameMap[ev.id] = ev.name;
+    }
+
+    const allContent = signatures.map((sig) => {
+      const eventName = eventNameMap[sig.event_id] ?? 'Evento';
+      return `EVENTO: ${eventName}\n\n${generateContractText(sig)}`;
+    }).join('\n\n\n========================================\n\n\n');
+
+    const blob = new Blob([allContent], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'todos-los-contratos.txt';
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <>
+      <div className="flex justify-end mb-2">
+        <Button variant="outline" size="sm" onClick={downloadAllContracts}>
+          <FileDown className="h-4 w-4 mr-2" />
+          Descargar Todos los Contratos
+        </Button>
+      </div>
       <Card>
         <CardContent className="p-0">
           <Table>
@@ -75,7 +182,7 @@ export function EventsAdminTable({ deals }: EventsAdminTableProps) {
                 <TableHead>Fecha Inicio</TableHead>
                 <TableHead>Fecha Fin</TableHead>
                 <TableHead>Etapa</TableHead>
-                <TableHead className="w-[70px]">Acciones</TableHead>
+                <TableHead className="w-[100px]">Acciones</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -107,6 +214,9 @@ export function EventsAdminTable({ deals }: EventsAdminTableProps) {
                         <Users className="h-4 w-4" />
                       </Button>
                     )}
+                    <Button variant="ghost" size="icon" onClick={() => downloadContractsForDeal(deal)} title="Descargar contratos">
+                      <Download className="h-4 w-4" />
+                    </Button>
                   </TableCell>
                 </TableRow>
               ))}
