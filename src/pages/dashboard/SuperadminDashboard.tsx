@@ -174,7 +174,7 @@ export default function SuperadminDashboard({
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Ranking Table */}
-        <RankingTable />
+        <RankingTable className="lg:col-span-2" />
 
         {/* Accesos Rápidos */}
         <div className="space-y-6">

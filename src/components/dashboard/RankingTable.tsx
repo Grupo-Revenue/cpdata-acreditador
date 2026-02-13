@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { cn } from '@/lib/utils';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -19,9 +20,10 @@ interface AccreditorRanking {
 
 interface RankingTableProps {
   limit?: number;
+  className?: string;
 }
 
-export function RankingTable({ limit = 10 }: RankingTableProps) {
+export function RankingTable({ limit = 10, className }: RankingTableProps) {
   const { activeRole } = useAuth();
   const isAdmin = activeRole === 'superadmin' || activeRole === 'administracion';
   const [commentsUser, setCommentsUser] = useState<{ id: string; name: string } | null>(null);
@@ -81,7 +83,7 @@ export function RankingTable({ limit = 10 }: RankingTableProps) {
 
   return (
     <>
-      <Card className="animate-fade-in-up animation-delay-200">
+      <Card className={cn("animate-fade-in-up animation-delay-200", className)}>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Trophy className="w-5 h-5 text-warning" />
