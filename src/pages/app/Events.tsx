@@ -132,7 +132,7 @@ export default function EventsPage() {
       ) : isAdmin ? (
         <EventsAdminTable deals={userDeals} />
       ) : (
-        <EventsUserTable deals={userDeals} isSupervisor={isSupervisor} />
+        <EventsUserTable deals={userDeals} isSupervisor={isSupervisor} userId={user?.id} />
       )}
 
       {isAdmin && (

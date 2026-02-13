@@ -1,8 +1,11 @@
 import { useState, useEffect, useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious, PaginationEllipsis } from '@/components/ui/pagination';
 import { PenTool, ClipboardList } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
@@ -24,11 +27,12 @@ interface HubSpotDeal {
 interface EventsUserTableProps {
   deals: HubSpotDeal[];
   isSupervisor: boolean;
+  userId?: string;
 }
 
 const PAGE_SIZE = 5;
 
-export function EventsUserTable({ deals, isSupervisor }: EventsUserTableProps) {
+export function EventsUserTable({ deals, isSupervisor, userId }: EventsUserTableProps) {
   const { toast } = useToast();
   const [currentPage, setCurrentPage] = useState(1);
   const [managementOpen, setManagementOpen] = useState(false);
@@ -40,22 +44,63 @@ export function EventsUserTable({ deals, isSupervisor }: EventsUserTableProps) {
     locacion_del_evento: '',
     fecha_inicio_del_evento: '',
     hora_de_inicio_y_fin_del_evento: '',
+    estado: '',
   });
+
+  // Fetch user's application statuses and event statuses
+  const { data: statusMap } = useQuery({
+    queryKey: ['event-accreditor-status', userId],
+    enabled: !!userId,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('event_accreditors')
+        .select('application_status, events(hubspot_deal_id, status)')
+        .eq('user_id', userId!);
+
+      const map: Record<string, { applicationStatus: string; eventStatus: string }> = {};
+      for (const row of data ?? []) {
+        const ev = row.events as any;
+        if (ev?.hubspot_deal_id) {
+          map[ev.hubspot_deal_id] = {
+            applicationStatus: row.application_status,
+            eventStatus: ev.status,
+          };
+        }
+      }
+      return map;
+    },
+  });
+
+  const getDisplayStatus = (dealId: string) => {
+    const info = statusMap?.[dealId];
+    if (!info) return { label: '—', color: '' };
+    if (info.eventStatus === 'completed') return { label: 'Evento Finalizado', color: 'bg-muted text-muted-foreground border-muted' };
+    if (info.applicationStatus === 'aceptado') return { label: 'Aceptado', color: 'bg-success/10 text-success border-success/20' };
+    if (info.applicationStatus === 'rechazado') return { label: 'Rechazado', color: 'bg-destructive/10 text-destructive border-destructive/20' };
+    return { label: 'Pendiente', color: 'bg-warning/10 text-warning border-warning/20' };
+  };
+
+  const isSignEnabled = (dealId: string) => {
+    const info = statusMap?.[dealId];
+    return info?.applicationStatus === 'aceptado' && info?.eventStatus !== 'completed';
+  };
 
   const filteredDeals = useMemo(() => {
     return deals.filter((deal) => {
       const match = (value: string | null, filter: string) =>
         !filter || (value ?? '').toLowerCase().includes(filter.toLowerCase());
+      const status = getDisplayStatus(deal.id);
       return (
         match(deal.dealname, filters.dealname) &&
         match(deal.nombre_del_evento, filters.nombre_del_evento) &&
         match(deal.tipo_de_evento, filters.tipo_de_evento) &&
         match(deal.locacion_del_evento, filters.locacion_del_evento) &&
         match(deal.fecha_inicio_del_evento, filters.fecha_inicio_del_evento) &&
-        match(deal.hora_de_inicio_y_fin_del_evento, filters.hora_de_inicio_y_fin_del_evento)
+        match(deal.hora_de_inicio_y_fin_del_evento, filters.hora_de_inicio_y_fin_del_evento) &&
+        match(status.label, filters.estado)
       );
     });
-  }, [deals, filters]);
+  }, [deals, filters, statusMap]);
 
   const totalPages = Math.ceil(filteredDeals.length / PAGE_SIZE);
   const paginatedDeals = filteredDeals.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
@@ -80,13 +125,14 @@ export function EventsUserTable({ deals, isSupervisor }: EventsUserTableProps) {
 
   return (
     <>
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2 mb-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-7 gap-2 mb-4">
         <Input placeholder="Filtrar Id..." value={filters.dealname} onChange={(e) => updateFilter('dealname', e.target.value)} className="h-8 text-xs" />
         <Input placeholder="Filtrar Nombre..." value={filters.nombre_del_evento} onChange={(e) => updateFilter('nombre_del_evento', e.target.value)} className="h-8 text-xs" />
         <Input placeholder="Filtrar Tipo..." value={filters.tipo_de_evento} onChange={(e) => updateFilter('tipo_de_evento', e.target.value)} className="h-8 text-xs" />
         <Input placeholder="Filtrar Locación..." value={filters.locacion_del_evento} onChange={(e) => updateFilter('locacion_del_evento', e.target.value)} className="h-8 text-xs" />
         <Input placeholder="Filtrar Fecha..." value={filters.fecha_inicio_del_evento} onChange={(e) => updateFilter('fecha_inicio_del_evento', e.target.value)} className="h-8 text-xs" />
         <Input placeholder="Filtrar Horario..." value={filters.hora_de_inicio_y_fin_del_evento} onChange={(e) => updateFilter('hora_de_inicio_y_fin_del_evento', e.target.value)} className="h-8 text-xs" />
+        <Input placeholder="Filtrar Estado..." value={filters.estado} onChange={(e) => updateFilter('estado', e.target.value)} className="h-8 text-xs" />
       </div>
       <Card>
         <CardContent className="p-0">
@@ -99,37 +145,46 @@ export function EventsUserTable({ deals, isSupervisor }: EventsUserTableProps) {
                 <TableHead>Locación</TableHead>
                 <TableHead>Fecha Inicio</TableHead>
                 <TableHead>Horario</TableHead>
+                <TableHead>Estado</TableHead>
                 <TableHead className="w-[100px]">Acciones</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {paginatedDeals.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
+                  <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
                     No se encontraron eventos.
                   </TableCell>
                 </TableRow>
               ) : (
-                paginatedDeals.map((deal) => (
-                  <TableRow key={deal.id}>
-                    <TableCell className="font-medium">{deal.dealname ?? '—'}</TableCell>
-                    <TableCell>{deal.nombre_del_evento ?? '—'}</TableCell>
-                    <TableCell>{deal.tipo_de_evento ?? '—'}</TableCell>
-                    <TableCell>{deal.locacion_del_evento ?? '—'}</TableCell>
-                    <TableCell>{deal.fecha_inicio_del_evento ?? '—'}</TableCell>
-                    <TableCell>{deal.hora_de_inicio_y_fin_del_evento ?? '—'}</TableCell>
-                    <TableCell className="flex gap-1">
-                      <Button variant="ghost" size="icon" onClick={handleFirmaDigital} title="Firma digital">
-                        <PenTool className="h-4 w-4" />
-                      </Button>
-                      {isSupervisor && (
-                        <Button variant="ghost" size="icon" onClick={() => handleGestionEvento(deal)} title="Gestión del evento">
-                          <ClipboardList className="h-4 w-4" />
+                paginatedDeals.map((deal) => {
+                  const status = getDisplayStatus(deal.id);
+                  return (
+                    <TableRow key={deal.id}>
+                      <TableCell className="font-medium">{deal.dealname ?? '—'}</TableCell>
+                      <TableCell>{deal.nombre_del_evento ?? '—'}</TableCell>
+                      <TableCell>{deal.tipo_de_evento ?? '—'}</TableCell>
+                      <TableCell>{deal.locacion_del_evento ?? '—'}</TableCell>
+                      <TableCell>{deal.fecha_inicio_del_evento ?? '—'}</TableCell>
+                      <TableCell>{deal.hora_de_inicio_y_fin_del_evento ?? '—'}</TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className={status.color}>
+                          {status.label}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="flex gap-1">
+                        <Button variant="ghost" size="icon" onClick={handleFirmaDigital} title="Firma digital" disabled={!isSignEnabled(deal.id)}>
+                          <PenTool className="h-4 w-4" />
                         </Button>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                ))
+                        {isSupervisor && (
+                          <Button variant="ghost" size="icon" onClick={() => handleGestionEvento(deal)} title="Gestión del evento">
+                            <ClipboardList className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
               )}
             </TableBody>
           </Table>
