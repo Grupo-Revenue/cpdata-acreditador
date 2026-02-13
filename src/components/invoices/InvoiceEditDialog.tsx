@@ -33,6 +33,7 @@ export function InvoiceEditDialog({ open, onOpenChange, invoice }: Props) {
   const [status, setStatus] = useState<'pendiente' | 'pagado' | 'rechazado'>('pendiente');
   const [amount, setAmount] = useState('');
   const [numeroBoleta, setNumeroBoleta] = useState('');
+  const [paymentDate, setPaymentDate] = useState('');
   const [file, setFile] = useState<File | null>(null);
 
   useEffect(() => {
@@ -42,6 +43,7 @@ export function InvoiceEditDialog({ open, onOpenChange, invoice }: Props) {
       setStatus(invoice.status);
       setAmount(String(invoice.amount));
       setNumeroBoleta(invoice.numero_boleta || '');
+      setPaymentDate((invoice as any).payment_date || '');
       setFile(null);
     }
   }, [open, invoice]);
@@ -99,7 +101,8 @@ export function InvoiceEditDialog({ open, onOpenChange, invoice }: Props) {
           amount: parseInt(amount),
           file_url: fileUrl,
           numero_boleta: numeroBoleta || null,
-        }).eq('id', invoice.id);
+          payment_date: paymentDate || null,
+        } as any).eq('id', invoice.id);
         if (error) throw error;
       } else {
         // Non-admin can update file_url and numero_boleta
@@ -214,6 +217,18 @@ export function InvoiceEditDialog({ open, onOpenChange, invoice }: Props) {
                   onChange={(e) => setAmount(e.target.value)}
                   min={1}
                 />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Fecha de pago (opcional)</Label>
+                <Input
+                  type="date"
+                  value={paymentDate}
+                  onChange={(e) => setPaymentDate(e.target.value)}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Si se deja vacío, se calculará automáticamente.
+                </p>
               </div>
             </>
           )}
