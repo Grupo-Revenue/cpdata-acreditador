@@ -1,0 +1,7 @@
+INSERT INTO settings (key, value, description)
+VALUES (
+  'faqs',
+  '[{"pregunta":"¿Cómo me asignan a un evento?","respuesta":"Los supervisores y administradores asignan acreditadores a los eventos según disponibilidad y ubicación. Recibirás una notificación cuando seas asignado a un nuevo evento."},{"pregunta":"¿Cuándo recibo mi pago?","respuesta":"Los pagos se procesan una vez que el evento ha sido completado y tu asistencia ha sido confirmada. El monto se refleja en tu sección de boletas y el pago se realiza según el día de pago configurado por la administración."},{"pregunta":"¿Qué hago si no puedo asistir a un evento asignado?","respuesta":"Debes notificar con la mayor anticipación posible a tu supervisor o al administrador del evento. Puedes hacerlo a través del sistema de soporte creando un ticket o contactando directamente a tu supervisor."},{"pregunta":"¿Cómo emito mi boleta de honorarios?","respuesta":"Ingresa al sitio del SII (sii.cl), emite una boleta de honorarios electrónica usando el modelo de glosa que aparece en tu perfil. Luego sube el comprobante en la sección de Boletas del sistema."},{"pregunta":"¿Cómo funciona el ranking?","respuesta":"El ranking se calcula en base a la cantidad de eventos en los que has participado y tu desempeño general. Estar en las primeras posiciones te da mayor visibilidad y prioridad para ser asignado a futuros eventos."}]',
+  'Preguntas frecuentes para acreditadores'
+)
+ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, description = EXCLUDED.description;
