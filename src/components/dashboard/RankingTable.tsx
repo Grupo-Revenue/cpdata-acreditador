@@ -81,7 +81,7 @@ export function RankingTable({ limit = 10 }: RankingTableProps) {
 
   return (
     <>
-      <Card className="lg:col-span-2 animate-fade-in-up animation-delay-200">
+      <Card className="animate-fade-in-up animation-delay-200">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Trophy className="w-5 h-5 text-warning" />
