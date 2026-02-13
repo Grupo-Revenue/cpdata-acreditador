@@ -4,15 +4,13 @@ import { Trophy } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
-import { format } from 'date-fns';
-import { es } from 'date-fns/locale';
 
 interface AccreditorRanking {
   id: string;
   nombre: string;
   apellido: string;
-  eventos_completados: number;
-  ultimo_evento: string | null;
+  total_points: number;
+  events_count: number;
 }
 
 interface RankingTableProps {
@@ -21,23 +19,20 @@ interface RankingTableProps {
 
 export function RankingTable({ limit = 10 }: RankingTableProps) {
   const { data: ranking, isLoading } = useQuery({
-    queryKey: ['accreditor-ranking'],
+    queryKey: ['accreditor-ranking', limit],
     queryFn: async () => {
-      // Get all accreditors (users with role 'acreditador')
+      // Get all accreditors
       const { data: accreditors, error: accreditorsError } = await supabase
         .from('user_roles')
         .select('user_id')
         .eq('role', 'acreditador');
 
       if (accreditorsError) throw accreditorsError;
-
-      if (!accreditors || accreditors.length === 0) {
-        return [];
-      }
+      if (!accreditors || accreditors.length === 0) return [];
 
       const userIds = accreditors.map(a => a.user_id);
 
-      // Get profiles for these users
+      // Get profiles
       const { data: profiles, error: profilesError } = await supabase
         .from('profiles')
         .select('id, nombre, apellido')
@@ -45,43 +40,30 @@ export function RankingTable({ limit = 10 }: RankingTableProps) {
 
       if (profilesError) throw profilesError;
 
-      // Get event completions count for each accreditor
-      const { data: eventCounts, error: eventCountsError } = await supabase
-        .from('event_accreditors')
-        .select('user_id, status, events(event_date)')
-        .eq('status', 'completed')
+      // Get attendance records with points
+      const { data: attendance, error: attError } = await supabase
+        .from('attendance_records')
+        .select('user_id, ranking_points')
         .in('user_id', userIds);
 
-      if (eventCountsError) throw eventCountsError;
+      if (attError) throw attError;
 
-      // Build ranking data
+      // Build ranking
       const rankingData: AccreditorRanking[] = (profiles || []).map(profile => {
-        const userEvents = (eventCounts || []).filter(e => e.user_id === profile.id);
-        const completedCount = userEvents.length;
-        
-        // Find the most recent event date
-        let lastEventDate: string | null = null;
-        userEvents.forEach(e => {
-          const eventData = e.events as { event_date: string } | null;
-          if (eventData?.event_date) {
-            if (!lastEventDate || eventData.event_date > lastEventDate) {
-              lastEventDate = eventData.event_date;
-            }
-          }
-        });
+        const userRecords = (attendance || []).filter(a => a.user_id === profile.id);
+        const totalPoints = userRecords.reduce((sum, r) => sum + (r.ranking_points || 0), 0);
 
         return {
           id: profile.id,
           nombre: profile.nombre,
           apellido: profile.apellido,
-          eventos_completados: completedCount,
-          ultimo_evento: lastEventDate,
+          total_points: totalPoints,
+          events_count: userRecords.length,
         };
       });
 
-      // Sort by completed events (descending)
       return rankingData
-        .sort((a, b) => b.eventos_completados - a.eventos_completados)
+        .sort((a, b) => b.total_points - a.total_points)
         .slice(0, limit);
     }
   });
@@ -114,8 +96,8 @@ export function RankingTable({ limit = 10 }: RankingTableProps) {
               <TableRow>
                 <TableHead className="w-12">#</TableHead>
                 <TableHead>Acreditador</TableHead>
+                <TableHead className="text-center">Puntos</TableHead>
                 <TableHead className="text-center">Eventos</TableHead>
-                <TableHead className="text-right">Último Evento</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -136,13 +118,11 @@ export function RankingTable({ limit = 10 }: RankingTableProps) {
                   </TableCell>
                   <TableCell className="text-center">
                     <span className="inline-flex items-center justify-center min-w-[2rem] px-2 py-1 rounded-full bg-primary/10 text-primary font-semibold text-sm">
-                      {accreditor.eventos_completados}
+                      {accreditor.total_points}
                     </span>
                   </TableCell>
-                  <TableCell className="text-right text-muted-foreground">
-                    {accreditor.ultimo_evento
-                      ? format(new Date(accreditor.ultimo_evento), 'dd/MM/yyyy', { locale: es })
-                      : '—'}
+                  <TableCell className="text-center text-muted-foreground">
+                    {accreditor.events_count}
                   </TableCell>
                 </TableRow>
               ))}
@@ -153,7 +133,7 @@ export function RankingTable({ limit = 10 }: RankingTableProps) {
             <Trophy className="w-12 h-12 mx-auto text-muted-foreground/50 mb-3" />
             <p className="text-muted-foreground">No hay acreditadores registrados</p>
             <p className="text-sm text-muted-foreground mt-1">
-              Los acreditadores aparecerán aquí cuando se asignen a eventos
+              Los acreditadores aparecerán aquí cuando se registre su asistencia
             </p>
           </div>
         )}
