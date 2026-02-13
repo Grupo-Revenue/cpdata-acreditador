@@ -1,20 +1,24 @@
 
 
-## Filtro por nombre de evento en Rendiciones
+## Visibilidad de rendiciones para el rol Administracion
 
-Agregar un campo de busqueda en la parte superior de la pagina de Rendiciones que filtre los eventos mostrados por nombre.
+El rol `administracion` ya obtiene todos los eventos gracias a la variable `isAdmin`, pero actualmente los eventos sin gastos se ocultan para este rol. Ademas, es necesario verificar que no se muestren botones de accion (aprobar, rechazar, cerrar, reabrir, agregar, eliminar).
 
 ### Cambios
 
 | Archivo | Cambio |
 |---|---|
-| `src/pages/app/Reimbursements.tsx` | Agregar un Input de busqueda entre el PageHeader y la lista de Cards, filtrando los eventos cuyo nombre contenga el texto ingresado (case-insensitive) |
+| `src/pages/app/Reimbursements.tsx` | Ajustar la condicion de filtrado para que `administracion` vea todos los eventos (incluso sin gastos), y asegurar que no tenga acceso a ninguna accion |
 
 ### Detalle tecnico
 
-- Nuevo estado `searchTerm` (string, default vacio)
-- Input con placeholder "Buscar por nombre de evento..." e icono de Search (lucide-react), ubicado justo antes del listado de Cards
-- Filtrar el array `events` con `event.name.toLowerCase().includes(searchTerm.toLowerCase())` antes del `.map()`
-- Si no hay resultados tras filtrar, mostrar un mensaje "Sin resultados para la busqueda"
-- El filtro se aplica en tiempo real mientras el usuario escribe
+**1. Filtrado de eventos sin gastos (linea ~259 aprox):**
+- Cambiar `if (!isSuperadmin && !isSupervisor && eventExpenses.length === 0) return null;` para incluir `isAdmin` en la condicion, de modo que administracion tambien vea eventos sin gastos registrados
+
+**2. Verificacion de acciones:**
+- Los botones de aprobar/rechazar ya estan protegidos con `isSuperadmin`
+- Los botones de agregar/eliminar ya estan protegidos con `isSupervisor`
+- Los botones de cerrar rendiciones estan protegidos con `isSupervisor`
+- Los botones de rehabilitar/reabrir estan protegidos con `isSuperadmin`
+- No se requieren cambios adicionales en las acciones, solo en el filtrado de visibilidad
 
