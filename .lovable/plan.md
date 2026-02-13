@@ -1,31 +1,53 @@
 
 
-## Filtros externos en EventsUserTable
+## Dashboard Administracion: Boletas pendientes y accesos rapidos de rendiciones
 
 ### Resumen
 
-Mover los filtros de la tabla de eventos (vista supervisor/acreditador) desde dentro del `TableHeader` hacia una fila externa de inputs por encima de la tabla, siguiendo el mismo patron de diseno usado en el dialogo de Postulantes (`EventApplicantsDialog`).
+Crear un componente dedicado para el dashboard de administracion que reemplace "Usuarios Pendientes" por "Boletas Pendientes" (conteo real desde la tabla `invoices`) y cambie los accesos rapidos a tres botones relacionados con rendiciones.
 
 ### Cambios
 
 | Archivo | Cambio |
 |---|---|
-| `src/components/events/EventsUserTable.tsx` | Mover los 6 inputs de filtro fuera del `TableHeader` a un `div` con grid encima del `Card` |
+| `src/pages/dashboard/AdminDashboard.tsx` | Reescribir completamente: dejar de reusar `SuperadminDashboard` y crear un dashboard propio con las metricas y accesos rapidos especificos |
 
 ### Detalle tecnico
 
-**Antes (actual):** Los filtros estan en una segunda fila `<TableRow>` dentro de `<TableHeader>`, con cada input dentro de un `<TableHead>`.
+**1. Metricas (stats cards):**
+- Mantener las 3 tarjetas de eventos (Hoy, Mes, Semana) identicas al superadmin (misma query a `hubspot-deals`)
+- Reemplazar "Usuarios Pendientes" por **"Boletas Pendientes"**: query a `invoices` con filtro `status = 'pendiente'`, usando `count: 'exact', head: true`
+- Icono: `FileText` en vez de `UserPlus`, color warning
 
-**Despues:** Los filtros se mueven a un `div` con clase `grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2 mb-4` ubicado antes del `<Card>`, con cada input usando un placeholder descriptivo:
+**2. Accesos rapidos:**
+Reemplazar los 3 botones actuales (Cotizacion, Trello, Hubspot) por:
+- **Rendiciones** (icono `Wallet`) - navega a `/app/reimbursements`
+- **Detalle de Rendiciones** (icono `FileText`) - navega a `/app/reimbursements` (por ahora, funcionalidad pendiente)
+- **Descargar Excel Rendiciones** (icono `Download`) - sin funcionalidad por ahora (boton deshabilitado o con toast informativo)
 
-- Id (dealname)
-- Nombre del Evento
-- Tipo
-- Locacion
-- Fecha Inicio
-- Horario
+Los tres botones son internos (no externos), sin icono de `ExternalLink`.
 
-Cada input mantiene las mismas clases (`h-8 text-xs`) y la misma logica de filtrado. Solo cambia la ubicacion en el DOM: de dentro del header de la tabla a un bloque externo superior.
+**3. Ranking:**
+Se mantiene el componente `RankingTable` igual que en el superadmin.
 
-La tabla queda con una sola fila de encabezados (sin la fila de filtros), identica visualmente al patron de `EventApplicantsDialog`.
+**4. Estructura general:**
+Se replica la misma estructura visual del superadmin (grid de stats, grid de ranking + accesos rapidos) pero con el contenido especifico para administracion.
+
+### Flujo
+
+```text
+Dashboard Administracion
+  |-- Stats Grid (4 tarjetas)
+  |     |-- Eventos Hoy (hubspot-deals)
+  |     |-- Eventos del Mes (hubspot-deals)
+  |     |-- Eventos Semanales (hubspot-deals)
+  |     |-- Boletas Pendientes (query invoices where status='pendiente')
+  |
+  |-- Grid inferior
+        |-- RankingTable (col-span-2)
+        |-- Accesos Rapidos
+              |-- Rendiciones
+              |-- Detalle de Rendiciones
+              |-- Descargar Excel Rendiciones
+```
 
