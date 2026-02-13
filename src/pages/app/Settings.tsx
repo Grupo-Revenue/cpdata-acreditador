@@ -6,6 +6,7 @@ import { GlosaModelSettings } from '@/components/settings/GlosaModelSettings';
 import { HubspotIntegration } from '@/components/settings/HubspotIntegration';
 import { MetaIntegration } from '@/components/settings/MetaIntegration';
 import { WhatsappTemplatesManager } from '@/components/settings/WhatsappTemplatesManager';
+import { FaqSettings } from '@/components/settings/FaqSettings';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 export default function SettingsPage() {
@@ -31,6 +32,7 @@ export default function SettingsPage() {
           <PaymentDaySettings />
           <GlosaModelSettings />
           <RolesManager />
+          <FaqSettings />
         </TabsContent>
 
         <TabsContent value="integrations" className="space-y-6">
