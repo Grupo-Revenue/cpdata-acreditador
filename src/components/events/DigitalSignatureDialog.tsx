@@ -7,6 +7,8 @@ import { Download, PenTool } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { LoadingState } from '@/components/ui/LoadingState';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
+import { jsPDF } from 'jspdf';
 
 interface DigitalSignatureDialogProps {
   open: boolean;
@@ -31,6 +33,7 @@ export function DigitalSignatureDialog({ open, onOpenChange, eventId, dealName, 
   const [signing, setSigning] = useState(false);
   const [signature, setSignature] = useState<SignatureRecord | null>(null);
   const [internalEventId, setInternalEventId] = useState<string | null>(null);
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
   useEffect(() => {
     if (!open || !eventId) return;
@@ -110,20 +113,20 @@ export function DigitalSignatureDialog({ open, onOpenChange, eventId, dealName, 
   const handleDownload = () => {
     if (!signature) return;
     const signedDate = new Date(signature.signed_at);
-    const content = `${signature.contract_text}\n\n` +
-      `─────────────────────────────────────\n` +
-      `Firmado por: ${signature.signer_name}\n` +
-      `Fecha: ${signedDate.toLocaleDateString('es-CL')}\n` +
-      `Hora: ${signedDate.toLocaleTimeString('es-CL')}\n` +
-      `─────────────────────────────────────`;
-
-    const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `contrato-${dealName ?? 'evento'}-${signature.signer_name}.txt`;
-    a.click();
-    URL.revokeObjectURL(url);
+    const doc = new jsPDF();
+    doc.setFontSize(16);
+    doc.text('Contrato Firmado', 105, 20, { align: 'center' });
+    doc.setFontSize(11);
+    const lines = doc.splitTextToSize(signature.contract_text, 170);
+    doc.text(lines, 20, 35);
+    const y = 35 + lines.length * 6;
+    doc.setFontSize(10);
+    doc.text('─────────────────────────────────────', 20, y + 10);
+    doc.text(`Firmado por: ${signature.signer_name}`, 20, y + 18);
+    doc.text(`Fecha: ${signedDate.toLocaleDateString('es-CL')}`, 20, y + 24);
+    doc.text(`Hora: ${signedDate.toLocaleTimeString('es-CL')}`, 20, y + 30);
+    doc.text('─────────────────────────────────────', 20, y + 36);
+    doc.save(`contrato-${dealName ?? 'evento'}-${signature.signer_name}.pdf`);
   };
 
   return (
@@ -166,7 +169,7 @@ export function DigitalSignatureDialog({ open, onOpenChange, eventId, dealName, 
               <pre className="whitespace-pre-wrap text-sm font-mono">{contractText}</pre>
             </ScrollArea>
             <DialogFooter>
-              <Button onClick={handleSign} disabled={signing}>
+              <Button onClick={() => setConfirmOpen(true)} disabled={signing}>
                 <PenTool className="h-4 w-4 mr-2" />
                 {signing ? 'Firmando...' : 'Firmar Contrato'}
               </Button>
@@ -174,6 +177,19 @@ export function DigitalSignatureDialog({ open, onOpenChange, eventId, dealName, 
           </div>
         )}
       </DialogContent>
+      <ConfirmDialog
+        open={confirmOpen}
+        onOpenChange={setConfirmOpen}
+        title="Confirmar firma"
+        description="¿Está seguro de que desea firmar este contrato? Esta acción no se puede deshacer."
+        confirmLabel="Firmar"
+        variant="default"
+        isLoading={signing}
+        onConfirm={() => {
+          setConfirmOpen(false);
+          handleSign();
+        }}
+      />
     </Dialog>
   );
 }
