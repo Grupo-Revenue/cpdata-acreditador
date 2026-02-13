@@ -7,6 +7,7 @@ import { Pagination, PaginationContent, PaginationItem, PaginationLink, Paginati
 import { Pencil, Users, Download, FileDown } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
+import { jsPDF } from 'jspdf';
 import { useToast } from '@/hooks/use-toast';
 import { EventEditDialog } from '@/components/events/EventEditDialog';
 import { EventTeamDialog } from '@/components/events/EventTeamDialog';
@@ -95,26 +96,26 @@ export function EventsAdminTable({ deals }: EventsAdminTableProps) {
       return;
     }
 
-    if (signatures.length === 1) {
-      const content = generateContractText(signatures[0]);
-      const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `contrato-${deal.nombre_del_evento ?? deal.dealname ?? 'evento'}-${signatures[0].signer_name}.txt`;
-      a.click();
-      URL.revokeObjectURL(url);
-    } else {
-      // Multiple: concatenate all
-      const allContent = signatures.map((sig) => generateContractText(sig)).join('\n\n\n========================================\n\n\n');
-      const blob = new Blob([allContent], { type: 'text/plain;charset=utf-8' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `contratos-${deal.nombre_del_evento ?? deal.dealname ?? 'evento'}.txt`;
-      a.click();
-      URL.revokeObjectURL(url);
-    }
+    const doc = new jsPDF();
+    signatures.forEach((sig, i) => {
+      if (i > 0) doc.addPage();
+      const signedDate = new Date(sig.signed_at);
+      doc.setFontSize(16);
+      doc.text('Contrato Firmado', 105, 20, { align: 'center' });
+      doc.setFontSize(11);
+      const lines = doc.splitTextToSize(sig.contract_text, 170);
+      doc.text(lines, 20, 35);
+      const y = 35 + lines.length * 6;
+      doc.setFontSize(10);
+      doc.text('─────────────────────────────────────', 20, y + 10);
+      doc.text(`Firmado por: ${sig.signer_name}`, 20, y + 18);
+      doc.text(`Fecha: ${signedDate.toLocaleDateString('es-CL')}`, 20, y + 24);
+      doc.text(`Hora: ${signedDate.toLocaleTimeString('es-CL')}`, 20, y + 30);
+    });
+    const name = signatures.length === 1
+      ? `contrato-${deal.nombre_del_evento ?? deal.dealname ?? 'evento'}-${signatures[0].signer_name}.pdf`
+      : `contratos-${deal.nombre_del_evento ?? deal.dealname ?? 'evento'}.pdf`;
+    doc.save(name);
   };
 
   const downloadAllContracts = async () => {
@@ -146,18 +147,24 @@ export function EventsAdminTable({ deals }: EventsAdminTableProps) {
       eventNameMap[ev.id] = ev.name;
     }
 
-    const allContent = signatures.map((sig) => {
+    const doc = new jsPDF();
+    signatures.forEach((sig, i) => {
+      if (i > 0) doc.addPage();
       const eventName = eventNameMap[sig.event_id] ?? 'Evento';
-      return `EVENTO: ${eventName}\n\n${generateContractText(sig)}`;
-    }).join('\n\n\n========================================\n\n\n');
-
-    const blob = new Blob([allContent], { type: 'text/plain;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'todos-los-contratos.txt';
-    a.click();
-    URL.revokeObjectURL(url);
+      const signedDate = new Date(sig.signed_at);
+      doc.setFontSize(14);
+      doc.text(`Evento: ${eventName}`, 105, 15, { align: 'center' });
+      doc.setFontSize(11);
+      const lines = doc.splitTextToSize(sig.contract_text, 170);
+      doc.text(lines, 20, 30);
+      const y = 30 + lines.length * 6;
+      doc.setFontSize(10);
+      doc.text('─────────────────────────────────────', 20, y + 10);
+      doc.text(`Firmado por: ${sig.signer_name}`, 20, y + 18);
+      doc.text(`Fecha: ${signedDate.toLocaleDateString('es-CL')}`, 20, y + 24);
+      doc.text(`Hora: ${signedDate.toLocaleTimeString('es-CL')}`, 20, y + 30);
+    });
+    doc.save('todos-los-contratos.pdf');
   };
 
   return (
