@@ -292,7 +292,7 @@ export default function ReimbursementsPage() {
                         <Table>
                           <TableHeader>
                             <TableRow>
-                              <TableHead>Acreditador</TableHead>
+                              <TableHead>Asignado a</TableHead>
                               <TableHead>Adicional</TableHead>
                               <TableHead className="text-right">Monto</TableHead>
                               <TableHead>Comprobante</TableHead>
