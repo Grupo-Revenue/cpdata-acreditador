@@ -12,7 +12,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
-import { Wallet, Lock, Unlock, CheckCircle, XCircle, DollarSign } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Wallet, Lock, Unlock, CheckCircle, XCircle, DollarSign, Plus, Trash2, Upload } from 'lucide-react';
 
 export default function ReimbursementsPage() {
   const { activeRole, user } = useAuth();
@@ -24,6 +25,11 @@ export default function ReimbursementsPage() {
 
   const [confirmAction, setConfirmAction] = useState<{ type: string; eventId: string; expenseId?: string } | null>(null);
   const [processing, setProcessing] = useState(false);
+  const [showAddForm, setShowAddForm] = useState<string | null>(null);
+  const [newExpenseName, setNewExpenseName] = useState('');
+  const [newExpenseAmount, setNewExpenseAmount] = useState('');
+  const [newExpenseFile, setNewExpenseFile] = useState<File | null>(null);
+  const [submitting, setSubmitting] = useState(false);
 
   // For supervisors: get assigned events; for admins: get all events with expenses
   const { data: events, isLoading: eventsLoading } = useQuery({
@@ -74,7 +80,7 @@ export default function ReimbursementsPage() {
   });
 
   // Get profiles for expense user names
-  const expenseUserIds = [...new Set((expenses ?? []).map(e => e.user_id))];
+  const expenseUserIds = [...new Set((expenses ?? []).filter(e => e.user_id).map(e => e.user_id))];
   const { data: profiles } = useQuery({
     queryKey: ['expense-profiles', expenseUserIds],
     enabled: expenseUserIds.length > 0,
@@ -88,7 +94,8 @@ export default function ReimbursementsPage() {
     },
   });
 
-  const getProfileName = (userId: string) => {
+  const getProfileName = (userId: string | null) => {
+    if (!userId) return 'Evento';
     const p = profiles?.find(pr => pr.id === userId);
     return p ? `${p.nombre} ${p.apellido}` : userId.substring(0, 8);
   };
@@ -106,6 +113,40 @@ export default function ReimbursementsPage() {
       .eq('id', expenseId);
     if (error) { toast({ title: 'Error', variant: 'destructive' }); return; }
     toast({ title: 'Gasto aprobado' });
+    invalidateAll();
+  };
+
+  // Create event-level expense (supervisor)
+  const createEventExpense = async (eventId: string) => {
+    if (!newExpenseName.trim() || !newExpenseAmount) return;
+    setSubmitting(true);
+    let receiptUrl: string | null = null;
+    if (newExpenseFile) {
+      const filePath = `${eventId}/${Date.now()}-${newExpenseFile.name}`;
+      const { error: upErr } = await supabase.storage.from('expense-receipts').upload(filePath, newExpenseFile);
+      if (upErr) { toast({ title: 'Error subiendo comprobante', variant: 'destructive' }); setSubmitting(false); return; }
+      const { data: urlData } = supabase.storage.from('expense-receipts').getPublicUrl(filePath);
+      receiptUrl = urlData.publicUrl;
+    }
+    const { error } = await supabase.from('event_expenses').insert({
+      event_id: eventId,
+      name: newExpenseName.trim(),
+      amount: parseInt(newExpenseAmount),
+      receipt_url: receiptUrl,
+      created_by: user!.id,
+    } as any);
+    setSubmitting(false);
+    if (error) { toast({ title: 'Error al crear gasto', variant: 'destructive' }); return; }
+    toast({ title: 'Adicional agregado' });
+    setNewExpenseName(''); setNewExpenseAmount(''); setNewExpenseFile(null); setShowAddForm(null);
+    invalidateAll();
+  };
+
+  // Delete expense (supervisor, own created)
+  const deleteExpense = async (expenseId: string) => {
+    const { error } = await supabase.from('event_expenses').delete().eq('id', expenseId);
+    if (error) { toast({ title: 'Error al eliminar', variant: 'destructive' }); return; }
+    toast({ title: 'Gasto eliminado' });
     invalidateAll();
   };
 
@@ -200,7 +241,7 @@ export default function ReimbursementsPage() {
         <div className="space-y-6">
           {events.map(event => {
             const eventExpenses = expenses?.filter(e => e.event_id === event.id) ?? [];
-            if (!isSuperadmin && eventExpenses.length === 0) return null;
+            if (!isSuperadmin && !isSupervisor && eventExpenses.length === 0) return null;
             const isReimbursementClosed = !!event.reimbursement_closed_at;
             const isEventClosed = !!event.closed_at;
             const approvedTotal = eventExpenses
@@ -243,50 +284,98 @@ export default function ReimbursementsPage() {
                   </div>
                 </CardHeader>
                 <CardContent className="p-0">
-                  {eventExpenses.length === 0 ? (
+                  {eventExpenses.length === 0 && !isSupervisor ? (
                     <p className="text-sm text-muted-foreground text-center py-6">Sin gastos registrados</p>
                   ) : (
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Acreditador</TableHead>
-                          <TableHead>Adicional</TableHead>
-                          <TableHead className="text-right">Monto</TableHead>
-                          <TableHead>Comprobante</TableHead>
-                          <TableHead>Estado</TableHead>
-                          {isSuperadmin && <TableHead className="w-[120px]">Acciones</TableHead>}
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {eventExpenses.map(exp => (
-                          <TableRow key={exp.id}>
-                            <TableCell>{getProfileName(exp.user_id)}</TableCell>
-                            <TableCell>{exp.name}</TableCell>
-                            <TableCell className="text-right font-medium">${exp.amount.toLocaleString('es-CL')}</TableCell>
-                            <TableCell>
-                              {exp.receipt_url ? (
-                                <a href={exp.receipt_url} target="_blank" rel="noopener noreferrer" className="text-primary underline text-sm">Ver</a>
-                              ) : '—'}
-                            </TableCell>
-                            <TableCell>{getStatusBadge(exp.approval_status)}</TableCell>
-                            {isSuperadmin && (
-                              <TableCell className="flex gap-1">
-                                {exp.approval_status === 'pendiente' && (
-                                  <>
-                                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => approveExpense(exp.id)} title="Aprobar">
-                                      <CheckCircle className="h-4 w-4 text-primary" />
-                                    </Button>
-                                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => rejectExpense(exp.id)} title="Rechazar">
-                                      <XCircle className="h-4 w-4 text-destructive" />
-                                    </Button>
-                                  </>
+                    <>
+                      {eventExpenses.length > 0 && (
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Acreditador</TableHead>
+                              <TableHead>Adicional</TableHead>
+                              <TableHead className="text-right">Monto</TableHead>
+                              <TableHead>Comprobante</TableHead>
+                              <TableHead>Estado</TableHead>
+                              {(isSuperadmin || (isSupervisor && !isReimbursementClosed)) && <TableHead className="w-[120px]">Acciones</TableHead>}
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {eventExpenses.map(exp => (
+                              <TableRow key={exp.id}>
+                                <TableCell>{getProfileName(exp.user_id)}</TableCell>
+                                <TableCell>{exp.name}</TableCell>
+                                <TableCell className="text-right font-medium">${exp.amount.toLocaleString('es-CL')}</TableCell>
+                                <TableCell>
+                                  {exp.receipt_url ? (
+                                    <a href={exp.receipt_url} target="_blank" rel="noopener noreferrer" className="text-primary underline text-sm">Ver</a>
+                                  ) : '—'}
+                                </TableCell>
+                                <TableCell>{getStatusBadge(exp.approval_status)}</TableCell>
+                                {isSuperadmin && (
+                                  <TableCell className="flex gap-1">
+                                    {exp.approval_status === 'pendiente' && (
+                                      <>
+                                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => approveExpense(exp.id)} title="Aprobar">
+                                          <CheckCircle className="h-4 w-4 text-primary" />
+                                        </Button>
+                                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => rejectExpense(exp.id)} title="Rechazar">
+                                          <XCircle className="h-4 w-4 text-destructive" />
+                                        </Button>
+                                      </>
+                                    )}
+                                  </TableCell>
                                 )}
-                              </TableCell>
-                            )}
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
+                                {isSupervisor && !isReimbursementClosed && (
+                                  <TableCell>
+                                    {exp.created_by === user!.id && !exp.user_id && (
+                                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => deleteExpense(exp.id)} title="Eliminar">
+                                        <Trash2 className="h-4 w-4 text-destructive" />
+                                      </Button>
+                                    )}
+                                  </TableCell>
+                                )}
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      )}
+                      {eventExpenses.length === 0 && (
+                        <p className="text-sm text-muted-foreground text-center py-4">Sin gastos registrados</p>
+                      )}
+                    </>
+                  )}
+                  {isSupervisor && !isReimbursementClosed && (
+                    <div className="p-4 border-t">
+                      {showAddForm === event.id ? (
+                        <div className="space-y-3">
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                            <Input placeholder="Nombre del adicional" value={newExpenseName} onChange={e => setNewExpenseName(e.target.value)} />
+                            <Input type="number" placeholder="Monto (CLP)" value={newExpenseAmount} onChange={e => setNewExpenseAmount(e.target.value)} />
+                            <div className="flex items-center gap-2">
+                              <label className="flex items-center gap-1 text-sm text-muted-foreground cursor-pointer border rounded-md px-3 py-2 hover:bg-accent">
+                                <Upload className="h-4 w-4" />
+                                {newExpenseFile ? newExpenseFile.name.substring(0, 15) : 'Comprobante'}
+                                <input type="file" className="hidden" accept="image/*,.pdf" onChange={e => setNewExpenseFile(e.target.files?.[0] ?? null)} />
+                              </label>
+                            </div>
+                          </div>
+                          <div className="flex gap-2">
+                            <Button size="sm" onClick={() => createEventExpense(event.id)} disabled={submitting || !newExpenseName.trim() || !newExpenseAmount}>
+                              {submitting ? 'Guardando...' : 'Guardar'}
+                            </Button>
+                            <Button size="sm" variant="ghost" onClick={() => { setShowAddForm(null); setNewExpenseName(''); setNewExpenseAmount(''); setNewExpenseFile(null); }}>
+                              Cancelar
+                            </Button>
+                          </div>
+                        </div>
+                      ) : (
+                        <Button size="sm" variant="outline" onClick={() => setShowAddForm(event.id)}>
+                          <Plus className="h-3 w-3 mr-1" />
+                          Agregar adicional
+                        </Button>
+                      )}
+                    </div>
                   )}
                 </CardContent>
               </Card>
