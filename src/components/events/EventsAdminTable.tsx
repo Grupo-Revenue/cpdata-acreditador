@@ -47,11 +47,11 @@ const PAGE_SIZE = 5;
 function generateContractText(sig: { contract_text: string; signer_name: string; signed_at: string }) {
   const signedDate = new Date(sig.signed_at);
   return `${sig.contract_text}\n\n` +
-    `─────────────────────────────────────\n` +
+    `-----------------------------------\n` +
     `Firmado por: ${sig.signer_name}\n` +
     `Fecha: ${signedDate.toLocaleDateString('es-CL')}\n` +
     `Hora: ${signedDate.toLocaleTimeString('es-CL')}\n` +
-    `─────────────────────────────────────`;
+    `-----------------------------------`;
 }
 
 export function EventsAdminTable({ deals }: EventsAdminTableProps) {
@@ -107,7 +107,9 @@ export function EventsAdminTable({ deals }: EventsAdminTableProps) {
       doc.text(lines, 20, 35);
       const y = 35 + lines.length * 6;
       doc.setFontSize(10);
-      doc.text('─────────────────────────────────────', 20, y + 10);
+      doc.setDrawColor(0);
+      doc.setLineWidth(0.5);
+      doc.line(20, y + 10, 190, y + 10);
       doc.text(`Firmado por: ${sig.signer_name}`, 20, y + 18);
       doc.text(`Fecha: ${signedDate.toLocaleDateString('es-CL')}`, 20, y + 24);
       doc.text(`Hora: ${signedDate.toLocaleTimeString('es-CL')}`, 20, y + 30);
@@ -159,7 +161,9 @@ export function EventsAdminTable({ deals }: EventsAdminTableProps) {
       doc.text(lines, 20, 30);
       const y = 30 + lines.length * 6;
       doc.setFontSize(10);
-      doc.text('─────────────────────────────────────', 20, y + 10);
+      doc.setDrawColor(0);
+      doc.setLineWidth(0.5);
+      doc.line(20, y + 10, 190, y + 10);
       doc.text(`Firmado por: ${sig.signer_name}`, 20, y + 18);
       doc.text(`Fecha: ${signedDate.toLocaleDateString('es-CL')}`, 20, y + 24);
       doc.text(`Hora: ${signedDate.toLocaleTimeString('es-CL')}`, 20, y + 30);
