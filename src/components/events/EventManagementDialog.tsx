@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { Separator } from '@/components/ui/separator';
+import { Textarea } from '@/components/ui/textarea';
 import { Save, Plus, Trash2, Lock, Upload, DollarSign } from 'lucide-react';
 import { format } from 'date-fns';
 
@@ -36,6 +37,7 @@ interface AttendanceRow {
   status: AttendanceStatus;
   attendanceDate: string;
   checkInTime: string;
+  comment: string;
   saved: boolean;
 }
 
@@ -112,6 +114,31 @@ export function EventManagementDialog({ open, onOpenChange, hubspotDealId, dealN
     },
   });
 
+  // Fetch existing comments for this event
+  const { data: existingComments } = useQuery({
+    queryKey: ['attendance-comments-event', eventId],
+    enabled: !!eventId,
+    queryFn: async () => {
+      // Get attendance record ids for this event first
+      const { data: records } = await supabase
+        .from('attendance_records')
+        .select('id, user_id')
+        .eq('event_id', eventId!);
+      if (!records || records.length === 0) return [];
+
+      const recordIds = records.map(r => r.id);
+      const { data: comments, error } = await supabase
+        .from('attendance_comments')
+        .select('*')
+        .in('attendance_record_id', recordIds);
+      if (error) throw error;
+      return (comments ?? []).map(c => ({
+        ...c,
+        user_id_from_record: records.find(r => r.id === c.attendance_record_id)?.user_id,
+      }));
+    },
+  });
+
   // Fetch existing expenses
   const { data: expenses, refetch: refetchExpenses } = useQuery({
     queryKey: ['event-expenses', eventId],
@@ -132,6 +159,7 @@ export function EventManagementDialog({ open, onOpenChange, hubspotDealId, dealN
     const today = format(new Date(), 'yyyy-MM-dd');
     const rows: AttendanceRow[] = accreditors.map(acc => {
       const existing = existingAttendance?.find(a => a.user_id === acc.id);
+      const existingComment = existingComments?.find(c => c.user_id_from_record === acc.id);
       return {
         userId: acc.id,
         nombre: acc.nombre,
@@ -139,11 +167,12 @@ export function EventManagementDialog({ open, onOpenChange, hubspotDealId, dealN
         status: (existing?.status as AttendanceStatus) ?? 'presente',
         attendanceDate: existing?.attendance_date ?? today,
         checkInTime: existing?.check_in_time?.substring(0, 5) ?? '',
+        comment: existingComment?.comment ?? '',
         saved: !!existing,
       };
     });
     setAttendanceRows(rows);
-  }, [accreditors, existingAttendance]);
+  }, [accreditors, existingAttendance, existingComments]);
 
   // Save attendance
   const saveAttendance = useMutation({
@@ -158,14 +187,37 @@ export function EventManagementDialog({ open, onOpenChange, hubspotDealId, dealN
         recorded_by: user!.id,
       };
 
-      const { error } = await supabase
+      const { data: upserted, error } = await supabase
         .from('attendance_records')
-        .upsert(record, { onConflict: 'event_id,user_id' });
+        .upsert(record, { onConflict: 'event_id,user_id' })
+        .select('id')
+        .single();
       if (error) throw error;
+
+      // Save comment if non-empty
+      if (row.comment.trim()) {
+        // Delete existing comment for this record, then insert new one
+        await supabase
+          .from('attendance_comments')
+          .delete()
+          .eq('attendance_record_id', upserted.id)
+          .eq('user_id', row.userId);
+
+        const { error: commentError } = await supabase
+          .from('attendance_comments')
+          .insert({
+            attendance_record_id: upserted.id,
+            user_id: row.userId,
+            comment: row.comment.trim(),
+            created_by: user!.id,
+          });
+        if (commentError) console.error('Error saving comment:', commentError);
+      }
     },
     onSuccess: () => {
       toast({ title: 'Asistencia guardada' });
       queryClient.invalidateQueries({ queryKey: ['attendance-records', eventId] });
+      queryClient.invalidateQueries({ queryKey: ['attendance-comments-event', eventId] });
     },
     onError: () => {
       toast({ title: 'Error', description: 'No se pudo guardar la asistencia.', variant: 'destructive' });
@@ -298,6 +350,7 @@ export function EventManagementDialog({ open, onOpenChange, hubspotDealId, dealN
                         <TableHead>Acreditador</TableHead>
                         <TableHead>Asistencia</TableHead>
                         <TableHead>Puntos</TableHead>
+                        <TableHead>Comentarios</TableHead>
                         <TableHead>Fecha</TableHead>
                         <TableHead>Hora Ingreso</TableHead>
                         <TableHead className="w-[60px]"></TableHead>
@@ -306,7 +359,7 @@ export function EventManagementDialog({ open, onOpenChange, hubspotDealId, dealN
                     <TableBody>
                       {attendanceRows.length === 0 ? (
                         <TableRow>
-                          <TableCell colSpan={6} className="text-center text-muted-foreground py-6">
+                          <TableCell colSpan={7} className="text-center text-muted-foreground py-6">
                             No hay acreditadores asignados a este evento.
                           </TableCell>
                         </TableRow>
@@ -332,6 +385,15 @@ export function EventManagementDialog({ open, onOpenChange, hubspotDealId, dealN
                             </TableCell>
                             <TableCell className="text-center font-semibold">
                               {POINTS_MAP[row.status]}
+                            </TableCell>
+                            <TableCell>
+                              <Textarea
+                                placeholder="Comentario..."
+                                value={row.comment}
+                                disabled={isClosed}
+                                onChange={(e) => updateAttendanceRow(i, 'comment', e.target.value)}
+                                className="min-h-[40px] h-10 text-xs w-[180px] resize-none"
+                              />
                             </TableCell>
                             <TableCell>
                               <Input
