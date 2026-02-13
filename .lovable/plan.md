@@ -1,28 +1,22 @@
 
 
-## Corregir el ancho del RankingTable en todos los dashboards
+## Agregar pestaña "FAQs" en Configuración
 
-### Problema
+### Resumen
 
-Al eliminar `lg:col-span-2` del componente `RankingTable`, se arreglo el dashboard de acreditador pero se rompio el layout en los dashboards de superadmin y admin, donde el ranking necesita ocupar 2 de 3 columnas.
+Mover el componente `FaqSettings` de la pestaña "General" a su propia pestaña dedicada llamada "FAQs" en la página de Configuración.
 
-### Solucion
-
-Agregar una prop `className` al componente `RankingTable` para que cada dashboard pueda controlar el ancho segun su grid.
-
-### Cambios
+### Cambio
 
 | Archivo | Cambio |
 |---|---|
-| `src/components/dashboard/RankingTable.tsx` | Agregar prop `className` y aplicarla al Card raiz |
-| `src/pages/dashboard/SuperadminDashboard.tsx` | Pasar `className="lg:col-span-2"` al RankingTable |
-| `src/pages/dashboard/AdminDashboard.tsx` | Pasar `className="lg:col-span-2"` al RankingTable |
+| `src/pages/app/Settings.tsx` | Eliminar `<FaqSettings />` del TabsContent "general" y agregar un nuevo `TabsTrigger` "FAQs" con su propio `TabsContent` que contenga `<FaqSettings />` |
 
 ### Detalle tecnico
 
-1. En `RankingTable.tsx`, agregar `className?: string` a la interfaz `RankingTableProps` y aplicarla al `<Card>` con `cn()` para combinar con las clases existentes.
+En `Settings.tsx`:
+1. Agregar `<TabsTrigger value="faqs">FAQs</TabsTrigger>` al `TabsList` (despues de "Plantillas WhatsApp")
+2. Eliminar `<FaqSettings />` del `TabsContent value="general"`
+3. Agregar un nuevo `<TabsContent value="faqs"><FaqSettings /></TabsContent>` al final
 
-2. En los dashboards de superadmin y admin (grid de 3 columnas), pasar `className="lg:col-span-2"` para que el ranking ocupe 2 columnas.
-
-3. En el dashboard de acreditador y supervisor (grid de 2 columnas), no se pasa className, asi que el ranking ocupa 1 columna naturalmente.
-
+El import de `FaqSettings` ya existe, no se requieren cambios adicionales.
