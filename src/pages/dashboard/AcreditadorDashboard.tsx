@@ -10,6 +10,7 @@ import { FaqDialog } from '@/components/dashboard/FaqDialog';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import {
+  ArrowRight,
   Calendar,
   CalendarDays,
   CheckCircle,
@@ -142,6 +143,9 @@ export default function AcreditadorDashboard() {
             </div>
             <h3 className="text-xl font-bold">Preguntas Frecuentes</h3>
             <p className="text-sm opacity-90">Revisa las respuestas a las dudas más comunes</p>
+            <span className="inline-flex items-center gap-2 mt-2 bg-white/20 rounded-full px-4 py-2 text-sm font-medium hover:bg-white/30 transition-colors">
+              Ver preguntas <ArrowRight className="w-4 h-4" />
+            </span>
           </CardContent>
         </Card>
       </div>
