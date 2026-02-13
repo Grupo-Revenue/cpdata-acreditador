@@ -1,34 +1,35 @@
 
 
-## Dos mejoras al sistema de firma digital
+## Corregir caracteres "%%" en el PDF
 
-### 1. Confirmacion antes de firmar
+### Problema
 
-Agregar un dialogo de confirmacion (`ConfirmDialog`) que aparezca cuando el usuario hace clic en "Firmar Contrato". El usuario debera confirmar explicitamente antes de que se registre la firma.
+Los separadores `─────────────────────────────────────` usan el caracter Unicode U+2500 (box-drawing), que no es soportado por la fuente por defecto de jsPDF. Al no poder renderizarlo, lo muestra como `%%`.
 
-### 2. Descarga en formato PDF
+### Solucion
 
-Cambiar todas las descargas de contratos de formato `.txt` a `.pdf`, generando el PDF directamente en el navegador usando la API nativa de `jsPDF`.
+Reemplazar los caracteres `─` por guiones simples `-` o guiones bajos `_` que si son soportados por la fuente por defecto, o mejor aun, usar `doc.line()` para dibujar una linea grafica real en el PDF.
 
 ### Cambios
 
 | Archivo | Cambio |
 |---|---|
-| `src/components/events/DigitalSignatureDialog.tsx` | Agregar estado `confirmOpen` y renderizar `ConfirmDialog` antes de ejecutar `handleSign`. Cambiar `handleDownload` para generar PDF con `jsPDF` |
-| `src/components/events/EventsAdminTable.tsx` | Cambiar `downloadContractsForDeal` y `downloadAllContracts` para generar PDF con `jsPDF` |
-| Dependencia nueva: `jspdf` | Instalar para generacion de PDF en el cliente |
+| `src/components/events/DigitalSignatureDialog.tsx` | Reemplazar `doc.text('─────...')` por `doc.line()` para dibujar una linea horizontal |
+| `src/components/events/EventsAdminTable.tsx` | Mismo cambio en `downloadContractsForDeal` y `downloadAllContracts` |
 
 ### Detalle tecnico
 
-**Confirmacion de firma (`DigitalSignatureDialog.tsx`):**
-- Agregar estado `const [confirmOpen, setConfirmOpen] = useState(false)`
-- El boton "Firmar Contrato" ahora abre el `ConfirmDialog` en vez de llamar `handleSign` directamente
-- El `ConfirmDialog` usa `variant="default"`, titulo "Confirmar firma", descripcion "Esta seguro de que desea firmar este contrato? Esta accion no se puede deshacer."
-- Al confirmar en el dialogo, se ejecuta `handleSign`
+En ambos archivos, reemplazar las lineas:
+```text
+doc.text('─────────────────────────────────────', 20, y);
+```
 
-**Generacion de PDF (ambos archivos):**
-- Usar `jsPDF` para crear un documento PDF con el texto del contrato
-- Incluir titulo, texto del contrato con saltos de linea automaticos (`doc.splitTextToSize`), y al final los datos de firma (nombre, fecha, hora)
-- Nombres de archivo cambian de `.txt` a `.pdf`
-- En la descarga masiva del admin, se genera un solo PDF con separadores de pagina entre contratos
+Por lineas graficas usando la API de dibujo de jsPDF:
+```text
+doc.setDrawColor(0);
+doc.setLineWidth(0.5);
+doc.line(20, y, 190, y);
+```
+
+Esto dibuja una linea horizontal real en el PDF, que se ve profesional y no depende de caracteres Unicode.
 
