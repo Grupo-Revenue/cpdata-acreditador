@@ -10,11 +10,38 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
-import { Check, ChevronsUpDown } from 'lucide-react';
+import { Check, ChevronsUpDown, Info } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import type { InvoiceRow } from './InvoicesTable';
+
+function GlosaInfoBlock({ open }: { open: boolean }) {
+  const { data: glosa } = useQuery({
+    queryKey: ['modelo-glosa'],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('settings')
+        .select('value')
+        .eq('key', 'modelo_glosa')
+        .maybeSingle();
+      return data?.value || null;
+    },
+    enabled: open,
+  });
+
+  if (!glosa) return null;
+
+  return (
+    <div className="rounded-md border border-blue-200 bg-blue-50 p-3 space-y-1">
+      <p className="text-sm font-medium flex items-center gap-1.5 text-blue-800">
+        <Info className="w-4 h-4" />
+        Modelo de Glosa
+      </p>
+      <p className="text-sm text-blue-700 whitespace-pre-wrap">{glosa}</p>
+    </div>
+  );
+}
 
 interface Props {
   open: boolean;
@@ -232,6 +259,8 @@ export function InvoiceEditDialog({ open, onOpenChange, invoice }: Props) {
               </div>
             </>
           )}
+
+          {!isAdmin && <GlosaInfoBlock open={open} />}
 
           <div className="space-y-2">
             <Label>Número de boleta</Label>
