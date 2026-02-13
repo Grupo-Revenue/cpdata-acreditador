@@ -14,6 +14,53 @@ export type Database = {
   }
   public: {
     Tables: {
+      attendance_records: {
+        Row: {
+          attendance_date: string
+          check_in_time: string | null
+          created_at: string
+          event_id: string
+          id: string
+          ranking_points: number
+          recorded_by: string
+          status: Database["public"]["Enums"]["attendance_status"]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          attendance_date?: string
+          check_in_time?: string | null
+          created_at?: string
+          event_id: string
+          id?: string
+          ranking_points?: number
+          recorded_by: string
+          status?: Database["public"]["Enums"]["attendance_status"]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          attendance_date?: string
+          check_in_time?: string | null
+          created_at?: string
+          event_id?: string
+          id?: string
+          ranking_points?: number
+          recorded_by?: string
+          status?: Database["public"]["Enums"]["attendance_status"]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "attendance_records_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       event_accreditors: {
         Row: {
           application_status: Database["public"]["Enums"]["application_status"]
@@ -52,8 +99,60 @@ export type Database = {
           },
         ]
       }
+      event_expenses: {
+        Row: {
+          amount: number
+          approval_status: Database["public"]["Enums"]["expense_approval_status"]
+          approved_by: string | null
+          created_at: string
+          created_by: string
+          event_id: string
+          id: string
+          name: string
+          receipt_url: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          approval_status?: Database["public"]["Enums"]["expense_approval_status"]
+          approved_by?: string | null
+          created_at?: string
+          created_by?: string
+          event_id: string
+          id?: string
+          name: string
+          receipt_url?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          approval_status?: Database["public"]["Enums"]["expense_approval_status"]
+          approved_by?: string | null
+          created_at?: string
+          created_by?: string
+          event_id?: string
+          id?: string
+          name?: string
+          receipt_url?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_expenses_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       events: {
         Row: {
+          closed_at: string | null
+          closed_by: string | null
           created_at: string
           description: string | null
           event_date: string
@@ -61,10 +160,14 @@ export type Database = {
           id: string
           location: string | null
           name: string
+          reimbursement_closed_at: string | null
+          reimbursement_closed_by: string | null
           status: Database["public"]["Enums"]["event_status"]
           updated_at: string
         }
         Insert: {
+          closed_at?: string | null
+          closed_by?: string | null
           created_at?: string
           description?: string | null
           event_date: string
@@ -72,10 +175,14 @@ export type Database = {
           id?: string
           location?: string | null
           name: string
+          reimbursement_closed_at?: string | null
+          reimbursement_closed_by?: string | null
           status?: Database["public"]["Enums"]["event_status"]
           updated_at?: string
         }
         Update: {
+          closed_at?: string | null
+          closed_by?: string | null
           created_at?: string
           description?: string | null
           event_date?: string
@@ -83,6 +190,8 @@ export type Database = {
           id?: string
           location?: string | null
           name?: string
+          reimbursement_closed_at?: string | null
+          reimbursement_closed_by?: string | null
           status?: Database["public"]["Enums"]["event_status"]
           updated_at?: string
         }
@@ -441,8 +550,10 @@ export type Database = {
       app_role: "superadmin" | "administracion" | "supervisor" | "acreditador"
       application_status: "pendiente" | "aceptado" | "rechazado"
       approval_status: "pending" | "rejected" | "approved"
+      attendance_status: "presente" | "atrasado" | "ausente"
       contract_status: "pendiente" | "firmado" | "rechazado"
       event_status: "pending" | "in_progress" | "completed" | "cancelled"
+      expense_approval_status: "pendiente" | "aprobado" | "rechazado"
       invoice_status: "pendiente" | "pagado" | "rechazado"
       ticket_priority: "alta" | "media" | "baja"
       ticket_status: "pendiente" | "resuelto" | "inactivo"
@@ -577,8 +688,10 @@ export const Constants = {
       app_role: ["superadmin", "administracion", "supervisor", "acreditador"],
       application_status: ["pendiente", "aceptado", "rechazado"],
       approval_status: ["pending", "rejected", "approved"],
+      attendance_status: ["presente", "atrasado", "ausente"],
       contract_status: ["pendiente", "firmado", "rechazado"],
       event_status: ["pending", "in_progress", "completed", "cancelled"],
+      expense_approval_status: ["pendiente", "aprobado", "rechazado"],
       invoice_status: ["pendiente", "pagado", "rechazado"],
       ticket_priority: ["alta", "media", "baja"],
       ticket_status: ["pendiente", "resuelto", "inactivo"],

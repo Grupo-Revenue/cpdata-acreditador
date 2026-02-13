@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious, PaginationEllipsis } from '@/components/ui/pagination';
 import { PenTool, ClipboardList } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { EventManagementDialog } from './EventManagementDialog';
 
 interface HubSpotDeal {
   id: string;
@@ -30,6 +31,8 @@ const PAGE_SIZE = 5;
 export function EventsUserTable({ deals, isSupervisor }: EventsUserTableProps) {
   const { toast } = useToast();
   const [currentPage, setCurrentPage] = useState(1);
+  const [managementOpen, setManagementOpen] = useState(false);
+  const [selectedDeal, setSelectedDeal] = useState<HubSpotDeal | null>(null);
   const [filters, setFilters] = useState({
     dealname: '',
     nombre_del_evento: '',
@@ -70,8 +73,9 @@ export function EventsUserTable({ deals, isSupervisor }: EventsUserTableProps) {
     toast({ title: 'Firma digital', description: 'Funcionalidad próximamente disponible.' });
   };
 
-  const handleGestionEvento = () => {
-    toast({ title: 'Gestión del evento', description: 'Funcionalidad próximamente disponible.' });
+  const handleGestionEvento = (deal: HubSpotDeal) => {
+    setSelectedDeal(deal);
+    setManagementOpen(true);
   };
 
   return (
@@ -119,7 +123,7 @@ export function EventsUserTable({ deals, isSupervisor }: EventsUserTableProps) {
                         <PenTool className="h-4 w-4" />
                       </Button>
                       {isSupervisor && (
-                        <Button variant="ghost" size="icon" onClick={handleGestionEvento} title="Gestión del evento">
+                        <Button variant="ghost" size="icon" onClick={() => handleGestionEvento(deal)} title="Gestión del evento">
                           <ClipboardList className="h-4 w-4" />
                         </Button>
                       )}
@@ -161,6 +165,15 @@ export function EventsUserTable({ deals, isSupervisor }: EventsUserTableProps) {
             )}
           </PaginationContent>
         </Pagination>
+      )}
+
+      {selectedDeal && (
+        <EventManagementDialog
+          open={managementOpen}
+          onOpenChange={setManagementOpen}
+          hubspotDealId={selectedDeal.id}
+          dealName={selectedDeal.nombre_del_evento}
+        />
       )}
     </>
   );
