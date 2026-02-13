@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -324,7 +324,7 @@ export function EventManagementDialog({ open, onOpenChange, hubspotDealId, dealN
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-3xl w-[95vw] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               {isClosed && <Lock className="h-4 w-4 text-muted-foreground" />}
@@ -343,96 +343,86 @@ export function EventManagementDialog({ open, onOpenChange, hubspotDealId, dealN
                 <CardHeader>
                   <CardTitle className="text-base">Registro de Asistencia</CardTitle>
                 </CardHeader>
-                <CardContent className="p-0">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Acreditador</TableHead>
-                        <TableHead>Asistencia</TableHead>
-                        <TableHead>Puntos</TableHead>
-                        <TableHead>Comentarios</TableHead>
-                        <TableHead>Fecha</TableHead>
-                        <TableHead>Hora Ingreso</TableHead>
-                        <TableHead className="w-[60px]"></TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {attendanceRows.length === 0 ? (
-                        <TableRow>
-                          <TableCell colSpan={7} className="text-center text-muted-foreground py-6">
-                            No hay acreditadores asignados a este evento.
-                          </TableCell>
-                        </TableRow>
-                      ) : (
-                        attendanceRows.map((row, i) => (
-                          <TableRow key={row.userId}>
-                            <TableCell className="font-medium">{row.nombre} {row.apellido}</TableCell>
-                            <TableCell>
-                              <Select
-                                value={row.status}
-                                disabled={isClosed}
-                                onValueChange={(v) => updateAttendanceRow(i, 'status', v)}
-                              >
-                                <SelectTrigger className="w-[130px] h-8">
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="presente">Presente</SelectItem>
-                                  <SelectItem value="atrasado">Atrasado</SelectItem>
-                                  <SelectItem value="ausente">Ausente</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            </TableCell>
-                            <TableCell className="text-center font-semibold">
+                <CardContent className="space-y-3">
+                  {attendanceRows.length === 0 ? (
+                    <p className="text-center text-muted-foreground py-6">
+                      No hay acreditadores asignados a este evento.
+                    </p>
+                  ) : (
+                    attendanceRows.map((row, i) => (
+                      <div key={row.userId} className="border rounded-lg p-3 space-y-3">
+                        <div className="flex items-center justify-between">
+                          <p className="text-sm font-medium">{row.nombre} {row.apellido}</p>
+                          {!isClosed && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7"
+                              onClick={() => saveAttendance.mutate(row)}
+                              title="Guardar asistencia"
+                            >
+                              <Save className="h-4 w-4" />
+                            </Button>
+                          )}
+                        </div>
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                          <div className="space-y-1">
+                            <label className="text-xs text-muted-foreground">Asistencia</label>
+                            <Select
+                              value={row.status}
+                              disabled={isClosed}
+                              onValueChange={(v) => updateAttendanceRow(i, 'status', v)}
+                            >
+                              <SelectTrigger className="h-8 text-xs">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="presente">Presente</SelectItem>
+                                <SelectItem value="atrasado">Atrasado</SelectItem>
+                                <SelectItem value="ausente">Ausente</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="space-y-1">
+                            <label className="text-xs text-muted-foreground">Puntos</label>
+                            <div className="h-8 flex items-center text-sm font-semibold px-2 border rounded-md bg-muted/50">
                               {POINTS_MAP[row.status]}
-                            </TableCell>
-                            <TableCell>
-                              <Textarea
-                                placeholder="Comentario..."
-                                value={row.comment}
-                                disabled={isClosed}
-                                onChange={(e) => updateAttendanceRow(i, 'comment', e.target.value)}
-                                className="min-h-[40px] h-10 text-xs w-[180px] resize-none"
-                              />
-                            </TableCell>
-                            <TableCell>
-                              <Input
-                                type="date"
-                                value={row.attendanceDate}
-                                disabled={isClosed}
-                                onChange={(e) => updateAttendanceRow(i, 'attendanceDate', e.target.value)}
-                                className="h-8 w-[140px]"
-                              />
-                            </TableCell>
-                            <TableCell>
-                              <Input
-                                type="time"
-                                value={row.checkInTime}
-                                disabled={isClosed}
-                                onChange={(e) => updateAttendanceRow(i, 'checkInTime', e.target.value)}
-                                className="h-8 w-[110px]"
-                              />
-                            </TableCell>
-                            <TableCell>
-                              {!isClosed && (
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={() => saveAttendance.mutate(row)}
-                                  title="Guardar asistencia"
-                                >
-                                  <Save className="h-4 w-4" />
-                                </Button>
-                              )}
-                            </TableCell>
-                          </TableRow>
-                        ))
-                      )}
-                    </TableBody>
-                  </Table>
+                            </div>
+                          </div>
+                          <div className="space-y-1">
+                            <label className="text-xs text-muted-foreground">Fecha</label>
+                            <Input
+                              type="date"
+                              value={row.attendanceDate}
+                              disabled={isClosed}
+                              onChange={(e) => updateAttendanceRow(i, 'attendanceDate', e.target.value)}
+                              className="h-8 text-xs"
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <label className="text-xs text-muted-foreground">Hora Ingreso</label>
+                            <Input
+                              type="time"
+                              value={row.checkInTime}
+                              disabled={isClosed}
+                              onChange={(e) => updateAttendanceRow(i, 'checkInTime', e.target.value)}
+                              className="h-8 text-xs"
+                            />
+                          </div>
+                        </div>
+                        <Textarea
+                          placeholder="Comentario..."
+                          value={row.comment}
+                          disabled={isClosed}
+                          onChange={(e) => updateAttendanceRow(i, 'comment', e.target.value)}
+                          className="min-h-[40px] h-10 text-xs resize-none"
+                        />
+                      </div>
+                    ))
+                  )}
                   {!isClosed && attendanceRows.length > 0 && (
-                    <div className="p-3 flex justify-end">
-                      <Button size="sm" onClick={saveAllAttendance}>
+                    <div className="flex justify-end pt-2">
+                      <Button size="sm" className="w-full sm:w-auto" onClick={saveAllAttendance}>
                         <Save className="h-4 w-4 mr-2" />
                         Guardar toda la asistencia
                       </Button>
@@ -482,19 +472,19 @@ export function EventManagementDialog({ open, onOpenChange, hubspotDealId, dealN
                         )}
 
                         {!isClosed && (
-                          <div className="flex items-end gap-2 flex-wrap">
+                          <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto_auto_auto] gap-2 items-end">
                             <Input
                               placeholder="Nombre adicional"
                               value={input.name}
                               onChange={(e) => setNewExpenses(prev => ({ ...prev, [row.userId]: { ...getExpenseInput(row.userId), name: e.target.value } }))}
-                              className="h-8 text-xs flex-1 min-w-[120px]"
+                              className="h-8 text-xs"
                             />
                             <Input
                               type="number"
                               placeholder="Valor CLP"
                               value={input.amount}
                               onChange={(e) => setNewExpenses(prev => ({ ...prev, [row.userId]: { ...getExpenseInput(row.userId), amount: e.target.value } }))}
-                              className="h-8 text-xs w-[100px]"
+                              className="h-8 text-xs w-full sm:w-[100px]"
                             />
                             <label className="cursor-pointer flex items-center gap-1 text-xs text-muted-foreground border rounded px-2 py-1 h-8 hover:bg-muted">
                               <Upload className="h-3 w-3" />
@@ -525,7 +515,7 @@ export function EventManagementDialog({ open, onOpenChange, hubspotDealId, dealN
                 <>
                   <Separator />
                   <div className="flex justify-end">
-                    <Button variant="destructive" onClick={() => setConfirmClose(true)}>
+                    <Button variant="destructive" className="w-full sm:w-auto" onClick={() => setConfirmClose(true)}>
                       <Lock className="h-4 w-4 mr-2" />
                       Cerrar proyecto
                     </Button>
