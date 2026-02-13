@@ -1,38 +1,48 @@
 
 
-## Ajuste de vista "Gestion de Evento" para escritorio y movil
+## Fecha de pago editable para boletas
 
-### Problema
+### Resumen
 
-El dialogo actual usa una tabla con 7 columnas (Acreditador, Asistencia, Puntos, Comentarios, Fecha, Hora Ingreso, Accion) dentro de un `max-w-4xl`. Esto causa que el contenido se corte horizontalmente, especialmente en pantallas pequenas.
+Actualmente la fecha de pago se calcula automaticamente a partir de la fecha del evento y los dias de pago configurados. Se agregara la posibilidad de que administradores y superadmins puedan sobreescribir esta fecha manualmente.
 
-### Solucion
+### Cambios
 
-Reemplazar el layout de tabla por un diseno basado en tarjetas (cards) responsivas que se adapten correctamente a cualquier pantalla.
-
-| Archivo | Cambio |
+| Elemento | Detalle |
 |---|---|
-| `src/components/events/EventManagementDialog.tsx` | Redisenar la seccion de asistencia y gastos con layout responsivo |
+| **Migracion SQL** | Agregar columna `payment_date` (date, nullable) a la tabla `invoices` |
+| **InvoicesTable.tsx** | Mostrar `payment_date` cuando existe, sino calcular automaticamente como hasta ahora |
+| **InvoiceEditDialog.tsx** | Agregar campo DatePicker para fecha de pago (solo visible para admin) |
+| **InvoiceCreateDialog.tsx** | Agregar campo DatePicker para fecha de pago (opcional) |
+| **types.ts (supabase)** | Se actualizara automaticamente con la nueva columna |
+
+---
 
 ### Detalle tecnico
 
-**1. Seccion de Asistencia - Layout responsivo:**
-- Reemplazar la `Table` de asistencia por tarjetas individuales por acreditador
-- Cada tarjeta mostrara:
-  - Nombre del acreditador como titulo
-  - Grid responsivo (`grid-cols-2 sm:grid-cols-3`) con los campos: Asistencia (Select), Puntos, Fecha, Hora Ingreso
-  - Textarea de comentarios ocupando el ancho completo debajo
-  - Boton de guardar individual
-- En escritorio se vera como una lista ordenada de tarjetas con campos en linea
-- En movil cada campo se apilara verticalmente
+#### 1. Migracion SQL
 
-**2. Dialog container:**
-- Cambiar `max-w-4xl` a `max-w-3xl w-[95vw]` para mejor adaptacion
-- Mantener `max-h-[90vh] overflow-y-auto`
+Agregar columna nullable `payment_date` de tipo `date` a la tabla `invoices`. Cuando es `NULL`, el sistema sigue calculando la fecha automaticamente. Cuando tiene valor, se usa ese valor directamente.
 
-**3. Seccion de Gastos:**
-- Ya usa `flex-wrap` por lo que funciona razonablemente, pero ajustar los inputs para que se apilen en movil usando clases responsivas
+#### 2. InvoicesTable.tsx (linea 261-265)
 
-**4. Botones de accion:**
-- "Guardar toda la asistencia" y "Cerrar proyecto" se mantienen al final con ancho completo en movil
+Cambiar la logica de la columna "Fecha de pago" para priorizar `inv.payment_date` si existe:
+
+```text
+Si inv.payment_date existe -> mostrar inv.payment_date
+Si no -> calcular con calcPaymentDate() como hasta ahora
+```
+
+#### 3. InvoiceEditDialog.tsx
+
+- Agregar estado `paymentDate` (string)
+- Inicializarlo con `invoice.payment_date` o vacio
+- Mostrar un campo de tipo `date` (Input type="date") dentro del bloque `isAdmin`
+- Incluir `payment_date` en el update de admin
+
+#### 4. InvoiceCreateDialog.tsx
+
+- Agregar estado `paymentDate` (string, opcional)
+- Mostrar un campo de tipo `date` (Input type="date")
+- Incluir `payment_date` en el insert si tiene valor, sino enviar null para calculo automatico
 
