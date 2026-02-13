@@ -84,15 +84,18 @@ export function FaqSettings() {
       </CardHeader>
       <CardContent className="space-y-4">
         {faqs.map((faq, index) => (
-          <div key={index} className="space-y-2 p-4 border rounded-lg relative">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="absolute top-2 right-2 h-8 w-8 text-destructive"
-              onClick={() => removeFaq(index)}
-            >
-              <Trash2 className="h-4 w-4" />
-            </Button>
+          <div key={index} className="space-y-3 p-4 border rounded-lg">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium text-muted-foreground">Pregunta {index + 1}</span>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 text-destructive"
+                onClick={() => removeFaq(index)}
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </div>
             <Input
               placeholder="Pregunta"
               value={faq.pregunta}
