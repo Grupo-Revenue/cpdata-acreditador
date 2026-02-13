@@ -1,48 +1,34 @@
 
 
-## Fecha de pago editable para boletas
+## Modelo de Glosa para boletas
 
 ### Resumen
 
-Actualmente la fecha de pago se calcula automaticamente a partir de la fecha del evento y los dias de pago configurados. Se agregara la posibilidad de que administradores y superadmins puedan sobreescribir esta fecha manualmente.
+Agregar un campo "Modelo Glosa" en la seccion General de Configuracion (solo superadmin) que almacene un texto largo con instrucciones sobre que deben escribir los usuarios en la glosa al generar una boleta en SII. Este texto se mostrara como informacion de ayuda cuando un supervisor o acreditador abra el dialogo para subir su boleta.
 
 ### Cambios
 
-| Elemento | Detalle |
+| Archivo | Cambio |
 |---|---|
-| **Migracion SQL** | Agregar columna `payment_date` (date, nullable) a la tabla `invoices` |
-| **InvoicesTable.tsx** | Mostrar `payment_date` cuando existe, sino calcular automaticamente como hasta ahora |
-| **InvoiceEditDialog.tsx** | Agregar campo DatePicker para fecha de pago (solo visible para admin) |
-| **InvoiceCreateDialog.tsx** | Agregar campo DatePicker para fecha de pago (opcional) |
-| **types.ts (supabase)** | Se actualizara automaticamente con la nueva columna |
-
----
+| `src/components/settings/GlosaModelSettings.tsx` | Nuevo componente Card con Textarea para editar el modelo de glosa, guardado en tabla `settings` con key `modelo_glosa` |
+| `src/pages/app/Settings.tsx` | Agregar `GlosaModelSettings` en la pestana General |
+| `src/components/invoices/InvoiceEditDialog.tsx` | Cuando el usuario NO es admin, mostrar un bloque informativo con el texto del modelo de glosa (consulta a `settings`) |
 
 ### Detalle tecnico
 
-#### 1. Migracion SQL
+**1. GlosaModelSettings.tsx (nuevo)**
+- Card similar a `PaymentDaySettings` con icono `FileText`
+- Titulo: "Modelo de Glosa"
+- Descripcion: "Texto de referencia para que los usuarios sepan que escribir en la glosa al emitir su boleta en SII"
+- Textarea con el valor actual, cargado desde `settings` donde `key = 'modelo_glosa'`
+- Boton "Guardar" que hace upsert en `settings` con `onConflict: 'key'`
 
-Agregar columna nullable `payment_date` de tipo `date` a la tabla `invoices`. Cuando es `NULL`, el sistema sigue calculando la fecha automaticamente. Cuando tiene valor, se usa ese valor directamente.
+**2. Settings.tsx**
+- Importar y renderizar `GlosaModelSettings` en la pestana General, debajo de `PaymentDaySettings`
 
-#### 2. InvoicesTable.tsx (linea 261-265)
+**3. InvoiceEditDialog.tsx**
+- Cuando `!isAdmin` (supervisor/acreditador subiendo boleta), hacer una query a `settings` para obtener `modelo_glosa`
+- Mostrar un bloque informativo (fondo azul claro / `bg-blue-50 border-blue-200`) con titulo "Modelo de Glosa" y el texto del setting, ubicado antes de los campos de numero de boleta y archivo
+- Si no hay modelo configurado, no mostrar nada
 
-Cambiar la logica de la columna "Fecha de pago" para priorizar `inv.payment_date` si existe:
-
-```text
-Si inv.payment_date existe -> mostrar inv.payment_date
-Si no -> calcular con calcPaymentDate() como hasta ahora
-```
-
-#### 3. InvoiceEditDialog.tsx
-
-- Agregar estado `paymentDate` (string)
-- Inicializarlo con `invoice.payment_date` o vacio
-- Mostrar un campo de tipo `date` (Input type="date") dentro del bloque `isAdmin`
-- Incluir `payment_date` en el update de admin
-
-#### 4. InvoiceCreateDialog.tsx
-
-- Agregar estado `paymentDate` (string, opcional)
-- Mostrar un campo de tipo `date` (Input type="date")
-- Incluir `payment_date` en el insert si tiene valor, sino enviar null para calculo automatico
-
+No se requieren migraciones de base de datos ya que se usa la tabla `settings` existente con un nuevo key.
