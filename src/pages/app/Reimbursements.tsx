@@ -13,7 +13,8 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { Input } from '@/components/ui/input';
-import { Wallet, Lock, Unlock, CheckCircle, XCircle, DollarSign, Plus, Trash2, Upload, Search } from 'lucide-react';
+import { Wallet, Lock, Unlock, CheckCircle, XCircle, DollarSign, Plus, Trash2, Upload, Search, Download } from 'lucide-react';
+import { downloadFile } from '@/lib/csv-parser';
 
 export default function ReimbursementsPage() {
   const { activeRole, user } = useAuth();
@@ -219,6 +220,30 @@ export default function ReimbursementsPage() {
 
   const isLoading = eventsLoading || expensesLoading;
 
+  const filteredEvents = (events ?? []).filter(event => event.name.toLowerCase().includes(searchTerm.toLowerCase()));
+
+  const downloadExpensesAsCSV = () => {
+    const BOM = '\uFEFF';
+    const header = 'Evento;Asignado a;Adicional;Monto;Comprobante;Estado';
+    const rows: string[] = [];
+    filteredEvents.forEach(event => {
+      const eventExpenses = expenses?.filter(e => e.event_id === event.id) ?? [];
+      eventExpenses.forEach(exp => {
+        const statusMap: Record<string, string> = { pendiente: 'Pendiente', aprobado: 'Aprobado', rechazado: 'Rechazado' };
+        rows.push([
+          event.name,
+          getProfileName(exp.user_id),
+          exp.name,
+          exp.amount,
+          exp.receipt_url || '',
+          statusMap[exp.approval_status] || exp.approval_status,
+        ].join(';'));
+      });
+    });
+    const today = new Date().toISOString().slice(0, 10);
+    downloadFile(BOM + header + '\n' + rows.join('\n'), `rendiciones_${today}.csv`, 'text/csv');
+  };
+
   return (
     <AppShell>
       <PageHeader
@@ -240,23 +265,27 @@ export default function ReimbursementsPage() {
         />
       ) : (
         <div className="space-y-6">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Buscar por nombre de evento..."
-              value={searchTerm}
-              onChange={e => setSearchTerm(e.target.value)}
-              className="pl-9"
-            />
+          <div className="flex gap-2 items-center">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Buscar por nombre de evento..."
+                value={searchTerm}
+                onChange={e => setSearchTerm(e.target.value)}
+                className="pl-9"
+              />
+            </div>
+            {isAdmin && (
+              <Button size="sm" variant="outline" onClick={downloadExpensesAsCSV} disabled={!expenses || expenses.length === 0}>
+                <Download className="h-4 w-4 mr-1" />
+                Descargar Excel
+              </Button>
+            )}
           </div>
-          {events
-            .filter(event => event.name.toLowerCase().includes(searchTerm.toLowerCase()))
-            .length === 0 ? (
+          {filteredEvents.length === 0 ? (
             <p className="text-sm text-muted-foreground text-center py-8">Sin resultados para la búsqueda</p>
           ) : (
-          events
-            .filter(event => event.name.toLowerCase().includes(searchTerm.toLowerCase()))
-            .map(event => {
+          filteredEvents.map(event => {
             const eventExpenses = expenses?.filter(e => e.event_id === event.id) ?? [];
             if (!isAdmin && !isSupervisor && eventExpenses.length === 0) return null;
             const isReimbursementClosed = !!event.reimbursement_closed_at;
