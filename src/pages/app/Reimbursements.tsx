@@ -258,7 +258,7 @@ export default function ReimbursementsPage() {
             .filter(event => event.name.toLowerCase().includes(searchTerm.toLowerCase()))
             .map(event => {
             const eventExpenses = expenses?.filter(e => e.event_id === event.id) ?? [];
-            if (!isSuperadmin && !isSupervisor && eventExpenses.length === 0) return null;
+            if (!isAdmin && !isSupervisor && eventExpenses.length === 0) return null;
             const isReimbursementClosed = !!event.reimbursement_closed_at;
             const isEventClosed = !!event.closed_at;
             const approvedTotal = eventExpenses
