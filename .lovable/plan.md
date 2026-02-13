@@ -1,43 +1,59 @@
 
 
-## Descarga de rendiciones en Excel para Admin y Superadmin
+## Dashboard de Acreditador con datos reales y sistema de FAQs
 
 ### Resumen
 
-Agregar un boton "Descargar Excel" visible solo para administradores y superadmins en la pagina de Rendiciones. Al hacer clic, se generara un archivo `.csv` (compatible con Excel) con todos los gastos visibles, incluyendo la informacion del evento, asignado, monto, estado y comprobante.
+Reemplazar el dashboard estatico del acreditador con metricas reales (eventos semana, mes, total participados y monto ganado), incluir la tabla de ranking top 5, y agregar un sistema de FAQs editable desde Configuracion (superadmin) que se muestre con un boton de acceso directo en el dashboard.
 
 ### Cambios
 
 | Archivo | Cambio |
 |---|---|
-| `src/pages/app/Reimbursements.tsx` | Agregar boton de descarga y funcion de exportacion a CSV |
+| `src/pages/dashboard/AcreditadorDashboard.tsx` | Reescribir con queries reales a `event_accreditors`, `invoices` y `settings`. Agregar `RankingTable` con limit 5 y boton/dialogo de FAQs |
+| `src/components/settings/FaqSettings.tsx` | Nuevo componente para gestionar FAQs (CRUD con Accordion) guardado en `settings` con key `faqs` como JSON |
+| `src/pages/app/Settings.tsx` | Agregar `FaqSettings` en la pestana General |
+| `src/components/dashboard/FaqDialog.tsx` | Nuevo dialogo que muestra las FAQs en formato Accordion para los acreditadores |
 
 ### Detalle tecnico
 
-**1. Funcion de exportacion**
+#### 1. AcreditadorDashboard.tsx
 
-Se creara una funcion `downloadExpensesAsCSV` dentro del componente que:
-- Recorra todos los eventos filtrados y sus gastos
-- Genere filas con las columnas: Evento, Asignado a, Adicional, Monto, Comprobante (URL), Estado
-- Construya un string CSV con separador `;` (mejor compatibilidad con Excel en espanol)
-- Use BOM UTF-8 para caracteres especiales
-- Descargue el archivo como `rendiciones_YYYY-MM-DD.csv`
+Consultas con `useQuery`:
+- **Eventos semana**: Filtrar `event_accreditors` del usuario donde `events.event_date` este entre el lunes y domingo de la semana actual
+- **Eventos mes**: Filtrar donde `events.event_date` este en el mes actual
+- **Total participados**: Contar todos los registros en `event_accreditors` del usuario
+- **Monto ganado**: Sumar `amount` de `invoices` del usuario con status `pagado`
 
-**2. Boton en la interfaz**
+Tarjetas de estadisticas:
+1. Eventos Semana (Calendar)
+2. Eventos Mes (CalendarDays)
+3. Total Participados (CheckCircle)
+4. Monto Ganado (DollarSign) - formateado como moneda CLP
 
-- Ubicado junto al campo de busqueda, alineado a la derecha
-- Solo visible cuando `isAdmin` es `true`
-- Icono `Download` de lucide-react con texto "Descargar Excel"
-- Variante `outline`, tamano `sm`
-- Deshabilitado si no hay datos para descargar
+Debajo de las tarjetas:
+- `RankingTable` con `limit={5}` (componente existente reutilizado)
+- Boton "Preguntas Frecuentes" con icono `HelpCircle` que abre el `FaqDialog`
 
-**3. Estructura del CSV exportado**
+#### 2. FaqSettings.tsx (nuevo)
 
-```text
-Evento;Asignado a;Adicional;Monto;Comprobante;Estado
-Evento ABC;Juan Perez;Transporte;15000;https://...;Aprobado
-Evento ABC;Evento;Almuerzo;8000;;Pendiente
-```
+Similar a `GlosaModelSettings`:
+- Card con titulo "Preguntas Frecuentes (FAQs)"
+- Almacena en `settings` con key `faqs`, valor como JSON string: `[{ pregunta: "...", respuesta: "..." }]`
+- Interfaz para agregar, editar y eliminar pares pregunta/respuesta
+- Cada FAQ tiene dos campos: Input para pregunta, Textarea para respuesta
+- Botones para agregar nueva FAQ y eliminar existentes
+- Boton "Guardar" que hace upsert
 
-Se reutiliza la funcion `downloadFile` existente en `src/lib/csv-parser.ts` para la descarga del archivo.
+#### 3. Settings.tsx
 
+Importar y renderizar `FaqSettings` en la pestana General, despues de `RolesManager`.
+
+#### 4. FaqDialog.tsx (nuevo)
+
+- Dialog con titulo "Preguntas Frecuentes"
+- Lee las FAQs de `settings` con key `faqs`
+- Renderiza cada par pregunta/respuesta usando el componente `Accordion` existente
+- Si no hay FAQs configuradas, muestra mensaje vacio
+
+No se requieren migraciones de base de datos ya que se reutiliza la tabla `settings` existente con nuevos keys.
