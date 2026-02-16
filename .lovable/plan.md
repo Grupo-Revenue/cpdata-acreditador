@@ -1,32 +1,46 @@
 
 
-## Actualizar contract_status al firmar
+## Corregir scroll del contrato y variable HORARIO
 
-### Problema
+### Problema 1: Texto cortado sin scroll
 
-Cuando un acreditador o supervisor firma el contrato digital, el estado del contrato (`contract_status`) en la tabla `event_accreditors` no se actualiza. Queda en "pendiente" aunque ya exista la firma.
+El `ScrollArea` dentro del dialogo tiene alturas fijas (`h-[300px]` y `h-[350px]`) pero el `DialogContent` con `max-h-[90vh]` y `flex flex-col` puede no estar permitiendo que el ScrollArea funcione correctamente. El `overflow-hidden` del DialogContent de shadcn/ui esta cortando el contenido.
 
-### Solucion
+### Solucion 1
 
-Agregar una actualizacion a `event_accreditors` dentro de la funcion `handleSign` en `DigitalSignatureDialog.tsx`, cambiando `contract_status` de `"pendiente"` a `"firmado"` inmediatamente despues de insertar la firma exitosamente.
+- Agregar `overflow-y-auto` al contenedor interno del dialogo para que el contenido completo sea scrolleable
+- Cambiar el ScrollArea para usar una altura que se adapte mejor al espacio disponible
+
+### Problema 2: HORARIO vacio
+
+En `DigitalSignatureDialog.tsx` linea 86, la variable `HORARIO` esta hardcodeada como string vacio `''`. El horario del evento (`hora_de_inicio_y_fin_del_evento`) es un dato de HubSpot que esta disponible en el deal pero no se pasa al dialogo.
+
+### Solucion 2
+
+Pasar el horario como prop desde `EventsUserTable` y `EventsAdminTable` al `DigitalSignatureDialog`, ya que esos componentes ya tienen acceso al dato `hora_de_inicio_y_fin_del_evento` del deal de HubSpot.
 
 ### Cambios
 
 | Archivo | Cambio |
 |---|---|
-| `src/components/events/DigitalSignatureDialog.tsx` | Despues de insertar en `digital_signatures`, ejecutar `supabase.from('event_accreditors').update({ contract_status: 'firmado' }).eq('event_id', internalEventId).eq('user_id', userId)` |
+| `src/components/events/DigitalSignatureDialog.tsx` | Agregar prop `horario?: string`, usarla para la variable HORARIO. Cambiar el layout del dialogo para que el scroll funcione correctamente con `overflow-y-auto` en el contenedor interno |
+| `src/components/events/EventsUserTable.tsx` | Pasar `horario={signatureDeal?.hora_de_inicio_y_fin_del_evento}` al DigitalSignatureDialog |
+| `src/components/events/EventsAdminTable.tsx` | Pasar el horario al DigitalSignatureDialog si aplica, y usar el horario en las descargas masivas de contratos |
 
 ### Detalle tecnico
 
-En la funcion `handleSign` (linea 108), despues de la insercion exitosa en `digital_signatures` y antes de mostrar el toast de exito, agregar:
-
+**Prop horario:**
 ```typescript
-await supabase
-  .from('event_accreditors')
-  .update({ contract_status: 'firmado' })
-  .eq('event_id', internalEventId)
-  .eq('user_id', userId);
+interface DigitalSignatureDialogProps {
+  // ... existentes
+  horario?: string; // nuevo
+}
 ```
 
-Esto asegura que la tabla de postulantes refleje automaticamente que el contrato fue firmado, sin requerir accion manual del administrador.
+En la construccion de variables (linea 86):
+```typescript
+HORARIO: horario || '',
+```
 
+**Scroll fix:**
+Reemplazar la estructura del dialogo para que el contenido sea scrolleable. Cambiar `overflow-hidden` por un contenedor con `overflow-y-auto` y asegurar que el `flex-1 min-h-0` permita al ScrollArea ocupar el espacio disponible.
