@@ -9,6 +9,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { jsPDF } from 'jspdf';
 import { useToast } from '@/hooks/use-toast';
+import { generateProfessionalPDF } from '@/lib/contract-utils';
 import { EventEditDialog } from '@/components/events/EventEditDialog';
 import { EventTeamDialog } from '@/components/events/EventTeamDialog';
 
@@ -44,15 +45,6 @@ interface EventsAdminTableProps {
 
 const PAGE_SIZE = 5;
 
-function generateContractText(sig: { contract_text: string; signer_name: string; signed_at: string }) {
-  const signedDate = new Date(sig.signed_at);
-  return `${sig.contract_text}\n\n` +
-    `-----------------------------------\n` +
-    `Firmado por: ${sig.signer_name}\n` +
-    `Fecha: ${signedDate.toLocaleDateString('es-CL')}\n` +
-    `Hora: ${signedDate.toLocaleTimeString('es-CL')}\n` +
-    `-----------------------------------`;
-}
 
 export function EventsAdminTable({ deals }: EventsAdminTableProps) {
   const { hasRole } = useAuth();
@@ -98,21 +90,7 @@ export function EventsAdminTable({ deals }: EventsAdminTableProps) {
 
     const doc = new jsPDF();
     signatures.forEach((sig, i) => {
-      if (i > 0) doc.addPage();
-      const signedDate = new Date(sig.signed_at);
-      doc.setFontSize(16);
-      doc.text('Contrato Firmado', 105, 20, { align: 'center' });
-      doc.setFontSize(11);
-      const lines = doc.splitTextToSize(sig.contract_text, 170);
-      doc.text(lines, 20, 35);
-      const y = 35 + lines.length * 6;
-      doc.setFontSize(10);
-      doc.setDrawColor(0);
-      doc.setLineWidth(0.5);
-      doc.line(20, y + 10, 190, y + 10);
-      doc.text(`Firmado por: ${sig.signer_name}`, 20, y + 18);
-      doc.text(`Fecha: ${signedDate.toLocaleDateString('es-CL')}`, 20, y + 24);
-      doc.text(`Hora: ${signedDate.toLocaleTimeString('es-CL')}`, 20, y + 30);
+      generateProfessionalPDF(doc, sig.contract_text, sig.signer_name, new Date(sig.signed_at), i > 0);
     });
     const name = signatures.length === 1
       ? `contrato-${deal.nombre_del_evento ?? deal.dealname ?? 'evento'}-${signatures[0].signer_name}.pdf`
@@ -151,22 +129,7 @@ export function EventsAdminTable({ deals }: EventsAdminTableProps) {
 
     const doc = new jsPDF();
     signatures.forEach((sig, i) => {
-      if (i > 0) doc.addPage();
-      const eventName = eventNameMap[sig.event_id] ?? 'Evento';
-      const signedDate = new Date(sig.signed_at);
-      doc.setFontSize(14);
-      doc.text(`Evento: ${eventName}`, 105, 15, { align: 'center' });
-      doc.setFontSize(11);
-      const lines = doc.splitTextToSize(sig.contract_text, 170);
-      doc.text(lines, 20, 30);
-      const y = 30 + lines.length * 6;
-      doc.setFontSize(10);
-      doc.setDrawColor(0);
-      doc.setLineWidth(0.5);
-      doc.line(20, y + 10, 190, y + 10);
-      doc.text(`Firmado por: ${sig.signer_name}`, 20, y + 18);
-      doc.text(`Fecha: ${signedDate.toLocaleDateString('es-CL')}`, 20, y + 24);
-      doc.text(`Hora: ${signedDate.toLocaleTimeString('es-CL')}`, 20, y + 30);
+      generateProfessionalPDF(doc, sig.contract_text, sig.signer_name, new Date(sig.signed_at), i > 0);
     });
     doc.save('todos-los-contratos.pdf');
   };
