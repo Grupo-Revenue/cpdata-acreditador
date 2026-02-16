@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious, PaginationEllipsis } from '@/components/ui/pagination';
 import { Pencil, Users, Download, FileDown } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { usePermissions } from '@/hooks/usePermissions';
 import { supabase } from '@/integrations/supabase/client';
 import { jsPDF } from 'jspdf';
 import { useToast } from '@/hooks/use-toast';
@@ -48,9 +49,10 @@ const PAGE_SIZE = 5;
 
 export function EventsAdminTable({ deals }: EventsAdminTableProps) {
   const { hasRole } = useAuth();
+  const { canAccess } = usePermissions();
   const { toast } = useToast();
-  const canEdit = hasRole('superadmin') || hasRole('administracion');
-  const canAssignTeam = hasRole('superadmin');
+  const canEdit = (hasRole('superadmin') || hasRole('administracion')) && canAccess('action.events.edit');
+  const canAssignTeam = hasRole('superadmin') || canAccess('action.events.team');
 
   const [currentPage, setCurrentPage] = useState(1);
   const [editingDeal, setEditingDeal] = useState<HubSpotDeal | null>(null);
@@ -188,9 +190,11 @@ export function EventsAdminTable({ deals }: EventsAdminTableProps) {
                         <Users className="h-4 w-4" />
                       </Button>
                     )}
-                    <Button variant="ghost" size="icon" onClick={() => downloadContractsForDeal(deal)} title="Descargar contratos">
-                      <Download className="h-4 w-4" />
-                    </Button>
+                    {canAccess('action.events.contract') && (
+                      <Button variant="ghost" size="icon" onClick={() => downloadContractsForDeal(deal)} title="Descargar contratos">
+                        <Download className="h-4 w-4" />
+                      </Button>
+                    )}
                   </TableCell>
                 </TableRow>
               ))}
