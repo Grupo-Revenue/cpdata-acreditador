@@ -125,6 +125,13 @@ export function DigitalSignatureDialog({ open, onOpenChange, eventId, dealName, 
     if (error) {
       toast({ title: 'Error', description: 'No se pudo registrar la firma.', variant: 'destructive' });
     } else {
+      // Update contract_status in event_accreditors
+      await supabase
+        .from('event_accreditors')
+        .update({ contract_status: 'firmado' })
+        .eq('event_id', internalEventId)
+        .eq('user_id', userId);
+
       setSignature(data);
       toast({ title: 'Contrato firmado', description: 'Tu firma digital ha sido registrada exitosamente.' });
       onSigned?.();
