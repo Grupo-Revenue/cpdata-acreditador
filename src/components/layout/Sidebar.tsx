@@ -29,7 +29,7 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   { icon: LayoutDashboard, label: 'Dashboard', href: '/app/dashboard', permissionKey: 'nav.dashboard' },
-  { icon: Users, label: 'Usuarios', href: '/app/users', roles: ['superadmin', 'administracion'], permissionKey: 'nav.users' },
+  { icon: Users, label: 'Usuarios', href: '/app/users', permissionKey: 'nav.users' },
   { icon: Calendar, label: 'Eventos', href: '/app/events', permissionKey: 'nav.events' },
   { icon: FileText, label: 'Boletas', href: '/app/invoices', permissionKey: 'nav.invoices' },
   { icon: Wallet, label: 'Rendiciones', href: '/app/reimbursements', permissionKey: 'nav.reimbursements' },
@@ -49,8 +49,11 @@ export function Sidebar({ collapsed, onCollapse }: SidebarProps) {
   const { canAccess } = usePermissions();
 
   const filteredNavItems = navItems.filter(item => {
-    if (item.roles && !(activeRole ? item.roles.includes(activeRole) : false)) return false;
-    if (item.permissionKey && !canAccess(item.permissionKey)) return false;
+    if (item.permissionKey) {
+      if (!canAccess(item.permissionKey)) return false;
+    } else if (item.roles) {
+      if (!(activeRole ? item.roles.includes(activeRole) : false)) return false;
+    }
     return true;
   });
 
