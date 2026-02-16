@@ -3,14 +3,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { Separator } from '@/components/ui/separator';
 import { LoadingState } from '@/components/ui/LoadingState';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import {
   LayoutDashboard, Users, Calendar, FileText, Wallet,
-  HeadphonesIcon, Trophy, Pencil, MessageSquare, Upload,
-  UserCheck, Download, Plus
+  HeadphonesIcon, Trophy,
 } from 'lucide-react';
 
 const ROLES = ['administracion', 'supervisor', 'acreditador'] as const;
@@ -28,32 +26,6 @@ const NAV_PERMISSIONS = [
   { key: 'nav.reimbursements', label: 'Rendiciones', icon: Wallet },
   { key: 'nav.support', label: 'Soporte', icon: HeadphonesIcon },
   { key: 'nav.ranking', label: 'Ranking', icon: Trophy },
-];
-
-const ACTION_GROUPS = [
-  {
-    label: 'Boletas',
-    permissions: [
-      { key: 'action.invoices.edit', label: 'Editar boletas', icon: Pencil },
-      { key: 'action.invoices.whatsapp', label: 'Enviar WhatsApp', icon: MessageSquare },
-      { key: 'action.invoices.upload', label: 'Subir archivo de boleta', icon: Upload },
-    ],
-  },
-  {
-    label: 'Eventos',
-    permissions: [
-      { key: 'action.events.edit', label: 'Editar eventos', icon: Pencil },
-      { key: 'action.events.team', label: 'Gestionar equipo', icon: UserCheck },
-      { key: 'action.events.contract', label: 'Descargar contrato', icon: Download },
-    ],
-  },
-  {
-    label: 'Soporte',
-    permissions: [
-      { key: 'action.support.create', label: 'Crear ticket', icon: Plus },
-      { key: 'action.support.edit', label: 'Editar ticket', icon: Pencil },
-    ],
-  },
 ];
 
 interface PermissionRow {
@@ -122,7 +94,7 @@ export function PermissionsSettings() {
       <CardHeader>
         <CardTitle>Permisos por Rol</CardTitle>
         <CardDescription>
-          Controla qué elementos del menú y acciones están disponibles para cada rol.
+          Controla qué elementos del menú son visibles para cada rol.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -157,38 +129,6 @@ export function PermissionsSettings() {
                 </div>
               </div>
 
-              <Separator />
-
-              {/* Actions section */}
-              <div>
-                <h4 className="text-sm font-semibold text-foreground mb-3">Acciones en tablas</h4>
-                <div className="space-y-5">
-                  {ACTION_GROUPS.map(group => (
-                    <div key={group.label}>
-                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">
-                        {group.label}
-                      </p>
-                      <div className="space-y-3">
-                        {group.permissions.map(perm => {
-                          const Icon = perm.icon;
-                          return (
-                            <div key={perm.key} className="flex items-center justify-between py-1">
-                              <div className="flex items-center gap-3">
-                                <Icon className="h-4 w-4 text-muted-foreground" />
-                                <Label className="cursor-pointer">{perm.label}</Label>
-                              </div>
-                              <Switch
-                                checked={getEnabled(role, perm.key)}
-                                onCheckedChange={() => togglePermission(role, perm.key)}
-                              />
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
             </TabsContent>
           ))}
         </Tabs>
