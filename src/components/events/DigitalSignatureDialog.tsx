@@ -104,7 +104,7 @@ export function DigitalSignatureDialog({ open, onOpenChange, eventId, dealName, 
       setLoading(false);
     };
     load();
-  }, [open, eventId, userId]);
+  }, [open, eventId, userId, horario]);
 
   const handleSign = async () => {
     if (!internalEventId) return;
