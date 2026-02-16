@@ -17,6 +17,7 @@ interface DigitalSignatureDialogProps {
   eventId: string | null;
   dealName: string | null;
   userId: string;
+  horario?: string;
   onSigned?: () => void;
 }
 
@@ -27,7 +28,7 @@ interface SignatureRecord {
   signed_at: string;
 }
 
-export function DigitalSignatureDialog({ open, onOpenChange, eventId, dealName, userId, onSigned }: DigitalSignatureDialogProps) {
+export function DigitalSignatureDialog({ open, onOpenChange, eventId, dealName, userId, horario, onSigned }: DigitalSignatureDialogProps) {
   const { toast } = useToast();
   const [contractTemplate, setContractTemplate] = useState('');
   const [processedText, setProcessedText] = useState('');
@@ -83,7 +84,7 @@ export function DigitalSignatureDialog({ open, onOpenChange, eventId, dealName, 
         EVENTO: eventData?.name || dealName || '',
         LOCACION: eventData?.location || '',
         FECHA_EVENTO: eventData?.event_date ? new Date(eventData.event_date).toLocaleDateString('es-CL') : '',
-        HORARIO: '',
+        HORARIO: horario || '',
         FECHA_FIRMA: new Date().toLocaleDateString('es-CL'),
       };
 
@@ -147,27 +148,27 @@ export function DigitalSignatureDialog({ open, onOpenChange, eventId, dealName, 
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col">
-        <DialogHeader>
+      <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col overflow-hidden">
+        <DialogHeader className="flex-shrink-0">
           <DialogTitle>Firma Digital — {dealName ?? 'Evento'}</DialogTitle>
         </DialogHeader>
 
         {loading ? (
           <LoadingState text="Cargando contrato..." className="py-8" />
         ) : signature ? (
-          <div className="space-y-4">
-            <Badge variant="outline" className="bg-success/10 text-success border-success/20">
+          <div className="space-y-4 flex flex-col flex-1 min-h-0">
+            <Badge variant="outline" className="bg-success/10 text-success border-success/20 flex-shrink-0">
               Contrato firmado
             </Badge>
-            <ScrollArea className="h-[300px] border rounded-md p-4">
+            <div className="flex-1 min-h-0 border rounded-md p-4 overflow-y-auto">
               <pre className="whitespace-pre-wrap text-sm font-mono">{signature.contract_text}</pre>
-            </ScrollArea>
-            <div className="text-sm text-muted-foreground space-y-1">
+            </div>
+            <div className="text-sm text-muted-foreground space-y-1 flex-shrink-0">
               <p><strong>Firmado por:</strong> {signature.signer_name}</p>
               <p><strong>Fecha:</strong> {new Date(signature.signed_at).toLocaleDateString('es-CL')}</p>
               <p><strong>Hora:</strong> {new Date(signature.signed_at).toLocaleTimeString('es-CL')}</p>
             </div>
-            <DialogFooter>
+            <DialogFooter className="flex-shrink-0">
               <Button onClick={handleDownload}>
                 <Download className="h-4 w-4 mr-2" />
                 Descargar Contrato
@@ -180,11 +181,11 @@ export function DigitalSignatureDialog({ open, onOpenChange, eventId, dealName, 
           </p>
         ) : (
           <div className="space-y-4 flex flex-col flex-1 min-h-0">
-            <p className="text-sm text-muted-foreground">Lea el contrato completo antes de firmar:</p>
-            <ScrollArea className="h-[350px] border rounded-md p-4 flex-1">
+            <p className="text-sm text-muted-foreground flex-shrink-0">Lea el contrato completo antes de firmar:</p>
+            <div className="flex-1 min-h-0 border rounded-md p-4 overflow-y-auto">
               <pre className="whitespace-pre-wrap text-sm font-mono">{processedText}</pre>
-            </ScrollArea>
-            <DialogFooter>
+            </div>
+            <DialogFooter className="flex-shrink-0">
               <Button onClick={() => setConfirmOpen(true)} disabled={signing}>
                 <PenTool className="h-4 w-4 mr-2" />
                 {signing ? 'Firmando...' : 'Firmar Contrato'}
