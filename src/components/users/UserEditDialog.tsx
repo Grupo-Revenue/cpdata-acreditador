@@ -16,6 +16,7 @@ import { UserWithRoles } from './types';
 import { ApprovalStatus } from '@/contexts/AuthContext';
 import { BANCOS_CHILE, TIPOS_CUENTA } from './constants';
 import { LanguageTagsInput } from '@/components/ui/LanguageTagsInput';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 
 interface UserEditDialogProps {
   user: UserWithRoles | null;
@@ -140,6 +141,14 @@ export function UserEditDialog({ user, open, onOpenChange, onSuccess }: UserEdit
           <DialogTitle>Editar Usuario</DialogTitle>
           <DialogDescription>Modifica la información del usuario. Los cambios se aplicarán inmediatamente.</DialogDescription>
         </DialogHeader>
+        <div className="flex justify-center py-4">
+          <Avatar className="h-20 w-20">
+            {user?.foto_url && <AvatarImage src={user.foto_url} alt={`${user?.nombre} ${user?.apellido}`} />}
+            <AvatarFallback className="text-2xl">
+              {user?.nombre?.charAt(0)}{user?.apellido?.charAt(0)}
+            </AvatarFallback>
+          </Avatar>
+        </div>
         <form onSubmit={handleSubmit}>
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
