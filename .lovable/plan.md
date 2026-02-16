@@ -1,69 +1,44 @@
 
 
-## Agregar nuevos campos al registro de usuarios
+## Agregar turnos (AM/PM) a la asignacion de equipo
 
-### Campos nuevos a crear en la base de datos
+### Contexto
 
-Los siguientes campos no existen actualmente y deben agregarse a la tabla `profiles`:
+Actualmente al asignar un equipo a un evento, solo se seleccionan usuarios con un checkbox. No existe la posibilidad de indicar en que turno trabajara cada persona. Para eventos de un dia completo o de varios dias, es necesario poder asignar turnos como AM o PM.
 
-| Campo | Columna DB | Tipo | Obligatorio |
-|---|---|---|---|
-| Fecha de Nacimiento | `fecha_nacimiento` | date | No |
-| Semestre | `semestre` | text | No |
-| Disponibilidad Horaria | `disponibilidad_horaria` | text | No |
-| Comuna | `comuna` | text | No |
-| Instagram | `instagram` | text | No |
-| Facebook | `facebook` | text | No |
-| Talla de Polera | `talla_polera` | text | No |
-| Contacto de emergencia | `contacto_emergencia_nombre` | text | No |
-| Email contacto emergencia | `contacto_emergencia_email` | text | No |
-| Celular contacto emergencia | `contacto_emergencia_telefono` | text | No |
+### Cambios propuestos
 
-**Nota:** "Referencia de contacto" ya existe y es diferente a "Contacto de emergencia". Se mantienen ambos campos.
+**1. Migracion de base de datos**
 
-### Archivos a modificar
+Agregar una columna `shift` de tipo texto a la tabla `event_accreditors` con valor por defecto `null`. Los valores posibles seran: `null` (sin turno / dia completo), `'AM'` o `'PM'`.
 
-| Archivo | Cambio |
-|---|---|
-| **Migracion SQL** | Agregar 10 columnas nuevas a `profiles` |
-| `src/pages/auth/Register.tsx` | Agregar los nuevos campos al formulario de registro publico y al schema zod. Agregar secciones para datos academicos, personales adicionales y contacto de emergencia |
-| `src/contexts/AuthContext.tsx` | Actualizar interfaces `Profile` y `SignUpData` con los nuevos campos, y pasar los nuevos datos en `signUp()` como metadata |
-| `src/components/users/UserCreateDialog.tsx` | Agregar los 10 campos al formulario de creacion por admin |
-| `src/components/users/UserEditDialog.tsx` | Agregar los 10 campos al formulario de edicion |
-| `src/pages/app/Profile.tsx` | Agregar los nuevos campos a la vista y edicion del perfil propio |
-| `src/components/users/types.ts` | Agregar los nuevos campos a `UserWithRoles` |
-| `supabase/functions/create-user/index.ts` | Aceptar y guardar los nuevos campos al crear usuario por admin |
-| `supabase/functions/create-users-bulk/index.ts` | Soportar los nuevos campos en la carga masiva CSV |
+```sql
+ALTER TABLE event_accreditors ADD COLUMN shift text;
+```
+
+**2. EventTeamDialog.tsx - Interfaz de turnos**
+
+- Reemplazar el sistema actual de `Set<string>` por un `Map<string, string | null>` donde la clave es el `user_id` y el valor es el turno (`null`, `'AM'` o `'PM'`).
+- Al seleccionar un usuario con el checkbox, se asigna por defecto sin turno (dia completo).
+- Agregar una columna "Turno" en cada tabla (supervisores y acreditadores) con un selector que aparece solo cuando el usuario esta seleccionado. Las opciones seran: "Dia Completo", "AM" y "PM".
+- Al guardar, incluir el campo `shift` en cada fila insertada en `event_accreditors`.
+
+**3. Carga de asignaciones existentes**
+
+- Modificar la query de `event-assignments` para traer tambien el campo `shift` junto al `user_id`.
+- Al pre-seleccionar usuarios existentes, cargar su turno correspondiente en el Map.
 
 ### Detalle tecnico
 
-**Migracion SQL:**
-```sql
-ALTER TABLE profiles
-  ADD COLUMN fecha_nacimiento date,
-  ADD COLUMN semestre text,
-  ADD COLUMN disponibilidad_horaria text,
-  ADD COLUMN comuna text,
-  ADD COLUMN instagram text,
-  ADD COLUMN facebook text,
-  ADD COLUMN talla_polera text,
-  ADD COLUMN contacto_emergencia_nombre text,
-  ADD COLUMN contacto_emergencia_email text,
-  ADD COLUMN contacto_emergencia_telefono text;
-```
+| Archivo | Cambio |
+|---|---|
+| Migracion SQL | Agregar columna `shift` (text, nullable) a `event_accreditors` |
+| `src/components/events/EventTeamDialog.tsx` | Cambiar `selectedSupervisors` y `selectedAccreditors` de `Set<string>` a `Map<string, string or null>`. Agregar columna "Turno" con selector por usuario. Incluir `shift` al insertar filas en `handleSave`. Cargar turnos existentes en el `useEffect` de pre-seleccion. |
 
-**Registro publico (`Register.tsx`):**
-- Se agregan los campos al schema zod como opcionales
-- Se organizan en secciones: Datos personales (existente), Datos adicionales (fecha nacimiento, comuna, instagram, facebook, talla polera, disponibilidad horaria), Datos academicos (universidad, carrera, semestre), Contacto de emergencia (nombre, email, celular)
-- Se pasan como metadata en `signUp()`
+### Comportamiento esperado
 
-**Trigger de base de datos:**
-- El trigger `on_auth_user_created` existente crea el perfil con los metadata. Se debe actualizar para capturar los nuevos campos de metadata y guardarlos en las nuevas columnas de `profiles`
+- Al marcar un usuario, aparece un selector de turno en su fila con las opciones: "Dia Completo" (default), "AM", "PM".
+- Al desmarcar un usuario, desaparece el selector.
+- Los turnos se persisten en la base de datos y se recargan al abrir el dialogo.
+- No se modifica ningun otro componente; el turno queda disponible para uso futuro en gestion de asistencia y otras vistas.
 
-**Edge function `create-user`:**
-- Agregar los nuevos campos a la interface `CreateUserRequest`
-- Incluirlos en el `profileUpdate` que se hace despues de crear el usuario
-
-**Formularios admin (UserCreateDialog, UserEditDialog, Profile):**
-- Agregar campos de formulario organizados en la seccion correspondiente
-- Ninguno de los nuevos campos es obligatorio
