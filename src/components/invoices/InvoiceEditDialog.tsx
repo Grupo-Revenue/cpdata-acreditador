@@ -263,12 +263,15 @@ export function InvoiceEditDialog({ open, onOpenChange, invoice }: Props) {
           {!isAdmin && <GlosaInfoBlock open={open} />}
 
           <div className="space-y-2">
-            <Label>Número de boleta</Label>
+            <Label>Número de boleta {!isAdmin && <span className="text-destructive">*</span>}</Label>
             <Input
               placeholder="Ingrese el número de su boleta"
               value={numeroBoleta}
               onChange={(e) => setNumeroBoleta(e.target.value)}
             />
+            {!isAdmin && (
+              <p className="text-xs text-muted-foreground">Campo obligatorio para subir tu boleta.</p>
+            )}
           </div>
 
           <div className="space-y-2">
@@ -284,7 +287,7 @@ export function InvoiceEditDialog({ open, onOpenChange, invoice }: Props) {
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
-          <Button onClick={() => editMutation.mutate()} disabled={editMutation.isPending}>
+          <Button onClick={() => editMutation.mutate()} disabled={editMutation.isPending || (!isAdmin && !numeroBoleta.trim())}>
             {editMutation.isPending ? 'Guardando...' : 'Guardar'}
           </Button>
         </DialogFooter>
