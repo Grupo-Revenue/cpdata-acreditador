@@ -271,6 +271,7 @@ export function EventsUserTable({ deals, isSupervisor, userId }: EventsUserTable
           eventId={signatureDeal?.id ?? null}
           dealName={signatureDeal?.nombre_del_evento ?? signatureDeal?.dealname ?? null}
           userId={userId}
+          horario={signatureDeal?.hora_de_inicio_y_fin_del_evento ?? undefined}
           onSigned={() => queryClient.invalidateQueries({ queryKey: ['user-signatures', userId] })}
         />
       )}
