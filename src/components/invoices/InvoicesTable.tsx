@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Pencil, MessageSquare, Upload, CheckCircle } from 'lucide-react';
 import { format } from 'date-fns';
+import { usePermissions } from '@/hooks/usePermissions';
 
 export interface InvoiceRow {
   id: string;
@@ -85,6 +86,7 @@ const initialFilters: Filters = {
 
 export function InvoicesTable({ invoices, isAdmin, paymentDays, onEdit, onWhatsapp, onUpload }: InvoicesTableProps) {
   const [filters, setFilters] = useState<Filters>(initialFilters);
+  const { canAccess } = usePermissions();
 
   const setFilter = (key: keyof Filters, value: string) =>
     setFilters((prev) => ({ ...prev, [key]: value }));
@@ -272,20 +274,28 @@ export function InvoicesTable({ invoices, isAdmin, paymentDays, onEdit, onWhatsa
                       <div className="flex gap-1">
                         {isAdmin ? (
                           <>
-                            <Button variant="ghost" size="icon" onClick={() => onEdit(inv)} title="Editar">
-                              <Pencil className="h-4 w-4" />
-                            </Button>
-                            <Button variant="ghost" size="icon" onClick={() => onWhatsapp(inv)} title="Enviar WhatsApp">
-                              <MessageSquare className="h-4 w-4" />
-                            </Button>
+                            {canAccess('action.invoices.edit') && (
+                              <Button variant="ghost" size="icon" onClick={() => onEdit(inv)} title="Editar">
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                            )}
+                            {canAccess('action.invoices.whatsapp') && (
+                              <Button variant="ghost" size="icon" onClick={() => onWhatsapp(inv)} title="Enviar WhatsApp">
+                                <MessageSquare className="h-4 w-4" />
+                              </Button>
+                            )}
                           </>
                         ) : (
-                          inv.file_url ? (
-                            <CheckCircle className="h-4 w-4 text-success" />
+                          canAccess('action.invoices.upload') ? (
+                            inv.file_url ? (
+                              <CheckCircle className="h-4 w-4 text-success" />
+                            ) : (
+                              <Button variant="ghost" size="icon" onClick={() => onUpload(inv)} title="Subir boleta">
+                                <Upload className="h-4 w-4" />
+                              </Button>
+                            )
                           ) : (
-                            <Button variant="ghost" size="icon" onClick={() => onUpload(inv)} title="Subir boleta">
-                              <Upload className="h-4 w-4" />
-                            </Button>
+                            inv.file_url ? <CheckCircle className="h-4 w-4 text-success" /> : null
                           )
                         )}
                       </div>

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
+import { usePermissions } from '@/hooks/usePermissions';
 import {
   Shield,
   LayoutDashboard,
@@ -23,16 +24,17 @@ interface NavItem {
   label: string;
   href: string;
   roles?: string[];
+  permissionKey?: string;
 }
 
 const navItems: NavItem[] = [
-  { icon: LayoutDashboard, label: 'Dashboard', href: '/app/dashboard' },
-  { icon: Users, label: 'Usuarios', href: '/app/users', roles: ['superadmin', 'administracion'] },
-  { icon: Calendar, label: 'Eventos', href: '/app/events' },
-  { icon: FileText, label: 'Boletas', href: '/app/invoices' },
-  { icon: Wallet, label: 'Rendiciones', href: '/app/reimbursements' },
-  { icon: HeadphonesIcon, label: 'Soporte', href: '/app/support' },
-  { icon: Trophy, label: 'Ranking', href: '/app/ranking' },
+  { icon: LayoutDashboard, label: 'Dashboard', href: '/app/dashboard', permissionKey: 'nav.dashboard' },
+  { icon: Users, label: 'Usuarios', href: '/app/users', roles: ['superadmin', 'administracion'], permissionKey: 'nav.users' },
+  { icon: Calendar, label: 'Eventos', href: '/app/events', permissionKey: 'nav.events' },
+  { icon: FileText, label: 'Boletas', href: '/app/invoices', permissionKey: 'nav.invoices' },
+  { icon: Wallet, label: 'Rendiciones', href: '/app/reimbursements', permissionKey: 'nav.reimbursements' },
+  { icon: HeadphonesIcon, label: 'Soporte', href: '/app/support', permissionKey: 'nav.support' },
+  { icon: Trophy, label: 'Ranking', href: '/app/ranking', permissionKey: 'nav.ranking' },
   { icon: Settings, label: 'Configuración', href: '/app/settings', roles: ['superadmin'] },
 ];
 
@@ -44,10 +46,12 @@ interface SidebarProps {
 export function Sidebar({ collapsed, onCollapse }: SidebarProps) {
   const location = useLocation();
   const { roles, activeRole, signOut, profile } = useAuth();
+  const { canAccess } = usePermissions();
 
   const filteredNavItems = navItems.filter(item => {
-    if (!item.roles) return true;
-    return activeRole ? item.roles.includes(activeRole) : false;
+    if (item.roles && !(activeRole ? item.roles.includes(activeRole) : false)) return false;
+    if (item.permissionKey && !canAccess(item.permissionKey)) return false;
+    return true;
   });
 
   const NavItemComponent = ({ item }: { item: NavItem }) => {

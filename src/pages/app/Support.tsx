@@ -14,6 +14,7 @@ import { TicketEditDialog } from '@/components/support/TicketEditDialog';
 import { TicketDetailDialog } from '@/components/support/TicketDetailDialog';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { usePermissions } from '@/hooks/usePermissions';
 import { HeadphonesIcon, Plus, Search } from 'lucide-react';
 
 interface SupportTicket {
@@ -45,6 +46,7 @@ interface SupportTicket {
 
 export default function SupportPage() {
   const { isAdmin } = useAuth();
+  const { canAccess } = usePermissions();
   const [tickets, setTickets] = useState<SupportTicket[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [createOpen, setCreateOpen] = useState(false);
@@ -110,10 +112,12 @@ export default function SupportPage() {
           { label: 'Soporte' },
         ]}
         actions={
-          <Button onClick={() => setCreateOpen(true)}>
-            <Plus className="h-4 w-4 mr-2" />
-            Crear Ticket
-          </Button>
+          canAccess('action.support.create') && (
+            <Button onClick={() => setCreateOpen(true)}>
+              <Plus className="h-4 w-4 mr-2" />
+              Crear Ticket
+            </Button>
+          )
         }
       />
 
@@ -158,7 +162,7 @@ export default function SupportPage() {
               ) : pendingTickets.length === 0 ? (
                 <EmptyState icon={HeadphonesIcon} title="Sin tickets pendientes" description="No se encontraron tickets pendientes con los filtros aplicados." />
               ) : (
-                <TicketsTable tickets={pendingTickets} canEdit={isAdmin} canView={!isAdmin} showCreatorColumns={isAdmin} onEdit={handleEdit} onView={handleView} />
+                <TicketsTable tickets={pendingTickets} canEdit={isAdmin && canAccess('action.support.edit')} canView={!isAdmin} showCreatorColumns={isAdmin} onEdit={handleEdit} onView={handleView} />
               )}
             </TabsContent>
             <TabsContent value="resueltos">
@@ -167,7 +171,7 @@ export default function SupportPage() {
               ) : resolvedTickets.length === 0 ? (
                 <EmptyState icon={HeadphonesIcon} title="Sin tickets resueltos" description="No se encontraron tickets resueltos con los filtros aplicados." />
               ) : (
-                <TicketsTable tickets={resolvedTickets} canEdit={isAdmin} canView={!isAdmin} showCreatorColumns={isAdmin} onEdit={handleEdit} onView={handleView} />
+                <TicketsTable tickets={resolvedTickets} canEdit={isAdmin && canAccess('action.support.edit')} canView={!isAdmin} showCreatorColumns={isAdmin} onEdit={handleEdit} onView={handleView} />
               )}
             </TabsContent>
           </Tabs>

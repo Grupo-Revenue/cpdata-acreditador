@@ -8,6 +8,7 @@ import { MetaIntegration } from '@/components/settings/MetaIntegration';
 import { WhatsappTemplatesManager } from '@/components/settings/WhatsappTemplatesManager';
 import { FaqSettings } from '@/components/settings/FaqSettings';
 import { DigitalSignatureSettings } from '@/components/settings/DigitalSignatureSettings';
+import { PermissionsSettings } from '@/components/settings/PermissionsSettings';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 export default function SettingsPage() {
@@ -25,6 +26,7 @@ export default function SettingsPage() {
       <Tabs defaultValue="general" className="space-y-4">
         <TabsList>
           <TabsTrigger value="general">General</TabsTrigger>
+          <TabsTrigger value="permisos">Permisos</TabsTrigger>
           <TabsTrigger value="integrations">Integraciones</TabsTrigger>
           <TabsTrigger value="whatsapp">Plantillas WhatsApp</TabsTrigger>
           <TabsTrigger value="faqs">FAQs</TabsTrigger>
@@ -35,6 +37,10 @@ export default function SettingsPage() {
           <PaymentDaySettings />
           <GlosaModelSettings />
           <RolesManager />
+        </TabsContent>
+
+        <TabsContent value="permisos">
+          <PermissionsSettings />
         </TabsContent>
 
         <TabsContent value="integrations" className="space-y-6">
