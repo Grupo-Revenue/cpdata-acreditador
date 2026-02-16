@@ -30,6 +30,7 @@ export interface UserWithRoles {
   contacto_emergencia_nombre: string | null;
   contacto_emergencia_email: string | null;
   contacto_emergencia_telefono: string | null;
+  foto_url: string | null;
 }
 
 export interface UserRole {
