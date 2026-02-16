@@ -18,6 +18,7 @@ interface DigitalSignatureDialogProps {
   dealName: string | null;
   userId: string;
   horario?: string;
+  locacion?: string;
   onSigned?: () => void;
 }
 
@@ -28,7 +29,7 @@ interface SignatureRecord {
   signed_at: string;
 }
 
-export function DigitalSignatureDialog({ open, onOpenChange, eventId, dealName, userId, horario, onSigned }: DigitalSignatureDialogProps) {
+export function DigitalSignatureDialog({ open, onOpenChange, eventId, dealName, userId, horario, locacion, onSigned }: DigitalSignatureDialogProps) {
   const { toast } = useToast();
   const [contractTemplate, setContractTemplate] = useState('');
   const [processedText, setProcessedText] = useState('');
@@ -82,7 +83,7 @@ export function DigitalSignatureDialog({ open, onOpenChange, eventId, dealName, 
         UNIVERSIDAD: profile?.universidad || '',
         TELEFONO: profile?.telefono || '',
         EVENTO: eventData?.name || dealName || '',
-        LOCACION: eventData?.location || '',
+        LOCACION: locacion || eventData?.location || '',
         FECHA_EVENTO: eventData?.event_date ? new Date(eventData.event_date).toLocaleDateString('es-CL') : '',
         HORARIO: horario || '',
         FECHA_FIRMA: new Date().toLocaleDateString('es-CL'),
@@ -104,7 +105,7 @@ export function DigitalSignatureDialog({ open, onOpenChange, eventId, dealName, 
       setLoading(false);
     };
     load();
-  }, [open, eventId, userId, horario]);
+  }, [open, eventId, userId, horario, locacion]);
 
   const handleSign = async () => {
     if (!internalEventId) return;
