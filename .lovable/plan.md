@@ -1,30 +1,25 @@
 
+## Corregir flash de menús completos mientras cargan los permisos
 
-## Simplificar permisos: solo controlar el menu de navegacion
+### Problema
 
-### Objetivo
+Al navegar entre páginas, el hook `usePermissions` se reinicializa y mientras carga los permisos desde la base de datos (~3 segundos), `canAccess()` retorna `true` por defecto para todas las claves. Esto causa que el sidebar muestre todos los elementos del menú brevemente antes de ocultarlos.
 
-Eliminar la seccion de "Acciones en tablas" del sistema de permisos y revertir la logica de las tablas para que usen las verificaciones originales por rol (`isAdmin`, `hasRole`). Los permisos solo controlaran que items del sidebar son visibles para cada rol.
+### Solución
 
-### Cambios
+Dos cambios simples en el Sidebar:
 
-**1. `src/components/settings/PermissionsSettings.tsx`**
-- Eliminar la constante `ACTION_GROUPS` y los iconos asociados (`Pencil`, `MessageSquare`, `Upload`, `UserCheck`, `Download`, `Plus`)
-- Eliminar la seccion "Acciones en tablas" del JSX (el `<Separator />` y todo el bloque de actions)
-- Actualizar la descripcion del card a solo mencionar "elementos del menu"
+**Archivo: `src/components/layout/Sidebar.tsx`**
 
-**2. `src/components/invoices/InvoicesTable.tsx`**
-- Eliminar el import y uso de `usePermissions`
-- Restaurar la logica original basada en un prop `isAdmin` para mostrar/ocultar botones de Editar, WhatsApp y Upload
+1. Obtener `isLoading` del hook `usePermissions` (ya existe, solo no se usa)
+2. Mientras `isLoading` sea `true` y el rol NO sea superadmin, no renderizar los items de navegación (o mostrar un skeleton/placeholder)
 
-**3. `src/components/events/EventsAdminTable.tsx`**
-- Eliminar el import y uso de `usePermissions`
-- Restaurar la logica original basada en `hasRole` para `canEdit` y `canAssignTeam`
+Cambio concreto:
+- Linea 49: cambiar `const { canAccess } = usePermissions();` a `const { canAccess, isLoading: permissionsLoading } = usePermissions();`
+- En la seccion de navegacion (linea 114-118): envolver el listado en una condicion que muestre skeletons animados cuando `permissionsLoading` sea true, y los items filtrados cuando no
 
-**4. `src/pages/app/Support.tsx`**
-- Revertir `canEdit` para usar `isAdmin` en lugar de `canAccess('action.support.edit')`
-- Eliminar el import y uso de `usePermissions` si ya no se necesita
+Los skeletons seran barras grises animadas del mismo tamano que los items del menu, para que la transicion sea fluida y no haya salto visual.
 
 ### Resultado
 
-La pestana de Permisos en Configuracion solo mostrara los switches del menu de navegacion (Dashboard, Usuarios, Eventos, Boletas, Rendiciones, Soporte, Ranking). Las acciones dentro de las tablas volveran a funcionar con la logica original de roles.
+El usuario vera barras de carga suaves en el sidebar mientras se obtienen los permisos, y luego solo los menus permitidos. No habra ventana de tiempo para hacer click en menus no autorizados.
