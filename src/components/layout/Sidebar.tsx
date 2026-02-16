@@ -46,7 +46,7 @@ interface SidebarProps {
 export function Sidebar({ collapsed, onCollapse }: SidebarProps) {
   const location = useLocation();
   const { roles, activeRole, signOut, profile } = useAuth();
-  const { canAccess } = usePermissions();
+  const { canAccess, isLoading: permissionsLoading } = usePermissions();
 
   const filteredNavItems = navItems.filter(item => {
     if (item.permissionKey) {
@@ -112,9 +112,24 @@ export function Sidebar({ collapsed, onCollapse }: SidebarProps) {
 
       {/* Navigation */}
       <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
-        {filteredNavItems.map(item => (
-          <NavItemComponent key={item.href} item={item} />
-        ))}
+        {permissionsLoading && activeRole !== 'superadmin' ? (
+          Array.from({ length: 5 }).map((_, i) => (
+            <div
+              key={i}
+              className={cn(
+                'flex items-center gap-3 px-3 py-2 rounded-lg',
+                collapsed ? 'justify-center' : ''
+              )}
+            >
+              <div className="w-5 h-5 rounded bg-muted animate-pulse shrink-0" />
+              {!collapsed && <div className="h-4 rounded bg-muted animate-pulse flex-1" />}
+            </div>
+          ))
+        ) : (
+          filteredNavItems.map(item => (
+            <NavItemComponent key={item.href} item={item} />
+          ))
+        )}
       </nav>
 
       {/* Footer */}
