@@ -340,17 +340,27 @@ export type Database = {
           approval_status: Database["public"]["Enums"]["approval_status"]
           banco: string | null
           carrera: string | null
+          comuna: string | null
+          contacto_emergencia_email: string | null
+          contacto_emergencia_nombre: string | null
+          contacto_emergencia_telefono: string | null
           created_at: string
+          disponibilidad_horaria: string | null
           email: string
+          facebook: string | null
+          fecha_nacimiento: string | null
           foto_url: string | null
           id: string
           idioma: string | null
+          instagram: string | null
           is_active: boolean
           nombre: string
           numero_cuenta: string | null
           ranking: number | null
           referencia_contacto: string | null
           rut: string
+          semestre: string | null
+          talla_polera: string | null
           telefono: string | null
           tipo_cuenta: string | null
           universidad: string | null
@@ -362,17 +372,27 @@ export type Database = {
           approval_status?: Database["public"]["Enums"]["approval_status"]
           banco?: string | null
           carrera?: string | null
+          comuna?: string | null
+          contacto_emergencia_email?: string | null
+          contacto_emergencia_nombre?: string | null
+          contacto_emergencia_telefono?: string | null
           created_at?: string
+          disponibilidad_horaria?: string | null
           email: string
+          facebook?: string | null
+          fecha_nacimiento?: string | null
           foto_url?: string | null
           id: string
           idioma?: string | null
+          instagram?: string | null
           is_active?: boolean
           nombre: string
           numero_cuenta?: string | null
           ranking?: number | null
           referencia_contacto?: string | null
           rut: string
+          semestre?: string | null
+          talla_polera?: string | null
           telefono?: string | null
           tipo_cuenta?: string | null
           universidad?: string | null
@@ -384,17 +404,27 @@ export type Database = {
           approval_status?: Database["public"]["Enums"]["approval_status"]
           banco?: string | null
           carrera?: string | null
+          comuna?: string | null
+          contacto_emergencia_email?: string | null
+          contacto_emergencia_nombre?: string | null
+          contacto_emergencia_telefono?: string | null
           created_at?: string
+          disponibilidad_horaria?: string | null
           email?: string
+          facebook?: string | null
+          fecha_nacimiento?: string | null
           foto_url?: string | null
           id?: string
           idioma?: string | null
+          instagram?: string | null
           is_active?: boolean
           nombre?: string
           numero_cuenta?: string | null
           ranking?: number | null
           referencia_contacto?: string | null
           rut?: string
+          semestre?: string | null
+          talla_polera?: string | null
           telefono?: string | null
           tipo_cuenta?: string | null
           universidad?: string | null

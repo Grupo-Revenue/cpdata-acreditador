@@ -40,6 +40,16 @@ export function UserEditDialog({ user, open, onOpenChange, onSuccess }: UserEdit
     banco: '',
     numero_cuenta: '',
     tipo_cuenta: '',
+    fecha_nacimiento: '',
+    semestre: '',
+    disponibilidad_horaria: '',
+    comuna: '',
+    instagram: '',
+    facebook: '',
+    talla_polera: '',
+    contacto_emergencia_nombre: '',
+    contacto_emergencia_email: '',
+    contacto_emergencia_telefono: '',
   });
   const { toast } = useToast();
 
@@ -59,6 +69,16 @@ export function UserEditDialog({ user, open, onOpenChange, onSuccess }: UserEdit
         banco: user.banco || '',
         numero_cuenta: user.numero_cuenta || '',
         tipo_cuenta: user.tipo_cuenta || '',
+        fecha_nacimiento: user.fecha_nacimiento || '',
+        semestre: user.semestre || '',
+        disponibilidad_horaria: user.disponibilidad_horaria || '',
+        comuna: user.comuna || '',
+        instagram: user.instagram || '',
+        facebook: user.facebook || '',
+        talla_polera: user.talla_polera || '',
+        contacto_emergencia_nombre: user.contacto_emergencia_nombre || '',
+        contacto_emergencia_email: user.contacto_emergencia_email || '',
+        contacto_emergencia_telefono: user.contacto_emergencia_telefono || '',
       });
     }
   }, [user]);
@@ -85,7 +105,17 @@ export function UserEditDialog({ user, open, onOpenChange, onSuccess }: UserEdit
           banco: formData.banco || null,
           numero_cuenta: formData.numero_cuenta || null,
           tipo_cuenta: formData.tipo_cuenta || null,
-        })
+          fecha_nacimiento: formData.fecha_nacimiento || null,
+          semestre: formData.semestre || null,
+          disponibilidad_horaria: formData.disponibilidad_horaria || null,
+          comuna: formData.comuna || null,
+          instagram: formData.instagram || null,
+          facebook: formData.facebook || null,
+          talla_polera: formData.talla_polera || null,
+          contacto_emergencia_nombre: formData.contacto_emergencia_nombre || null,
+          contacto_emergencia_email: formData.contacto_emergencia_email || null,
+          contacto_emergencia_telefono: formData.contacto_emergencia_telefono || null,
+        } as any)
         .eq('id', user.id);
 
       if (error) throw error;
@@ -136,6 +166,16 @@ export function UserEditDialog({ user, open, onOpenChange, onSuccess }: UserEdit
                 <Input id="referencia" value={formData.referencia_contacto} onChange={(e) => set('referencia_contacto', e.target.value)} />
               </div>
             </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label htmlFor="fecha_nacimiento">Fecha de nacimiento</Label>
+                <Input id="fecha_nacimiento" type="date" value={formData.fecha_nacimiento} onChange={(e) => set('fecha_nacimiento', e.target.value)} />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="comuna">Comuna</Label>
+                <Input id="comuna" value={formData.comuna} onChange={(e) => set('comuna', e.target.value)} />
+              </div>
+            </div>
             <div className="grid gap-2">
               <Label htmlFor="approval_status">Estado de Aprobación</Label>
               <Select value={formData.approval_status} onValueChange={(value: ApprovalStatus) => set('approval_status', value)}>
@@ -166,12 +206,58 @@ export function UserEditDialog({ user, open, onOpenChange, onSuccess }: UserEdit
                 <Input id="altura" value={formData.altura} onChange={(e) => set('altura', e.target.value)} placeholder="Ej: 1.75" />
               </div>
               <div className="grid gap-2">
+                <Label htmlFor="talla_polera">Talla de polera</Label>
+                <Input id="talla_polera" value={formData.talla_polera} onChange={(e) => set('talla_polera', e.target.value)} placeholder="Ej: M, L, XL" />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="disponibilidad">Disponibilidad horaria</Label>
+                <Input id="disponibilidad" value={formData.disponibilidad_horaria} onChange={(e) => set('disponibilidad_horaria', e.target.value)} />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="instagram">Instagram</Label>
+                <Input id="instagram" value={formData.instagram} onChange={(e) => set('instagram', e.target.value)} placeholder="@usuario" />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="facebook">Facebook</Label>
+                <Input id="facebook" value={formData.facebook} onChange={(e) => set('facebook', e.target.value)} />
+              </div>
+            </div>
+
+            <Separator />
+
+            {/* Datos académicos */}
+            <Label className="text-base font-semibold">Datos académicos</Label>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
                 <Label htmlFor="universidad">Universidad</Label>
                 <Input id="universidad" value={formData.universidad} onChange={(e) => set('universidad', e.target.value)} />
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="carrera">Carrera</Label>
                 <Input id="carrera" value={formData.carrera} onChange={(e) => set('carrera', e.target.value)} />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="semestre">Semestre</Label>
+                <Input id="semestre" value={formData.semestre} onChange={(e) => set('semestre', e.target.value)} placeholder="Ej: 5to" />
+              </div>
+            </div>
+
+            <Separator />
+
+            {/* Contacto de emergencia */}
+            <Label className="text-base font-semibold">Contacto de emergencia</Label>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="col-span-2 grid gap-2">
+                <Label htmlFor="emergencia_nombre">Nombre</Label>
+                <Input id="emergencia_nombre" value={formData.contacto_emergencia_nombre} onChange={(e) => set('contacto_emergencia_nombre', e.target.value)} />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="emergencia_email">Email</Label>
+                <Input id="emergencia_email" type="email" value={formData.contacto_emergencia_email} onChange={(e) => set('contacto_emergencia_email', e.target.value)} />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="emergencia_telefono">Celular</Label>
+                <Input id="emergencia_telefono" value={formData.contacto_emergencia_telefono} onChange={(e) => set('contacto_emergencia_telefono', e.target.value)} />
               </div>
             </div>
 
