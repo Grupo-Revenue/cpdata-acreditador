@@ -272,31 +272,26 @@ export function InvoicesTable({ invoices, isAdmin, paymentDays, onEdit, onWhatsa
                     </TableCell>
                     <TableCell>
                       <div className="flex gap-1">
-                        {isAdmin ? (
-                          <>
-                            {canAccess('action.invoices.edit') && (
-                              <Button variant="ghost" size="icon" onClick={() => onEdit(inv)} title="Editar">
-                                <Pencil className="h-4 w-4" />
-                              </Button>
-                            )}
-                            {canAccess('action.invoices.whatsapp') && (
-                              <Button variant="ghost" size="icon" onClick={() => onWhatsapp(inv)} title="Enviar WhatsApp">
-                                <MessageSquare className="h-4 w-4" />
-                              </Button>
-                            )}
-                          </>
-                        ) : (
-                          canAccess('action.invoices.upload') ? (
-                            inv.file_url ? (
-                              <CheckCircle className="h-4 w-4 text-success" />
-                            ) : (
-                              <Button variant="ghost" size="icon" onClick={() => onUpload(inv)} title="Subir boleta">
-                                <Upload className="h-4 w-4" />
-                              </Button>
-                            )
+                        {canAccess('action.invoices.edit') && (
+                          <Button variant="ghost" size="icon" onClick={() => onEdit(inv)} title="Editar">
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                        )}
+                        {canAccess('action.invoices.whatsapp') && (
+                          <Button variant="ghost" size="icon" onClick={() => onWhatsapp(inv)} title="Enviar WhatsApp">
+                            <MessageSquare className="h-4 w-4" />
+                          </Button>
+                        )}
+                        {canAccess('action.invoices.upload') ? (
+                          inv.file_url ? (
+                            <CheckCircle className="h-4 w-4 text-success" />
                           ) : (
-                            inv.file_url ? <CheckCircle className="h-4 w-4 text-success" /> : null
+                            <Button variant="ghost" size="icon" onClick={() => onUpload(inv)} title="Subir boleta">
+                              <Upload className="h-4 w-4" />
+                            </Button>
                           )
+                        ) : (
+                          inv.file_url ? <CheckCircle className="h-4 w-4 text-success" /> : null
                         )}
                       </div>
                     </TableCell>
