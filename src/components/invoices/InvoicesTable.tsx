@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Pencil, MessageSquare, Upload } from 'lucide-react';
+import { Pencil, MessageSquare, Upload, CheckCircle } from 'lucide-react';
 import { format } from 'date-fns';
 
 export interface InvoiceRow {
@@ -280,7 +280,9 @@ export function InvoicesTable({ invoices, isAdmin, paymentDays, onEdit, onWhatsa
                             </Button>
                           </>
                         ) : (
-                          !inv.file_url && (
+                          inv.file_url ? (
+                            <CheckCircle className="h-4 w-4 text-success" />
+                          ) : (
                             <Button variant="ghost" size="icon" onClick={() => onUpload(inv)} title="Subir boleta">
                               <Upload className="h-4 w-4" />
                             </Button>
