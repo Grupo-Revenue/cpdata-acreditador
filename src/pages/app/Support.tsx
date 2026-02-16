@@ -162,7 +162,7 @@ export default function SupportPage() {
               ) : pendingTickets.length === 0 ? (
                 <EmptyState icon={HeadphonesIcon} title="Sin tickets pendientes" description="No se encontraron tickets pendientes con los filtros aplicados." />
               ) : (
-                <TicketsTable tickets={pendingTickets} canEdit={isAdmin && canAccess('action.support.edit')} canView={!isAdmin} showCreatorColumns={isAdmin} onEdit={handleEdit} onView={handleView} />
+                <TicketsTable tickets={pendingTickets} canEdit={canAccess('action.support.edit')} canView={!isAdmin} showCreatorColumns={isAdmin} onEdit={handleEdit} onView={handleView} />
               )}
             </TabsContent>
             <TabsContent value="resueltos">
@@ -171,7 +171,7 @@ export default function SupportPage() {
               ) : resolvedTickets.length === 0 ? (
                 <EmptyState icon={HeadphonesIcon} title="Sin tickets resueltos" description="No se encontraron tickets resueltos con los filtros aplicados." />
               ) : (
-                <TicketsTable tickets={resolvedTickets} canEdit={isAdmin && canAccess('action.support.edit')} canView={!isAdmin} showCreatorColumns={isAdmin} onEdit={handleEdit} onView={handleView} />
+                <TicketsTable tickets={resolvedTickets} canEdit={canAccess('action.support.edit')} canView={!isAdmin} showCreatorColumns={isAdmin} onEdit={handleEdit} onView={handleView} />
               )}
             </TabsContent>
           </Tabs>

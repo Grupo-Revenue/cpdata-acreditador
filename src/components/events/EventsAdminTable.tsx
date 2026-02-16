@@ -51,8 +51,8 @@ export function EventsAdminTable({ deals }: EventsAdminTableProps) {
   const { hasRole } = useAuth();
   const { canAccess } = usePermissions();
   const { toast } = useToast();
-  const canEdit = (hasRole('superadmin') || hasRole('administracion')) && canAccess('action.events.edit');
-  const canAssignTeam = hasRole('superadmin') || canAccess('action.events.team');
+  const canEdit = canAccess('action.events.edit');
+  const canAssignTeam = canAccess('action.events.team');
 
   const [currentPage, setCurrentPage] = useState(1);
   const [editingDeal, setEditingDeal] = useState<HubSpotDeal | null>(null);
