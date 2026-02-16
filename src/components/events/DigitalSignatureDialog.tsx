@@ -9,6 +9,7 @@ import { useToast } from '@/hooks/use-toast';
 import { LoadingState } from '@/components/ui/LoadingState';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { jsPDF } from 'jspdf';
+import { replaceContractVariables, generateProfessionalPDF, ContractVariables } from '@/lib/contract-utils';
 
 interface DigitalSignatureDialogProps {
   open: boolean;
@@ -28,12 +29,14 @@ interface SignatureRecord {
 
 export function DigitalSignatureDialog({ open, onOpenChange, eventId, dealName, userId, onSigned }: DigitalSignatureDialogProps) {
   const { toast } = useToast();
-  const [contractText, setContractText] = useState('');
+  const [contractTemplate, setContractTemplate] = useState('');
+  const [processedText, setProcessedText] = useState('');
   const [loading, setLoading] = useState(true);
   const [signing, setSigning] = useState(false);
   const [signature, setSignature] = useState<SignatureRecord | null>(null);
   const [internalEventId, setInternalEventId] = useState<string | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [signerName, setSignerName] = useState('');
 
   useEffect(() => {
     if (!open || !eventId) return;
@@ -47,17 +50,44 @@ export function DigitalSignatureDialog({ open, onOpenChange, eventId, dealName, 
         .select('value')
         .eq('key', 'digital_signature_text')
         .maybeSingle();
-      setContractText(settingsData?.value ?? '');
+      const template = settingsData?.value ?? '';
+      setContractTemplate(template);
 
-      // Get internal event id from hubspot_deal_id
+      // Get internal event
       const { data: eventData } = await supabase
         .from('events')
-        .select('id')
+        .select('id, name, location, event_date')
         .eq('hubspot_deal_id', eventId)
         .maybeSingle();
 
       const evId = eventData?.id ?? null;
       setInternalEventId(evId);
+
+      // Get user profile
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('nombre, apellido, rut, carrera, universidad, telefono')
+        .eq('id', userId)
+        .single();
+
+      const fullName = profile ? `${profile.nombre} ${profile.apellido}` : 'Usuario';
+      setSignerName(fullName);
+
+      // Build variables
+      const vars: ContractVariables = {
+        NOMBRE_ESTUDIANTE: fullName,
+        RUT_ESTUDIANTE: profile?.rut || '',
+        CARRERA: profile?.carrera || '',
+        UNIVERSIDAD: profile?.universidad || '',
+        TELEFONO: profile?.telefono || '',
+        EVENTO: eventData?.name || dealName || '',
+        LOCACION: eventData?.location || '',
+        FECHA_EVENTO: eventData?.event_date ? new Date(eventData.event_date).toLocaleDateString('es-CL') : '',
+        HORARIO: '',
+        FECHA_FIRMA: new Date().toLocaleDateString('es-CL'),
+      };
+
+      setProcessedText(replaceContractVariables(template, vars));
 
       // Check existing signature
       if (evId) {
@@ -79,21 +109,12 @@ export function DigitalSignatureDialog({ open, onOpenChange, eventId, dealName, 
     if (!internalEventId) return;
     setSigning(true);
 
-    // Get user profile
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('nombre, apellido')
-      .eq('id', userId)
-      .single();
-
-    const signerName = profile ? `${profile.nombre} ${profile.apellido}` : 'Usuario';
-
     const { data, error } = await supabase
       .from('digital_signatures')
       .insert({
         user_id: userId,
         event_id: internalEventId,
-        contract_text: contractText,
+        contract_text: processedText,
         signer_name: signerName,
       })
       .select('id, contract_text, signer_name, signed_at')
@@ -112,22 +133,8 @@ export function DigitalSignatureDialog({ open, onOpenChange, eventId, dealName, 
 
   const handleDownload = () => {
     if (!signature) return;
-    const signedDate = new Date(signature.signed_at);
     const doc = new jsPDF();
-    doc.setFontSize(16);
-    doc.text('Contrato Firmado', 105, 20, { align: 'center' });
-    doc.setFontSize(11);
-    const lines = doc.splitTextToSize(signature.contract_text, 170);
-    doc.text(lines, 20, 35);
-    const y = 35 + lines.length * 6;
-    doc.setFontSize(10);
-    doc.setDrawColor(0);
-    doc.setLineWidth(0.5);
-    doc.line(20, y + 10, 190, y + 10);
-    doc.text(`Firmado por: ${signature.signer_name}`, 20, y + 18);
-    doc.text(`Fecha: ${signedDate.toLocaleDateString('es-CL')}`, 20, y + 24);
-    doc.text(`Hora: ${signedDate.toLocaleTimeString('es-CL')}`, 20, y + 30);
-    doc.line(20, y + 36, 190, y + 36);
+    generateProfessionalPDF(doc, signature.contract_text, signature.signer_name, new Date(signature.signed_at));
     doc.save(`contrato-${dealName ?? 'evento'}-${signature.signer_name}.pdf`);
   };
 
@@ -160,7 +167,7 @@ export function DigitalSignatureDialog({ open, onOpenChange, eventId, dealName, 
               </Button>
             </DialogFooter>
           </div>
-        ) : !contractText ? (
+        ) : !contractTemplate ? (
           <p className="text-muted-foreground py-8 text-center">
             No se ha configurado el texto del contrato. Contacte al administrador.
           </p>
@@ -168,7 +175,7 @@ export function DigitalSignatureDialog({ open, onOpenChange, eventId, dealName, 
           <div className="space-y-4 flex flex-col flex-1 min-h-0">
             <p className="text-sm text-muted-foreground">Lea el contrato completo antes de firmar:</p>
             <ScrollArea className="h-[350px] border rounded-md p-4 flex-1">
-              <pre className="whitespace-pre-wrap text-sm font-mono">{contractText}</pre>
+              <pre className="whitespace-pre-wrap text-sm font-mono">{processedText}</pre>
             </ScrollArea>
             <DialogFooter>
               <Button onClick={() => setConfirmOpen(true)} disabled={signing}>
