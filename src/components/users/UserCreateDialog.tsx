@@ -1,28 +1,19 @@
 import { useState } from 'react';
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
+  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import { RUTInput } from '@/components/ui/RUTInput';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { getRUTError, cleanRUT } from '@/lib/rut';
+import { getRUTError } from '@/lib/rut';
 import { AppRole } from '@/contexts/AuthContext';
 import { Loader2 } from 'lucide-react';
 import { useRoles } from '@/hooks/useRoles';
@@ -49,7 +40,6 @@ export function UserCreateDialog({ open, onOpenChange, onSuccess }: UserCreateDi
   const [password, setPassword] = useState('');
   const [approvalStatus, setApprovalStatus] = useState<'pending' | 'approved'>('approved');
   const [selectedRoles, setSelectedRoles] = useState<AppRole[]>([]);
-  // New fields
   const [idioma, setIdioma] = useState('');
   const [altura, setAltura] = useState('');
   const [universidad, setUniversidad] = useState('');
@@ -57,6 +47,17 @@ export function UserCreateDialog({ open, onOpenChange, onSuccess }: UserCreateDi
   const [banco, setBanco] = useState('');
   const [numeroCuenta, setNumeroCuenta] = useState('');
   const [tipoCuenta, setTipoCuenta] = useState('');
+  // New fields
+  const [fechaNacimiento, setFechaNacimiento] = useState('');
+  const [semestre, setSemestre] = useState('');
+  const [disponibilidadHoraria, setDisponibilidadHoraria] = useState('');
+  const [comuna, setComuna] = useState('');
+  const [instagram, setInstagram] = useState('');
+  const [facebook, setFacebook] = useState('');
+  const [tallaPolera, setTallaPolera] = useState('');
+  const [contactoEmergenciaNombre, setContactoEmergenciaNombre] = useState('');
+  const [contactoEmergenciaEmail, setContactoEmergenciaEmail] = useState('');
+  const [contactoEmergenciaTelefono, setContactoEmergenciaTelefono] = useState('');
 
   const resetForm = () => {
     setRut(''); setNombre(''); setApellido(''); setEmail('');
@@ -64,6 +65,9 @@ export function UserCreateDialog({ open, onOpenChange, onSuccess }: UserCreateDi
     setApprovalStatus('approved'); setSelectedRoles([]);
     setIdioma(''); setAltura(''); setUniversidad(''); setCarrera('');
     setBanco(''); setNumeroCuenta(''); setTipoCuenta('');
+    setFechaNacimiento(''); setSemestre(''); setDisponibilidadHoraria('');
+    setComuna(''); setInstagram(''); setFacebook(''); setTallaPolera('');
+    setContactoEmergenciaNombre(''); setContactoEmergenciaEmail(''); setContactoEmergenciaTelefono('');
   };
 
   const handleRoleToggle = (role: AppRole) => {
@@ -123,6 +127,16 @@ export function UserCreateDialog({ open, onOpenChange, onSuccess }: UserCreateDi
             banco: banco || undefined,
             numero_cuenta: numeroCuenta.trim() || undefined,
             tipo_cuenta: tipoCuenta || undefined,
+            fecha_nacimiento: fechaNacimiento || undefined,
+            semestre: semestre.trim() || undefined,
+            disponibilidad_horaria: disponibilidadHoraria.trim() || undefined,
+            comuna: comuna.trim() || undefined,
+            instagram: instagram.trim() || undefined,
+            facebook: facebook.trim() || undefined,
+            talla_polera: tallaPolera.trim() || undefined,
+            contacto_emergencia_nombre: contactoEmergenciaNombre.trim() || undefined,
+            contacto_emergencia_email: contactoEmergenciaEmail.trim() || undefined,
+            contacto_emergencia_telefono: contactoEmergenciaTelefono.trim() || undefined,
           }),
         }
       );
@@ -184,9 +198,14 @@ export function UserCreateDialog({ open, onOpenChange, onSuccess }: UserCreateDi
               <Input id="telefono" type="tel" value={telefono} onChange={(e) => setTelefono(e.target.value)} disabled={isLoading} placeholder="+56 9 1234 5678" />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="referencia">Referencia de contacto</Label>
-              <Input id="referencia" value={referenciaContacto} onChange={(e) => setReferenciaContacto(e.target.value)} disabled={isLoading} placeholder="Opcional" />
+              <Label htmlFor="fecha_nacimiento">Fecha de nacimiento</Label>
+              <Input id="fecha_nacimiento" type="date" value={fechaNacimiento} onChange={(e) => setFechaNacimiento(e.target.value)} disabled={isLoading} />
             </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="referencia">Referencia de contacto</Label>
+            <Input id="referencia" value={referenciaContacto} onChange={(e) => setReferenciaContacto(e.target.value)} disabled={isLoading} placeholder="Opcional" />
           </div>
 
           <div className="space-y-2">
@@ -210,12 +229,66 @@ export function UserCreateDialog({ open, onOpenChange, onSuccess }: UserCreateDi
                 <Input id="altura" value={altura} onChange={(e) => setAltura(e.target.value)} disabled={isLoading} placeholder="Ej: 1.75" />
               </div>
               <div className="space-y-2">
+                <Label htmlFor="talla_polera">Talla de polera</Label>
+                <Input id="talla_polera" value={tallaPolera} onChange={(e) => setTallaPolera(e.target.value)} disabled={isLoading} placeholder="Ej: M, L, XL" />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="disponibilidad">Disponibilidad horaria</Label>
+                <Input id="disponibilidad" value={disponibilidadHoraria} onChange={(e) => setDisponibilidadHoraria(e.target.value)} disabled={isLoading} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="comuna">Comuna</Label>
+                <Input id="comuna" value={comuna} onChange={(e) => setComuna(e.target.value)} disabled={isLoading} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="instagram">Instagram</Label>
+                <Input id="instagram" value={instagram} onChange={(e) => setInstagram(e.target.value)} disabled={isLoading} placeholder="@usuario" />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="facebook">Facebook</Label>
+                <Input id="facebook" value={facebook} onChange={(e) => setFacebook(e.target.value)} disabled={isLoading} />
+              </div>
+            </div>
+          </div>
+
+          <Separator />
+
+          {/* Datos académicos */}
+          <div>
+            <Label className="text-base font-semibold">Datos académicos</Label>
+            <div className="grid grid-cols-2 gap-4 mt-2">
+              <div className="space-y-2">
                 <Label htmlFor="universidad">Universidad</Label>
                 <Input id="universidad" value={universidad} onChange={(e) => setUniversidad(e.target.value)} disabled={isLoading} placeholder="Universidad" />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="carrera">Carrera</Label>
                 <Input id="carrera" value={carrera} onChange={(e) => setCarrera(e.target.value)} disabled={isLoading} placeholder="Carrera" />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="semestre">Semestre</Label>
+                <Input id="semestre" value={semestre} onChange={(e) => setSemestre(e.target.value)} disabled={isLoading} placeholder="Ej: 5to" />
+              </div>
+            </div>
+          </div>
+
+          <Separator />
+
+          {/* Contacto de emergencia */}
+          <div>
+            <Label className="text-base font-semibold">Contacto de emergencia</Label>
+            <div className="grid grid-cols-2 gap-4 mt-2">
+              <div className="space-y-2 col-span-2">
+                <Label htmlFor="emergencia_nombre">Nombre</Label>
+                <Input id="emergencia_nombre" value={contactoEmergenciaNombre} onChange={(e) => setContactoEmergenciaNombre(e.target.value)} disabled={isLoading} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="emergencia_email">Email</Label>
+                <Input id="emergencia_email" type="email" value={contactoEmergenciaEmail} onChange={(e) => setContactoEmergenciaEmail(e.target.value)} disabled={isLoading} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="emergencia_telefono">Celular</Label>
+                <Input id="emergencia_telefono" value={contactoEmergenciaTelefono} onChange={(e) => setContactoEmergenciaTelefono(e.target.value)} disabled={isLoading} />
               </div>
             </div>
           </div>

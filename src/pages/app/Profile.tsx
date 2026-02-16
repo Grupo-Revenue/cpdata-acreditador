@@ -36,6 +36,16 @@ const profileSchema = z.object({
   banco: z.string().optional().or(z.literal('')),
   numero_cuenta: z.string().optional().or(z.literal('')),
   tipo_cuenta: z.string().optional().or(z.literal('')),
+  fecha_nacimiento: z.string().optional().or(z.literal('')),
+  semestre: z.string().optional().or(z.literal('')),
+  disponibilidad_horaria: z.string().optional().or(z.literal('')),
+  comuna: z.string().optional().or(z.literal('')),
+  instagram: z.string().optional().or(z.literal('')),
+  facebook: z.string().optional().or(z.literal('')),
+  talla_polera: z.string().optional().or(z.literal('')),
+  contacto_emergencia_nombre: z.string().optional().or(z.literal('')),
+  contacto_emergencia_email: z.string().optional().or(z.literal('')),
+  contacto_emergencia_telefono: z.string().optional().or(z.literal('')),
 });
 
 type ProfileFormValues = z.infer<typeof profileSchema>;
@@ -63,6 +73,16 @@ export default function ProfilePage() {
       banco: (profile as any)?.banco || '',
       numero_cuenta: (profile as any)?.numero_cuenta || '',
       tipo_cuenta: (profile as any)?.tipo_cuenta || '',
+      fecha_nacimiento: (profile as any)?.fecha_nacimiento || '',
+      semestre: (profile as any)?.semestre || '',
+      disponibilidad_horaria: (profile as any)?.disponibilidad_horaria || '',
+      comuna: (profile as any)?.comuna || '',
+      instagram: (profile as any)?.instagram || '',
+      facebook: (profile as any)?.facebook || '',
+      talla_polera: (profile as any)?.talla_polera || '',
+      contacto_emergencia_nombre: (profile as any)?.contacto_emergencia_nombre || '',
+      contacto_emergencia_email: (profile as any)?.contacto_emergencia_email || '',
+      contacto_emergencia_telefono: (profile as any)?.contacto_emergencia_telefono || '',
     },
   });
 
@@ -182,7 +202,17 @@ export default function ProfilePage() {
           banco: data.banco || null,
           numero_cuenta: data.numero_cuenta || null,
           tipo_cuenta: data.tipo_cuenta || null,
-        })
+          fecha_nacimiento: data.fecha_nacimiento || null,
+          semestre: data.semestre || null,
+          disponibilidad_horaria: data.disponibilidad_horaria || null,
+          comuna: data.comuna || null,
+          instagram: data.instagram || null,
+          facebook: data.facebook || null,
+          talla_polera: data.talla_polera || null,
+          contacto_emergencia_nombre: data.contacto_emergencia_nombre || null,
+          contacto_emergencia_email: data.contacto_emergencia_email || null,
+          contacto_emergencia_telefono: data.contacto_emergencia_telefono || null,
+        } as any)
         .eq('id', user.id);
 
       if (error) throw error;
@@ -451,7 +481,25 @@ export default function ProfilePage() {
                     <FormItem className="col-span-2 sm:col-span-1"><FormLabel>Idiomas</FormLabel><FormControl><LanguageTagsInput value={field.value || ''} onChange={field.onChange} /></FormControl><FormMessage /></FormItem>
                   )} />
                   <FormField control={form.control} name="altura" render={({ field }) => (
-                    <FormItem><FormLabel>Altura</FormLabel><FormControl><Input placeholder="Ej: 1.75" {...field} /></FormControl><FormMessage /></FormItem>
+                    <FormItem><FormLabel>Estatura</FormLabel><FormControl><Input placeholder="Ej: 1.75" {...field} /></FormControl><FormMessage /></FormItem>
+                  )} />
+                  <FormField control={form.control} name="talla_polera" render={({ field }) => (
+                    <FormItem><FormLabel>Talla de polera</FormLabel><FormControl><Input placeholder="Ej: M, L, XL" {...field} /></FormControl><FormMessage /></FormItem>
+                  )} />
+                  <FormField control={form.control} name="fecha_nacimiento" render={({ field }) => (
+                    <FormItem><FormLabel>Fecha de nacimiento</FormLabel><FormControl><Input type="date" {...field} /></FormControl><FormMessage /></FormItem>
+                  )} />
+                  <FormField control={form.control} name="comuna" render={({ field }) => (
+                    <FormItem><FormLabel>Comuna</FormLabel><FormControl><Input placeholder="Ej: Providencia" {...field} /></FormControl><FormMessage /></FormItem>
+                  )} />
+                  <FormField control={form.control} name="disponibilidad_horaria" render={({ field }) => (
+                    <FormItem><FormLabel>Disponibilidad horaria</FormLabel><FormControl><Input placeholder="Ej: Lunes a Viernes" {...field} /></FormControl><FormMessage /></FormItem>
+                  )} />
+                  <FormField control={form.control} name="instagram" render={({ field }) => (
+                    <FormItem><FormLabel>Instagram</FormLabel><FormControl><Input placeholder="@usuario" {...field} /></FormControl><FormMessage /></FormItem>
+                  )} />
+                  <FormField control={form.control} name="facebook" render={({ field }) => (
+                    <FormItem><FormLabel>Facebook</FormLabel><FormControl><Input placeholder="Nombre o URL" {...field} /></FormControl><FormMessage /></FormItem>
                   )} />
                   <FormField control={form.control} name="universidad" render={({ field }) => (
                     <FormItem><FormLabel>Universidad</FormLabel><FormControl><Input placeholder="Universidad" {...field} /></FormControl><FormMessage /></FormItem>
@@ -459,7 +507,25 @@ export default function ProfilePage() {
                   <FormField control={form.control} name="carrera" render={({ field }) => (
                     <FormItem><FormLabel>Carrera</FormLabel><FormControl><Input placeholder="Carrera" {...field} /></FormControl><FormMessage /></FormItem>
                   )} />
+                  <FormField control={form.control} name="semestre" render={({ field }) => (
+                    <FormItem><FormLabel>Semestre</FormLabel><FormControl><Input placeholder="Ej: 5to semestre" {...field} /></FormControl><FormMessage /></FormItem>
+                  )} />
                 </div>
+
+                <Separator className="my-4" />
+                <Label className="text-base font-semibold">Contacto de emergencia</Label>
+                <div className="grid gap-4 sm:grid-cols-2 mt-2">
+                  <FormField control={form.control} name="contacto_emergencia_nombre" render={({ field }) => (
+                    <FormItem className="col-span-2"><FormLabel>Nombre del contacto</FormLabel><FormControl><Input placeholder="Nombre completo" {...field} /></FormControl><FormMessage /></FormItem>
+                  )} />
+                  <FormField control={form.control} name="contacto_emergencia_email" render={({ field }) => (
+                    <FormItem><FormLabel>Email del contacto</FormLabel><FormControl><Input type="email" placeholder="correo@ejemplo.cl" {...field} /></FormControl><FormMessage /></FormItem>
+                  )} />
+                  <FormField control={form.control} name="contacto_emergencia_telefono" render={({ field }) => (
+                    <FormItem><FormLabel>Celular del contacto</FormLabel><FormControl><Input placeholder="+56 9 1234 5678" {...field} /></FormControl><FormMessage /></FormItem>
+                  )} />
+                </div>
+
                 <div className="flex justify-end pt-4">
                   <Button type="submit" disabled={isSaving}>
                     {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}

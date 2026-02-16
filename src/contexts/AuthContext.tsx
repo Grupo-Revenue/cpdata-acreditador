@@ -48,6 +48,18 @@ interface SignUpData {
   apellido: string;
   telefono?: string;
   referencia_contacto?: string;
+  universidad?: string;
+  carrera?: string;
+  fecha_nacimiento?: string;
+  semestre?: string;
+  disponibilidad_horaria?: string;
+  comuna?: string;
+  instagram?: string;
+  facebook?: string;
+  talla_polera?: string;
+  contacto_emergencia_nombre?: string;
+  contacto_emergencia_email?: string;
+  contacto_emergencia_telefono?: string;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -248,6 +260,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             apellido: data.apellido,
             telefono: data.telefono || null,
             referencia_contacto: data.referencia_contacto || null,
+            universidad: data.universidad || null,
+            carrera: data.carrera || null,
+            fecha_nacimiento: data.fecha_nacimiento || null,
+            semestre: data.semestre || null,
+            disponibilidad_horaria: data.disponibilidad_horaria || null,
+            comuna: data.comuna || null,
+            instagram: data.instagram || null,
+            facebook: data.facebook || null,
+            talla_polera: data.talla_polera || null,
+            contacto_emergencia_nombre: data.contacto_emergencia_nombre || null,
+            contacto_emergencia_email: data.contacto_emergencia_email || null,
+            contacto_emergencia_telefono: data.contacto_emergencia_telefono || null,
           },
         },
       });

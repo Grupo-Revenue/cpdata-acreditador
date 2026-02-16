@@ -23,16 +23,24 @@ interface CreateUserRequest {
   banco?: string;
   numero_cuenta?: string;
   tipo_cuenta?: string;
+  fecha_nacimiento?: string;
+  semestre?: string;
+  disponibilidad_horaria?: string;
+  comuna?: string;
+  instagram?: string;
+  facebook?: string;
+  talla_polera?: string;
+  contacto_emergencia_nombre?: string;
+  contacto_emergencia_email?: string;
+  contacto_emergencia_telefono?: string;
 }
 
 Deno.serve(async (req) => {
-  // Handle CORS preflight
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    // Get authorization header
     const authHeader = req.headers.get("Authorization");
     if (!authHeader?.startsWith("Bearer ")) {
       return new Response(
@@ -41,7 +49,6 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Create client with user's token to verify they're a superadmin
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -50,7 +57,6 @@ Deno.serve(async (req) => {
       global: { headers: { Authorization: authHeader } },
     });
 
-    // Verify the user's token
     const token = authHeader.replace("Bearer ", "");
     const { data: claimsData, error: claimsError } = await userClient.auth.getClaims(token);
     
@@ -63,7 +69,6 @@ Deno.serve(async (req) => {
 
     const userId = claimsData.claims.sub;
 
-    // Check if user is superadmin using the has_role function
     const { data: isSuperadmin, error: roleError } = await userClient.rpc("has_role", {
       _user_id: userId,
       _role: "superadmin",
@@ -76,28 +81,16 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Parse request body
     const body: CreateUserRequest = await req.json();
     const {
-      email,
-      password,
-      rut,
-      nombre,
-      apellido,
-      telefono,
-      referencia_contacto,
-      approval_status = "approved",
-      roles = [],
-      idioma,
-      altura,
-      universidad,
-      carrera,
-      banco,
-      numero_cuenta,
-      tipo_cuenta,
+      email, password, rut, nombre, apellido, telefono,
+      referencia_contacto, approval_status = "approved", roles = [],
+      idioma, altura, universidad, carrera, banco, numero_cuenta, tipo_cuenta,
+      fecha_nacimiento, semestre, disponibilidad_horaria, comuna,
+      instagram, facebook, talla_polera,
+      contacto_emergencia_nombre, contacto_emergencia_email, contacto_emergencia_telefono,
     } = body;
 
-    // Validate required fields
     if (!email || !password || !rut || !nombre || !apellido || !telefono) {
       return new Response(
         JSON.stringify({ error: "Faltan campos requeridos" }),
@@ -105,20 +98,12 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Create admin client for user creation
     const adminClient = createClient(supabaseUrl, supabaseServiceKey, {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false,
-      },
+      auth: { autoRefreshToken: false, persistSession: false },
     });
 
-    // Check if RUT already exists
     const { data: existingRut } = await adminClient
-      .from("profiles")
-      .select("id")
-      .eq("rut", rut)
-      .maybeSingle();
+      .from("profiles").select("id").eq("rut", rut).maybeSingle();
 
     if (existingRut) {
       return new Response(
@@ -127,18 +112,9 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Create the user with metadata (trigger will create profile)
     const { data: newUser, error: createError } = await adminClient.auth.admin.createUser({
-      email,
-      password,
-      email_confirm: true, // Auto-confirm email for admin-created users
-      user_metadata: {
-        rut,
-        nombre,
-        apellido,
-        telefono,
-        referencia_contacto: referencia_contacto || null,
-      },
+      email, password, email_confirm: true,
+      user_metadata: { rut, nombre, apellido, telefono, referencia_contacto: referencia_contacto || null },
     });
 
     if (createError) {
@@ -151,7 +127,7 @@ Deno.serve(async (req) => {
 
     const newUserId = newUser.user.id;
 
-    // Update profile with approval_status and additional fields
+    // Build profile update with all optional fields
     const profileUpdate: Record<string, unknown> = {};
     if (approval_status === "approved") profileUpdate.approval_status = "approved";
     if (idioma) profileUpdate.idioma = idioma;
@@ -161,42 +137,31 @@ Deno.serve(async (req) => {
     if (banco) profileUpdate.banco = banco;
     if (numero_cuenta) profileUpdate.numero_cuenta = numero_cuenta;
     if (tipo_cuenta) profileUpdate.tipo_cuenta = tipo_cuenta;
+    if (fecha_nacimiento) profileUpdate.fecha_nacimiento = fecha_nacimiento;
+    if (semestre) profileUpdate.semestre = semestre;
+    if (disponibilidad_horaria) profileUpdate.disponibilidad_horaria = disponibilidad_horaria;
+    if (comuna) profileUpdate.comuna = comuna;
+    if (instagram) profileUpdate.instagram = instagram;
+    if (facebook) profileUpdate.facebook = facebook;
+    if (talla_polera) profileUpdate.talla_polera = talla_polera;
+    if (contacto_emergencia_nombre) profileUpdate.contacto_emergencia_nombre = contacto_emergencia_nombre;
+    if (contacto_emergencia_email) profileUpdate.contacto_emergencia_email = contacto_emergencia_email;
+    if (contacto_emergencia_telefono) profileUpdate.contacto_emergencia_telefono = contacto_emergencia_telefono;
 
     if (Object.keys(profileUpdate).length > 0) {
       const { error: updateError } = await adminClient
-        .from("profiles")
-        .update(profileUpdate)
-        .eq("id", newUserId);
-
-      if (updateError) {
-        console.error("Error updating profile:", updateError);
-      }
+        .from("profiles").update(profileUpdate).eq("id", newUserId);
+      if (updateError) console.error("Error updating profile:", updateError);
     }
 
-    // Assign roles if specified
     if (roles.length > 0) {
-      const roleInserts = roles.map((role) => ({
-        user_id: newUserId,
-        role,
-      }));
-
-      const { error: rolesError } = await adminClient
-        .from("user_roles")
-        .insert(roleInserts);
-
-      if (rolesError) {
-        console.error("Error assigning roles:", rolesError);
-      }
+      const roleInserts = roles.map((role) => ({ user_id: newUserId, role }));
+      const { error: rolesError } = await adminClient.from("user_roles").insert(roleInserts);
+      if (rolesError) console.error("Error assigning roles:", rolesError);
     }
 
     return new Response(
-      JSON.stringify({
-        success: true,
-        user: {
-          id: newUserId,
-          email: newUser.user.email,
-        },
-      }),
+      JSON.stringify({ success: true, user: { id: newUserId, email: newUser.user.email } }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {
