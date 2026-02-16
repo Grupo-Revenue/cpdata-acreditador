@@ -141,6 +141,7 @@ export type Database = {
           created_at: string
           event_id: string
           id: string
+          shift: string | null
           status: Database["public"]["Enums"]["accreditor_assignment_status"]
           user_id: string
         }
@@ -150,6 +151,7 @@ export type Database = {
           created_at?: string
           event_id: string
           id?: string
+          shift?: string | null
           status?: Database["public"]["Enums"]["accreditor_assignment_status"]
           user_id: string
         }
@@ -159,6 +161,7 @@ export type Database = {
           created_at?: string
           event_id?: string
           id?: string
+          shift?: string | null
           status?: Database["public"]["Enums"]["accreditor_assignment_status"]
           user_id?: string
         }

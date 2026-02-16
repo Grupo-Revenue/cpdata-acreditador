@@ -5,6 +5,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { LoadingState } from '@/components/ui/LoadingState';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
@@ -49,11 +50,27 @@ function PaginationControls({ page, totalPages, onPageChange }: { page: number; 
   );
 }
 
+function ShiftSelect({ value, onChange }: { value: string | null; onChange: (v: string | null) => void }) {
+  return (
+    <Select value={value ?? 'full'} onValueChange={v => onChange(v === 'full' ? null : v)}>
+      <SelectTrigger className="w-[130px] h-8 text-xs">
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value="full">Día Completo</SelectItem>
+        <SelectItem value="AM">AM</SelectItem>
+        <SelectItem value="PM">PM</SelectItem>
+      </SelectContent>
+    </Select>
+  );
+}
+
 export function EventTeamDialog({ dealId, dealName, open, onOpenChange }: EventTeamDialogProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [selectedSupervisors, setSelectedSupervisors] = useState<Set<string>>(new Set());
-  const [selectedAccreditors, setSelectedAccreditors] = useState<Set<string>>(new Set());
+  // Map<user_id, shift> where shift is null (full day), 'AM', or 'PM'
+  const [selectedSupervisors, setSelectedSupervisors] = useState<Map<string, string | null>>(new Map());
+  const [selectedAccreditors, setSelectedAccreditors] = useState<Map<string, string | null>>(new Map());
   const [saving, setSaving] = useState(false);
 
   // Supervisor filters
@@ -119,7 +136,7 @@ export function EventTeamDialog({ dealId, dealName, open, onOpenChange }: EventT
     enabled: open,
   });
 
-  // Fetch existing assignments
+  // Fetch existing assignments with shift
   const { data: existingAssignments = [] } = useQuery({
     queryKey: ['event-assignments', dealId],
     queryFn: async () => {
@@ -130,31 +147,37 @@ export function EventTeamDialog({ dealId, dealName, open, onOpenChange }: EventT
         .eq('hubspot_deal_id', dealId)
         .maybeSingle();
       if (!evt) return [];
-      const { data, error } = await supabase
+      const { data, error } = await (supabase
         .from('event_accreditors')
-        .select('user_id')
+        .select('user_id, shift') as any)
         .eq('event_id', evt.id);
       if (error) throw error;
-      return data.map(a => a.user_id);
+      return (data || []) as { user_id: string; shift: string | null }[];
     },
     enabled: open && !!dealId,
     refetchOnMount: 'always',
   });
 
-  // Pre-select existing assignments
+  // Pre-select existing assignments with their shifts
   useEffect(() => {
     if (!open) return;
     const supIds = new Set(supervisors.map(s => s.id));
     const accIds = new Set(accreditors.map(a => a.id));
-    setSelectedSupervisors(new Set(existingAssignments.filter(id => supIds.has(id))));
-    setSelectedAccreditors(new Set(existingAssignments.filter(id => accIds.has(id))));
+    const supMap = new Map<string, string | null>();
+    const accMap = new Map<string, string | null>();
+    for (const a of existingAssignments) {
+      if (supIds.has(a.user_id)) supMap.set(a.user_id, a.shift ?? null);
+      if (accIds.has(a.user_id)) accMap.set(a.user_id, a.shift ?? null);
+    }
+    setSelectedSupervisors(supMap);
+    setSelectedAccreditors(accMap);
   }, [open, existingAssignments, supervisors, accreditors]);
 
   // Reset on close
   useEffect(() => {
     if (!open) {
-      setSelectedSupervisors(new Set());
-      setSelectedAccreditors(new Set());
+      setSelectedSupervisors(new Map());
+      setSelectedAccreditors(new Map());
       setSupFilterNombre('');
       setSupFilterRut('');
       setSupFilterEmail('');
@@ -187,7 +210,6 @@ export function EventTeamDialog({ dealId, dealName, open, onOpenChange }: EventT
   const supTotalPages = Math.ceil(filteredSupervisors.length / PAGE_SIZE);
   const paginatedSupervisors = filteredSupervisors.slice((supPage - 1) * PAGE_SIZE, supPage * PAGE_SIZE);
 
-  // Reset sup page on filter change
   useEffect(() => { setSupPage(1); }, [supFilterNombre, supFilterRut, supFilterEmail, supFilterTelefono, supFilterRanking]);
 
   // Filtered & paginated accreditors
@@ -207,21 +229,44 @@ export function EventTeamDialog({ dealId, dealName, open, onOpenChange }: EventT
   const accTotalPages = Math.ceil(filteredAccreditors.length / PAGE_SIZE);
   const paginatedAccreditors = filteredAccreditors.slice((accPage - 1) * PAGE_SIZE, accPage * PAGE_SIZE);
 
-  // Reset acc page on filter change
   useEffect(() => { setAccPage(1); }, [filterNombre, filterRut, filterEmail, filterIdioma, filterRanking, filterTelefono]);
 
   const toggleSupervisor = (id: string) => {
     setSelectedSupervisors(prev => {
-      const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
+      const next = new Map(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.set(id, null);
+      }
+      return next;
+    });
+  };
+
+  const setSupervisorShift = (id: string, shift: string | null) => {
+    setSelectedSupervisors(prev => {
+      const next = new Map(prev);
+      next.set(id, shift);
       return next;
     });
   };
 
   const toggleAccreditor = (id: string) => {
     setSelectedAccreditors(prev => {
-      const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
+      const next = new Map(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.set(id, null);
+      }
+      return next;
+    });
+  };
+
+  const setAccreditorShift = (id: string, shift: string | null) => {
+    setSelectedAccreditors(prev => {
+      const next = new Map(prev);
+      next.set(id, shift);
       return next;
     });
   };
@@ -255,19 +300,25 @@ export function EventTeamDialog({ dealId, dealName, open, onOpenChange }: EventT
       }
 
       const eventId = evt!.id;
-      const previousAssignments = [...existingAssignments];
+      const previousAssignmentIds = existingAssignments.map(a => a.user_id);
 
       await supabase.from('event_accreditors').delete().eq('event_id', eventId);
 
-      const allSelected = [...selectedSupervisors, ...selectedAccreditors];
+      const allSelected = [...selectedSupervisors.entries(), ...selectedAccreditors.entries()];
       if (allSelected.length > 0) {
-        const rows = allSelected.map(userId => ({ event_id: eventId, user_id: userId }));
-        const { error: insertErr } = await supabase.from('event_accreditors').insert(rows);
+        const rows = allSelected.map(([userId, shift]) => ({
+          event_id: eventId,
+          user_id: userId,
+          shift: shift,
+        }));
+        const { error: insertErr } = await supabase.from('event_accreditors').insert(rows as any);
         if (insertErr) throw insertErr;
       }
 
+      const allSelectedIds = allSelected.map(([id]) => id);
+
       // Delete invoices for removed users
-      const removedUserIds = previousAssignments.filter(id => !allSelected.includes(id));
+      const removedUserIds = previousAssignmentIds.filter(id => !allSelectedIds.includes(id));
       if (removedUserIds.length > 0) {
         const { error: delInvErr } = await supabase
           .from('invoices')
@@ -278,7 +329,7 @@ export function EventTeamDialog({ dealId, dealName, open, onOpenChange }: EventT
       }
 
       // Create invoices for newly assigned users
-      const newUserIds = allSelected.filter(id => !previousAssignments.includes(id));
+      const newUserIds = allSelectedIds.filter(id => !previousAssignmentIds.includes(id));
       if (newUserIds.length > 0) {
         const { data: existingInvoices } = await supabase
           .from('invoices')
@@ -331,7 +382,6 @@ export function EventTeamDialog({ dealId, dealName, open, onOpenChange }: EventT
           </TabsList>
 
           <TabsContent value="supervisores">
-            {/* Supervisor Filters */}
             <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mb-3">
               <div className="relative">
                 <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -360,21 +410,33 @@ export function EventTeamDialog({ dealId, dealName, open, onOpenChange }: EventT
                       <TableHead>Email</TableHead>
                       <TableHead>Teléfono</TableHead>
                       <TableHead>Ranking</TableHead>
+                      <TableHead>Turno</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {paginatedSupervisors.map(s => (
-                      <TableRow key={s.id} className="cursor-pointer" onClick={() => toggleSupervisor(s.id)}>
-                        <TableCell>
-                          <Checkbox checked={selectedSupervisors.has(s.id)} onCheckedChange={() => toggleSupervisor(s.id)} />
-                        </TableCell>
-                        <TableCell>{s.nombre} {s.apellido}</TableCell>
-                        <TableCell>{s.rut}</TableCell>
-                        <TableCell>{s.email}</TableCell>
-                        <TableCell>{s.telefono ?? '—'}</TableCell>
-                        <TableCell>{s.ranking ?? '—'}</TableCell>
-                      </TableRow>
-                    ))}
+                    {paginatedSupervisors.map(s => {
+                      const isSelected = selectedSupervisors.has(s.id);
+                      return (
+                        <TableRow key={s.id} className="cursor-pointer" onClick={() => toggleSupervisor(s.id)}>
+                          <TableCell>
+                            <Checkbox checked={isSelected} onCheckedChange={() => toggleSupervisor(s.id)} />
+                          </TableCell>
+                          <TableCell>{s.nombre} {s.apellido}</TableCell>
+                          <TableCell>{s.rut}</TableCell>
+                          <TableCell>{s.email}</TableCell>
+                          <TableCell>{s.telefono ?? '—'}</TableCell>
+                          <TableCell>{s.ranking ?? '—'}</TableCell>
+                          <TableCell onClick={e => e.stopPropagation()}>
+                            {isSelected && (
+                              <ShiftSelect
+                                value={selectedSupervisors.get(s.id) ?? null}
+                                onChange={v => setSupervisorShift(s.id, v)}
+                              />
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
                   </TableBody>
                 </Table>
                 <PaginationControls page={supPage} totalPages={supTotalPages} onPageChange={setSupPage} />
@@ -383,7 +445,6 @@ export function EventTeamDialog({ dealId, dealName, open, onOpenChange }: EventT
           </TabsContent>
 
           <TabsContent value="acreditadores">
-            {/* Accreditor Filters */}
             <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mb-3">
               <div className="relative">
                 <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -415,23 +476,35 @@ export function EventTeamDialog({ dealId, dealName, open, onOpenChange }: EventT
                       <TableHead>Estatura</TableHead>
                       <TableHead>Ranking</TableHead>
                       <TableHead>Teléfono</TableHead>
+                      <TableHead>Turno</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {paginatedAccreditors.map(a => (
-                      <TableRow key={a.id} className="cursor-pointer" onClick={() => toggleAccreditor(a.id)}>
-                        <TableCell>
-                          <Checkbox checked={selectedAccreditors.has(a.id)} onCheckedChange={() => toggleAccreditor(a.id)} />
-                        </TableCell>
-                        <TableCell>{a.nombre} {a.apellido}</TableCell>
-                        <TableCell>{a.rut}</TableCell>
-                        <TableCell>{a.email}</TableCell>
-                        <TableCell>{a.idioma ?? '—'}</TableCell>
-                        <TableCell>{a.altura ?? '—'}</TableCell>
-                        <TableCell>{a.ranking ?? '—'}</TableCell>
-                        <TableCell>{a.telefono ?? '—'}</TableCell>
-                      </TableRow>
-                    ))}
+                    {paginatedAccreditors.map(a => {
+                      const isSelected = selectedAccreditors.has(a.id);
+                      return (
+                        <TableRow key={a.id} className="cursor-pointer" onClick={() => toggleAccreditor(a.id)}>
+                          <TableCell>
+                            <Checkbox checked={isSelected} onCheckedChange={() => toggleAccreditor(a.id)} />
+                          </TableCell>
+                          <TableCell>{a.nombre} {a.apellido}</TableCell>
+                          <TableCell>{a.rut}</TableCell>
+                          <TableCell>{a.email}</TableCell>
+                          <TableCell>{a.idioma ?? '—'}</TableCell>
+                          <TableCell>{a.altura ?? '—'}</TableCell>
+                          <TableCell>{a.ranking ?? '—'}</TableCell>
+                          <TableCell>{a.telefono ?? '—'}</TableCell>
+                          <TableCell onClick={e => e.stopPropagation()}>
+                            {isSelected && (
+                              <ShiftSelect
+                                value={selectedAccreditors.get(a.id) ?? null}
+                                onChange={v => setAccreditorShift(a.id, v)}
+                              />
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
                   </TableBody>
                 </Table>
                 <PaginationControls page={accPage} totalPages={accTotalPages} onPageChange={setAccPage} />
