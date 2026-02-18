@@ -1,41 +1,38 @@
 
 
-## Agregar monto de pago antes de aceptar postulantes
+## Agregar monto de pago obligatorio antes de aceptar postulantes
 
-### Problema actual
+### Resumen
 
-Al aceptar un postulante, no se solicita el monto que ganara. La boleta se crea con monto 0 cuando se asigna al equipo, y no hay forma de definir el valor desde el flujo de postulantes.
-
-### Solucion
-
-Agregar un campo `payment_amount` a la tabla `event_accreditors` y mostrar un dialog de confirmacion con input de monto antes de aceptar al postulante. Este monto se propagara automaticamente a la boleta correspondiente.
+Al hacer click en el boton verde de aceptar un postulante, se abrira un pequeno dialog pidiendo el monto a pagar. Solo al confirmar con un monto valido se aceptara al postulante. Este monto se guardara en `event_accreditors` y se sincronizara con la boleta (`invoices`).
 
 ### Cambios
 
 **1. Migracion de base de datos**
-- Agregar columna `payment_amount` (integer, nullable, default null) a la tabla `event_accreditors`
+- Agregar columna `payment_amount` (integer, nullable, default null) a `event_accreditors`
 
 **2. `src/components/events/EventApplicantsDialog.tsx`**
-- Agregar estado para controlar un dialog de confirmacion de monto (`acceptingApplicant`, `paymentAmount`)
-- Al hacer click en el boton de aceptar (check verde), en lugar de aceptar directamente, abrir un dialog que pida el monto
-- El dialog tendra un input numerico para el monto y botones Cancelar/Confirmar
+- Agregar campo `payment_amount` a la interfaz `Applicant` y a la query (incluir en el select de `event_accreditors`)
+- Agregar dos estados nuevos: `acceptingApplicant` (Applicant | null) y `paymentAmount` (string)
+- Modificar el boton de aceptar para que en lugar de llamar `handleAccept` directamente, guarde el postulante en `acceptingApplicant` y abra un mini-dialog
+- El mini-dialog tendra:
+  - Titulo: "Monto de pago"
+  - Input numerico para ingresar el monto
+  - Botones Cancelar y Confirmar
 - Al confirmar:
-  - Validar que el monto sea mayor a 0
+  - Validar monto mayor a 0
   - Ejecutar la validacion de conflicto de fechas existente
-  - Actualizar `event_accreditors` con `application_status: 'aceptado'` y `payment_amount: monto`
-  - Actualizar la boleta correspondiente en `invoices` (si existe) con el monto ingresado
-- Agregar columna "Monto" a la tabla de postulantes para mostrar el monto asignado (si ya fue aceptado)
+  - Actualizar `event_accreditors` con `application_status: 'aceptado'` y `payment_amount`
+  - Si existe una boleta en `invoices` para ese user+event, actualizarla con el monto
+- Agregar columna "Monto" a la tabla entre Ranking y Acciones, mostrando el `payment_amount` formateado o un guion si no tiene
 
 **3. `src/components/events/EventTeamDialog.tsx`**
-- Al crear boletas para nuevos usuarios asignados, verificar si el `event_accreditor` tiene un `payment_amount` definido y usarlo en lugar de 0
+- Al crear boletas para nuevos usuarios (linea 344), buscar el `payment_amount` del `event_accreditor` correspondiente y usarlo como monto en lugar de 0
 
-### Flujo resultante
+### Detalle tecnico
 
-1. Admin ve la lista de postulantes
-2. Hace click en el boton de aceptar
-3. Aparece un dialog pidiendo el monto a pagar
-4. Ingresa el monto y confirma
-5. Se actualiza el estado del postulante y se guarda el monto
-6. Cuando se asigne al equipo, la boleta se creara con ese monto
-7. Si la boleta ya existe, se actualiza inmediatamente con el monto
+Archivos modificados:
+- 1 migracion SQL
+- `src/components/events/EventApplicantsDialog.tsx` - dialog de confirmacion con input de monto
+- `src/components/events/EventTeamDialog.tsx` - usar payment_amount al crear boletas
 
