@@ -11,12 +11,14 @@ import { useAuth } from '@/contexts/AuthContext';
 import { InvoicesTable, type InvoiceRow } from '@/components/invoices/InvoicesTable';
 import { InvoiceCreateDialog } from '@/components/invoices/InvoiceCreateDialog';
 import { InvoiceEditDialog } from '@/components/invoices/InvoiceEditDialog';
+import { InvoiceUploadDialog } from '@/components/invoices/InvoiceUploadDialog';
 import { InvoiceWhatsappDialog } from '@/components/invoices/InvoiceWhatsappDialog';
 
 export default function InvoicesPage() {
   const { isAdmin } = useAuth();
   const [createOpen, setCreateOpen] = useState(false);
   const [editInvoice, setEditInvoice] = useState<InvoiceRow | null>(null);
+  const [uploadInvoice, setUploadInvoice] = useState<InvoiceRow | null>(null);
   const [whatsappInvoice, setWhatsappInvoice] = useState<InvoiceRow | null>(null);
 
   const { data: paymentDays = [5, 15, 25] } = useQuery({
@@ -103,12 +105,13 @@ export default function InvoicesPage() {
           paymentDays={paymentDays}
           onEdit={setEditInvoice}
           onWhatsapp={setWhatsappInvoice}
-          onUpload={setEditInvoice}
+          onUpload={setUploadInvoice}
         />
       )}
 
       <InvoiceCreateDialog open={createOpen} onOpenChange={setCreateOpen} />
       <InvoiceEditDialog open={!!editInvoice} onOpenChange={(o) => !o && setEditInvoice(null)} invoice={editInvoice} />
+      <InvoiceUploadDialog open={!!uploadInvoice} onOpenChange={(o) => !o && setUploadInvoice(null)} invoice={uploadInvoice} />
       <InvoiceWhatsappDialog open={!!whatsappInvoice} onOpenChange={(o) => !o && setWhatsappInvoice(null)} invoice={whatsappInvoice} />
     </AppShell>
   );
