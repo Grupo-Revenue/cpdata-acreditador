@@ -45,6 +45,7 @@ interface Applicant {
   nombre: string;
   apellido: string;
   ranking: number | null;
+  payment_amount: number | null;
   event_name: string;
   event_date: string;
   role: string;
@@ -71,6 +72,8 @@ export function EventApplicantsDialog({ open, onOpenChange }: EventApplicantsDia
   const queryClient = useQueryClient();
   const [page, setPage] = useState(0);
   const [viewingProfile, setViewingProfile] = useState<ProfileData | null>(null);
+  const [acceptingApplicant, setAcceptingApplicant] = useState<Applicant | null>(null);
+  const [paymentAmount, setPaymentAmount] = useState('');
   const [filters, setFilters] = useState({
     nombre: '',
     evento: '__all__',
@@ -86,7 +89,7 @@ export function EventApplicantsDialog({ open, onOpenChange }: EventApplicantsDia
     queryFn: async () => {
       const { data, error } = await supabase
         .from('event_accreditors')
-        .select('id, user_id, event_id, application_status, contract_status, events(name, event_date)');
+        .select('id, user_id, event_id, application_status, contract_status, payment_amount, events(name, event_date)');
       if (error) throw error;
       return data as any[];
     },
@@ -139,6 +142,7 @@ export function EventApplicantsDialog({ open, onOpenChange }: EventApplicantsDia
         nombre: profile?.nombre ?? '',
         apellido: profile?.apellido ?? '',
         ranking: profile?.ranking ?? null,
+        payment_amount: r.payment_amount ?? null,
         event_name: r.events?.name ?? 'Sin nombre',
         event_date: r.events?.event_date ?? '',
         role: roleMap.get(r.user_id) ?? 'Acreditador',
@@ -173,7 +177,16 @@ export function EventApplicantsDialog({ open, onOpenChange }: EventApplicantsDia
     setPage(0);
   };
 
-  const handleAccept = async (applicant: Applicant) => {
+  const handleConfirmAccept = async () => {
+    if (!acceptingApplicant) return;
+    const amount = Number(paymentAmount);
+    if (!amount || amount <= 0) {
+      toast({ title: 'Error', description: 'Ingresa un monto válido mayor a 0.', variant: 'destructive' });
+      return;
+    }
+
+    const applicant = acceptingApplicant;
+
     const { data: conflicts, error: conflictError } = await supabase
       .from('event_accreditors')
       .select('id, events(event_date)')
@@ -198,15 +211,26 @@ export function EventApplicantsDialog({ open, onOpenChange }: EventApplicantsDia
 
     const { error } = await supabase
       .from('event_accreditors')
-      .update({ application_status: 'aceptado' } as any)
+      .update({ application_status: 'aceptado', payment_amount: amount } as any)
       .eq('id', applicant.id);
 
     if (error) {
       toast({ title: 'Error', description: 'No se pudo aceptar al postulante.', variant: 'destructive' });
-    } else {
-      toast({ title: 'Aceptado', description: `${applicant.nombre} ${applicant.apellido} fue aceptado.` });
-      queryClient.invalidateQueries({ queryKey: ['event-applicants'] });
+      return;
     }
+
+    // Sync invoice amount
+    await supabase
+      .from('invoices')
+      .update({ amount } as any)
+      .eq('user_id', applicant.user_id)
+      .eq('event_id', applicant.event_id);
+
+    toast({ title: 'Aceptado', description: `${applicant.nombre} ${applicant.apellido} fue aceptado con monto $${amount.toLocaleString()}.` });
+    queryClient.invalidateQueries({ queryKey: ['event-applicants'] });
+    queryClient.invalidateQueries({ queryKey: ['invoices'] });
+    setAcceptingApplicant(null);
+    setPaymentAmount('');
   };
 
   const handleReject = async (applicant: Applicant) => {
@@ -307,6 +331,7 @@ export function EventApplicantsDialog({ open, onOpenChange }: EventApplicantsDia
                   <TableHead>Postulación</TableHead>
                   <TableHead>Contrato</TableHead>
                   <TableHead>Ranking</TableHead>
+                  <TableHead>Monto</TableHead>
                   <TableHead>Acciones</TableHead>
                 </TableRow>
               </TableHeader>
@@ -327,6 +352,7 @@ export function EventApplicantsDialog({ open, onOpenChange }: EventApplicantsDia
                       </Badge>
                     </TableCell>
                     <TableCell>{a.ranking ?? '—'}</TableCell>
+                    <TableCell>{a.payment_amount ? `$${a.payment_amount.toLocaleString()}` : '—'}</TableCell>
                     <TableCell>
                       <div className="flex gap-1">
                         <Button
@@ -363,7 +389,10 @@ export function EventApplicantsDialog({ open, onOpenChange }: EventApplicantsDia
                           variant="ghost"
                           size="icon"
                           className="h-7 w-7 text-success hover:text-success/80"
-                          onClick={() => handleAccept(a)}
+                          onClick={() => {
+                            setAcceptingApplicant(a);
+                            setPaymentAmount(a.payment_amount ? String(a.payment_amount) : '');
+                          }}
                           disabled={a.application_status === 'aceptado'}
                         >
                           <Check className="h-4 w-4" />
@@ -405,6 +434,32 @@ export function EventApplicantsDialog({ open, onOpenChange }: EventApplicantsDia
         profile={viewingProfile}
         onClose={() => setViewingProfile(null)}
       />
+
+      <Dialog open={!!acceptingApplicant} onOpenChange={(o) => { if (!o) { setAcceptingApplicant(null); setPaymentAmount(''); } }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Monto de pago</DialogTitle>
+            <DialogDescription>
+              Ingresa el monto a pagar a {acceptingApplicant?.nombre} {acceptingApplicant?.apellido}
+            </DialogDescription>
+          </DialogHeader>
+          <Input
+            type="number"
+            placeholder="Monto en pesos..."
+            value={paymentAmount}
+            onChange={(e) => setPaymentAmount(e.target.value)}
+            min={1}
+          />
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => { setAcceptingApplicant(null); setPaymentAmount(''); }}>
+              Cancelar
+            </Button>
+            <Button onClick={handleConfirmAccept}>
+              Confirmar
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </Dialog>
   );
 }

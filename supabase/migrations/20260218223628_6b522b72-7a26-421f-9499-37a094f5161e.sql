@@ -1,0 +1,1 @@
+ALTER TABLE public.event_accreditors ADD COLUMN payment_amount integer DEFAULT NULL;
