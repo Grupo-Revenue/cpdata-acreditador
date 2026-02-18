@@ -341,10 +341,19 @@ export function EventTeamDialog({ dealId, dealName, open, onOpenChange }: EventT
         const usersNeedingInvoice = newUserIds.filter(id => !usersWithInvoice.has(id));
 
         if (usersNeedingInvoice.length > 0) {
+          // Fetch payment_amount from event_accreditors for each user
+          const { data: accreditorData } = await supabase
+            .from('event_accreditors')
+            .select('user_id, payment_amount')
+            .eq('event_id', eventId)
+            .in('user_id', usersNeedingInvoice);
+
+          const paymentMap = new Map((accreditorData || []).map((a: any) => [a.user_id, a.payment_amount ?? 0]));
+
           const invoiceRows = usersNeedingInvoice.map(userId => ({
             user_id: userId,
             event_id: eventId,
-            amount: 0,
+            amount: paymentMap.get(userId) ?? 0,
           }));
           const { error: invErr } = await supabase.from('invoices').insert(invoiceRows);
           if (invErr) throw invErr;
