@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Pencil, MessageSquare, Upload, CheckCircle } from 'lucide-react';
 import { format } from 'date-fns';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 
 export interface InvoiceRow {
@@ -25,6 +26,7 @@ export interface InvoiceRow {
   profiles: { nombre: string; apellido: string; telefono: string | null } | null;
   roles: string[];
   events: { name: string; event_date: string } | null;
+  total_amount: number;
 }
 
 interface InvoicesTableProps {
@@ -260,7 +262,24 @@ export function InvoicesTable({ invoices, isAdmin, paymentDays, onEdit, onWhatsa
                       <Badge variant="outline" className={sc?.className}>{sc?.label}</Badge>
                     </TableCell>
                     <TableCell>{inv.events?.name || '-'}</TableCell>
-                    <TableCell>{formatCLP(inv.amount)}</TableCell>
+                    <TableCell>
+                      {inv.total_amount > inv.amount ? (
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span className="cursor-help font-medium">
+                                {formatCLP(inv.total_amount)}
+                              </span>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>{formatCLP(inv.amount)} base + {formatCLP(inv.total_amount - inv.amount)} rendiciones</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      ) : (
+                        formatCLP(inv.amount)
+                      )}
+                    </TableCell>
                     <TableCell>{formatDateSafe(inv.emission_date)}</TableCell>
                     <TableCell>
                       {inv.payment_date
