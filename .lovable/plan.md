@@ -1,31 +1,39 @@
 
 
-## Separar el botón "Subir boleta" del dialog de edición
+## Sumar rendiciones aprobadas al valor de la boleta
 
-### Problema
+### Problema actual
 
-El botón de subir boleta (icono Upload) en la tabla de boletas llama a `onUpload={setEditInvoice}`, lo que abre el mismo `InvoiceEditDialog` que muestra todos los campos de edición (usuario, evento, estado, valor, etc.). Se necesita que solo permita subir un archivo.
+El valor que se muestra en la boleta de cada acreditador es solo el monto base (`payment_amount`). Las rendiciones aprobadas (`event_expenses` con `approval_status = 'aprobado'` y `user_id` del acreditador) no se reflejan en el valor total.
 
-### Solución
+### Solucion
 
-Crear un nuevo componente `InvoiceUploadDialog` dedicado exclusivamente a subir el archivo de boleta, y conectarlo al botón Upload en la tabla.
+Modificar la consulta de boletas en `src/pages/app/Invoices.tsx` para obtener las rendiciones aprobadas por usuario/evento y sumarlas al monto mostrado en la tabla.
 
 ### Cambios
 
-**1. Nuevo archivo: `src/components/invoices/InvoiceUploadDialog.tsx`**
-- Dialog simple con:
-  - Título: "Subir Boleta" con el ID de boleta (ej: B001)
-  - Input de archivo (acepta .pdf, .jpg, .jpeg, .png)
-  - Botones Cancelar y Subir
-- Al confirmar: sube el archivo a Supabase Storage (`invoices` bucket), actualiza `file_url` en la tabla `invoices`, e invalida la query
-- No muestra campos de edición (ni usuario, ni evento, ni estado, ni monto)
+**`src/pages/app/Invoices.tsx`**
+- En la query de `invoices`, despues de obtener los roles, consultar `event_expenses` filtrando por `user_id` (in userIds) y `approval_status = 'aprobado'`
+- Construir un mapa `expensesMap[user_id][event_id] = totalAprobado`
+- Al mapear cada invoice, calcular un campo `total_amount` = `inv.amount` + gastos aprobados del usuario para ese evento
 
-**2. `src/pages/app/Invoices.tsx`**
-- Agregar estado `uploadInvoice` separado de `editInvoice`
-- Cambiar `onUpload` para que use `setUploadInvoice` en lugar de `setEditInvoice`
-- Renderizar el nuevo `InvoiceUploadDialog` con el estado correspondiente
+**`src/components/invoices/InvoicesTable.tsx`**
+- Agregar campo `total_amount` a la interfaz `InvoiceRow`
+- En la columna "Valor", mostrar `total_amount` en lugar de `amount`
+- Si `total_amount > amount` (tiene rendiciones), mostrar un tooltip o texto secundario indicando el desglose (ej: "$50.000 + $10.000 rendiciones")
 
-### Resultado
+### Detalle tecnico
 
-- Botón de lápiz (Editar) abre el dialog completo de edición
-- Botón de Upload abre un dialog limpio que solo permite subir archivo
+```text
+Flujo de datos:
+invoices query
+  -> fetch event_expenses WHERE user_id IN (...) AND approval_status = 'aprobado'
+  -> agrupar por user_id + event_id
+  -> sumar al amount de cada invoice
+  -> mostrar total_amount en la tabla
+```
+
+Archivos modificados:
+- `src/pages/app/Invoices.tsx` - agregar consulta de gastos aprobados y calcular total
+- `src/components/invoices/InvoicesTable.tsx` - mostrar total con desglose visual
+
