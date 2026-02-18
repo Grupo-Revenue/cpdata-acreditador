@@ -1,25 +1,41 @@
 
-## Corregir flash de menús completos mientras cargan los permisos
 
-### Problema
+## Agregar monto de pago antes de aceptar postulantes
 
-Al navegar entre páginas, el hook `usePermissions` se reinicializa y mientras carga los permisos desde la base de datos (~3 segundos), `canAccess()` retorna `true` por defecto para todas las claves. Esto causa que el sidebar muestre todos los elementos del menú brevemente antes de ocultarlos.
+### Problema actual
 
-### Solución
+Al aceptar un postulante, no se solicita el monto que ganara. La boleta se crea con monto 0 cuando se asigna al equipo, y no hay forma de definir el valor desde el flujo de postulantes.
 
-Dos cambios simples en el Sidebar:
+### Solucion
 
-**Archivo: `src/components/layout/Sidebar.tsx`**
+Agregar un campo `payment_amount` a la tabla `event_accreditors` y mostrar un dialog de confirmacion con input de monto antes de aceptar al postulante. Este monto se propagara automaticamente a la boleta correspondiente.
 
-1. Obtener `isLoading` del hook `usePermissions` (ya existe, solo no se usa)
-2. Mientras `isLoading` sea `true` y el rol NO sea superadmin, no renderizar los items de navegación (o mostrar un skeleton/placeholder)
+### Cambios
 
-Cambio concreto:
-- Linea 49: cambiar `const { canAccess } = usePermissions();` a `const { canAccess, isLoading: permissionsLoading } = usePermissions();`
-- En la seccion de navegacion (linea 114-118): envolver el listado en una condicion que muestre skeletons animados cuando `permissionsLoading` sea true, y los items filtrados cuando no
+**1. Migracion de base de datos**
+- Agregar columna `payment_amount` (integer, nullable, default null) a la tabla `event_accreditors`
 
-Los skeletons seran barras grises animadas del mismo tamano que los items del menu, para que la transicion sea fluida y no haya salto visual.
+**2. `src/components/events/EventApplicantsDialog.tsx`**
+- Agregar estado para controlar un dialog de confirmacion de monto (`acceptingApplicant`, `paymentAmount`)
+- Al hacer click en el boton de aceptar (check verde), en lugar de aceptar directamente, abrir un dialog que pida el monto
+- El dialog tendra un input numerico para el monto y botones Cancelar/Confirmar
+- Al confirmar:
+  - Validar que el monto sea mayor a 0
+  - Ejecutar la validacion de conflicto de fechas existente
+  - Actualizar `event_accreditors` con `application_status: 'aceptado'` y `payment_amount: monto`
+  - Actualizar la boleta correspondiente en `invoices` (si existe) con el monto ingresado
+- Agregar columna "Monto" a la tabla de postulantes para mostrar el monto asignado (si ya fue aceptado)
 
-### Resultado
+**3. `src/components/events/EventTeamDialog.tsx`**
+- Al crear boletas para nuevos usuarios asignados, verificar si el `event_accreditor` tiene un `payment_amount` definido y usarlo en lugar de 0
 
-El usuario vera barras de carga suaves en el sidebar mientras se obtienen los permisos, y luego solo los menus permitidos. No habra ventana de tiempo para hacer click en menus no autorizados.
+### Flujo resultante
+
+1. Admin ve la lista de postulantes
+2. Hace click en el boton de aceptar
+3. Aparece un dialog pidiendo el monto a pagar
+4. Ingresa el monto y confirma
+5. Se actualiza el estado del postulante y se guarda el monto
+6. Cuando se asigne al equipo, la boleta se creara con ese monto
+7. Si la boleta ya existe, se actualiza inmediatamente con el monto
+
