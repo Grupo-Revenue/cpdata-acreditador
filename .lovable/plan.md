@@ -1,38 +1,31 @@
 
 
-## Agregar monto de pago obligatorio antes de aceptar postulantes
+## Separar el botón "Subir boleta" del dialog de edición
 
-### Resumen
+### Problema
 
-Al hacer click en el boton verde de aceptar un postulante, se abrira un pequeno dialog pidiendo el monto a pagar. Solo al confirmar con un monto valido se aceptara al postulante. Este monto se guardara en `event_accreditors` y se sincronizara con la boleta (`invoices`).
+El botón de subir boleta (icono Upload) en la tabla de boletas llama a `onUpload={setEditInvoice}`, lo que abre el mismo `InvoiceEditDialog` que muestra todos los campos de edición (usuario, evento, estado, valor, etc.). Se necesita que solo permita subir un archivo.
+
+### Solución
+
+Crear un nuevo componente `InvoiceUploadDialog` dedicado exclusivamente a subir el archivo de boleta, y conectarlo al botón Upload en la tabla.
 
 ### Cambios
 
-**1. Migracion de base de datos**
-- Agregar columna `payment_amount` (integer, nullable, default null) a `event_accreditors`
+**1. Nuevo archivo: `src/components/invoices/InvoiceUploadDialog.tsx`**
+- Dialog simple con:
+  - Título: "Subir Boleta" con el ID de boleta (ej: B001)
+  - Input de archivo (acepta .pdf, .jpg, .jpeg, .png)
+  - Botones Cancelar y Subir
+- Al confirmar: sube el archivo a Supabase Storage (`invoices` bucket), actualiza `file_url` en la tabla `invoices`, e invalida la query
+- No muestra campos de edición (ni usuario, ni evento, ni estado, ni monto)
 
-**2. `src/components/events/EventApplicantsDialog.tsx`**
-- Agregar campo `payment_amount` a la interfaz `Applicant` y a la query (incluir en el select de `event_accreditors`)
-- Agregar dos estados nuevos: `acceptingApplicant` (Applicant | null) y `paymentAmount` (string)
-- Modificar el boton de aceptar para que en lugar de llamar `handleAccept` directamente, guarde el postulante en `acceptingApplicant` y abra un mini-dialog
-- El mini-dialog tendra:
-  - Titulo: "Monto de pago"
-  - Input numerico para ingresar el monto
-  - Botones Cancelar y Confirmar
-- Al confirmar:
-  - Validar monto mayor a 0
-  - Ejecutar la validacion de conflicto de fechas existente
-  - Actualizar `event_accreditors` con `application_status: 'aceptado'` y `payment_amount`
-  - Si existe una boleta en `invoices` para ese user+event, actualizarla con el monto
-- Agregar columna "Monto" a la tabla entre Ranking y Acciones, mostrando el `payment_amount` formateado o un guion si no tiene
+**2. `src/pages/app/Invoices.tsx`**
+- Agregar estado `uploadInvoice` separado de `editInvoice`
+- Cambiar `onUpload` para que use `setUploadInvoice` en lugar de `setEditInvoice`
+- Renderizar el nuevo `InvoiceUploadDialog` con el estado correspondiente
 
-**3. `src/components/events/EventTeamDialog.tsx`**
-- Al crear boletas para nuevos usuarios (linea 344), buscar el `payment_amount` del `event_accreditor` correspondiente y usarlo como monto en lugar de 0
+### Resultado
 
-### Detalle tecnico
-
-Archivos modificados:
-- 1 migracion SQL
-- `src/components/events/EventApplicantsDialog.tsx` - dialog de confirmacion con input de monto
-- `src/components/events/EventTeamDialog.tsx` - usar payment_amount al crear boletas
-
+- Botón de lápiz (Editar) abre el dialog completo de edición
+- Botón de Upload abre un dialog limpio que solo permite subir archivo
