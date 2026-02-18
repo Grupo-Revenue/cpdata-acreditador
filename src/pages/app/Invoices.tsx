@@ -67,10 +67,32 @@ export default function InvoicesPage() {
         }
       }
 
-      return items.map(inv => ({
-        ...inv,
-        roles: rolesMap[inv.user_id] || [],
-      })) as unknown as InvoiceRow[];
+      // Fetch approved expenses per user/event
+      let expensesMap: Record<string, Record<string, number>> = {};
+      if (userIds.length > 0) {
+        const { data: expensesData } = await supabase
+          .from('event_expenses')
+          .select('user_id, event_id, amount')
+          .in('user_id', userIds)
+          .eq('approval_status', 'aprobado');
+        if (expensesData) {
+          for (const exp of expensesData) {
+            if (!exp.user_id) continue;
+            if (!expensesMap[exp.user_id]) expensesMap[exp.user_id] = {};
+            if (!expensesMap[exp.user_id][exp.event_id]) expensesMap[exp.user_id][exp.event_id] = 0;
+            expensesMap[exp.user_id][exp.event_id] += exp.amount;
+          }
+        }
+      }
+
+      return items.map(inv => {
+        const approvedExpenses = expensesMap[inv.user_id]?.[inv.event_id] || 0;
+        return {
+          ...inv,
+          roles: rolesMap[inv.user_id] || [],
+          total_amount: inv.amount + approvedExpenses,
+        };
+      }) as unknown as InvoiceRow[];
     },
   });
 
