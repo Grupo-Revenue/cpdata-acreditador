@@ -37,12 +37,12 @@ export default function SettingsPage() {
         <TabsContent value="general" className="space-y-6">
           <PaymentDaySettings />
           <GlosaModelSettings />
-          <ProfileFieldsSettings />
           <RolesManager />
         </TabsContent>
 
-        <TabsContent value="permisos">
+        <TabsContent value="permisos" className="space-y-6">
           <PermissionsSettings />
+          <ProfileFieldsSettings />
         </TabsContent>
 
         <TabsContent value="integrations" className="space-y-6">
