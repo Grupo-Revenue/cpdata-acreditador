@@ -9,6 +9,7 @@ import { WhatsappTemplatesManager } from '@/components/settings/WhatsappTemplate
 import { FaqSettings } from '@/components/settings/FaqSettings';
 import { DigitalSignatureSettings } from '@/components/settings/DigitalSignatureSettings';
 import { PermissionsSettings } from '@/components/settings/PermissionsSettings';
+import { ProfileFieldsSettings } from '@/components/settings/ProfileFieldsSettings';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 export default function SettingsPage() {
@@ -36,6 +37,7 @@ export default function SettingsPage() {
         <TabsContent value="general" className="space-y-6">
           <PaymentDaySettings />
           <GlosaModelSettings />
+          <ProfileFieldsSettings />
           <RolesManager />
         </TabsContent>
 
