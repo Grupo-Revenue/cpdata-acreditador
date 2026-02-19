@@ -1,39 +1,62 @@
 
 
-## Sumar rendiciones aprobadas al valor de la boleta
+## Configurar visibilidad de campos del perfil desde Configuracion
 
-### Problema actual
+### Objetivo
 
-El valor que se muestra en la boleta de cada acreditador es solo el monto base (`payment_amount`). Las rendiciones aprobadas (`event_expenses` con `approval_status = 'aprobado'` y `user_id` del acreditador) no se reflejan en el valor total.
+Permitir al superadmin activar/desactivar campos del perfil de usuario desde la seccion de Configuracion. Los campos desactivados no se mostraran en la pagina de perfil para ningun usuario.
 
-### Solucion
+### Enfoque
 
-Modificar la consulta de boletas en `src/pages/app/Invoices.tsx` para obtener las rendiciones aprobadas por usuario/evento y sumarlas al monto mostrado en la tabla.
+Usar la tabla `settings` existente para almacenar un registro con key `profile_visible_fields` y value como JSON con la lista de campos y su estado (visible/oculto). No se necesitan cambios en la base de datos (solo insertar un registro inicial).
+
+### Campos configurables
+
+Se organizaran por categoria, igual que en el perfil:
+
+**Informacion personal**: telefono, referencia_contacto
+
+**Informacion adicional**: idioma, altura, talla_polera, fecha_nacimiento, comuna, disponibilidad_horaria, instagram, facebook, universidad, carrera, semestre
+
+**Contacto de emergencia**: contacto_emergencia_nombre, contacto_emergencia_email, contacto_emergencia_telefono
+
+**Datos bancarios**: banco, tipo_cuenta, numero_cuenta
+
+Los campos nombre y apellido siempre estaran visibles (no configurables).
 
 ### Cambios
 
-**`src/pages/app/Invoices.tsx`**
-- En la query de `invoices`, despues de obtener los roles, consultar `event_expenses` filtrando por `user_id` (in userIds) y `approval_status = 'aprobado'`
-- Construir un mapa `expensesMap[user_id][event_id] = totalAprobado`
-- Al mapear cada invoice, calcular un campo `total_amount` = `inv.amount` + gastos aprobados del usuario para ese evento
+**1. Insertar registro inicial en `settings`**
+- Key: `profile_visible_fields`
+- Value: JSON con todos los campos activados por defecto
 
-**`src/components/invoices/InvoicesTable.tsx`**
-- Agregar campo `total_amount` a la interfaz `InvoiceRow`
-- En la columna "Valor", mostrar `total_amount` en lugar de `amount`
-- Si `total_amount > amount` (tiene rendiciones), mostrar un tooltip o texto secundario indicando el desglose (ej: "$50.000 + $10.000 rendiciones")
+**2. Nuevo componente: `src/components/settings/ProfileFieldsSettings.tsx`**
+- Card con titulo "Campos del Perfil"
+- Lista de campos agrupados por categoria con switches para activar/desactivar
+- Al cambiar un switch, actualiza el JSON en la tabla `settings`
 
-### Detalle tecnico
+**3. `src/pages/app/Settings.tsx`**
+- Agregar `ProfileFieldsSettings` dentro de la pestana "General"
+
+**4. `src/pages/app/Profile.tsx`**
+- Consultar el setting `profile_visible_fields` al cargar
+- Condicionar la renderizacion de cada FormField segun el estado del campo
+- Si todos los campos de una seccion estan ocultos, ocultar la Card completa
+
+### Estructura del JSON en settings
 
 ```text
-Flujo de datos:
-invoices query
-  -> fetch event_expenses WHERE user_id IN (...) AND approval_status = 'aprobado'
-  -> agrupar por user_id + event_id
-  -> sumar al amount de cada invoice
-  -> mostrar total_amount en la tabla
+{
+  "telefono": true,
+  "referencia_contacto": true,
+  "idioma": true,
+  "altura": false,
+  ...
+}
 ```
 
 Archivos modificados:
-- `src/pages/app/Invoices.tsx` - agregar consulta de gastos aprobados y calcular total
-- `src/components/invoices/InvoicesTable.tsx` - mostrar total con desglose visual
+- `src/components/settings/ProfileFieldsSettings.tsx` (nuevo)
+- `src/pages/app/Settings.tsx`
+- `src/pages/app/Profile.tsx`
 
