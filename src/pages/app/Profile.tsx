@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -58,6 +58,27 @@ export default function ProfilePage() {
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
   const [isRoleDialogOpen, setIsRoleDialogOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [visibleFields, setVisibleFields] = useState<Record<string, boolean>>({});
+  const [visibleFieldsLoaded, setVisibleFieldsLoaded] = useState(false);
+
+  useEffect(() => {
+    async function fetchVisibility() {
+      const { data } = await supabase
+        .from('settings')
+        .select('value')
+        .eq('key', 'profile_visible_fields')
+        .maybeSingle();
+      if (data?.value) {
+        try {
+          setVisibleFields(JSON.parse(data.value));
+        } catch { /* all visible by default */ }
+      }
+      setVisibleFieldsLoaded(true);
+    }
+    fetchVisibility();
+  }, []);
+
+  const isFieldVisible = (key: string) => visibleFields[key] !== false;
 
   const form = useForm<ProfileFormValues>({
     resolver: zodResolver(profileSchema),
@@ -423,35 +444,39 @@ export default function ProfilePage() {
                 </div>
 
                 <div className="grid gap-4 sm:grid-cols-2">
-                  <FormField
-                    control={form.control}
-                    name="telefono"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="flex items-center gap-2">
-                          <Phone className="h-4 w-4" />
-                          Teléfono
-                        </FormLabel>
-                        <FormControl>
-                          <Input placeholder="+56 9 1234 5678" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="referencia_contacto"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Referencia de contacto</FormLabel>
-                        <FormControl>
-                          <Input placeholder="¿Cómo te encontraron?" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                  {isFieldVisible('telefono') && (
+                    <FormField
+                      control={form.control}
+                      name="telefono"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="flex items-center gap-2">
+                            <Phone className="h-4 w-4" />
+                            Teléfono
+                          </FormLabel>
+                          <FormControl>
+                            <Input placeholder="+56 9 1234 5678" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  )}
+                  {isFieldVisible('referencia_contacto') && (
+                    <FormField
+                      control={form.control}
+                      name="referencia_contacto"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Referencia de contacto</FormLabel>
+                          <FormControl>
+                            <Input placeholder="¿Cómo te encontraron?" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  )}
                 </div>
 
                 <div className="flex justify-end pt-4">
@@ -466,6 +491,7 @@ export default function ProfilePage() {
         </Card>
 
         {/* Información adicional */}
+        {(['idioma','altura','talla_polera','fecha_nacimiento','comuna','disponibilidad_horaria','instagram','facebook','universidad','carrera','semestre','contacto_emergencia_nombre','contacto_emergencia_email','contacto_emergencia_telefono'].some(isFieldVisible)) && (
         <Card>
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
@@ -477,54 +503,58 @@ export default function ProfilePage() {
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                 <div className="grid gap-4 sm:grid-cols-2">
-                  <FormField control={form.control} name="idioma" render={({ field }) => (
+                  {isFieldVisible('idioma') && <FormField control={form.control} name="idioma" render={({ field }) => (
                     <FormItem className="col-span-2 sm:col-span-1"><FormLabel>Idiomas</FormLabel><FormControl><LanguageTagsInput value={field.value || ''} onChange={field.onChange} /></FormControl><FormMessage /></FormItem>
-                  )} />
-                  <FormField control={form.control} name="altura" render={({ field }) => (
+                  )} />}
+                  {isFieldVisible('altura') && <FormField control={form.control} name="altura" render={({ field }) => (
                     <FormItem><FormLabel>Estatura</FormLabel><FormControl><Input placeholder="Ej: 1.75" {...field} /></FormControl><FormMessage /></FormItem>
-                  )} />
-                  <FormField control={form.control} name="talla_polera" render={({ field }) => (
+                  )} />}
+                  {isFieldVisible('talla_polera') && <FormField control={form.control} name="talla_polera" render={({ field }) => (
                     <FormItem><FormLabel>Talla de polera</FormLabel><FormControl><Input placeholder="Ej: M, L, XL" {...field} /></FormControl><FormMessage /></FormItem>
-                  )} />
-                  <FormField control={form.control} name="fecha_nacimiento" render={({ field }) => (
+                  )} />}
+                  {isFieldVisible('fecha_nacimiento') && <FormField control={form.control} name="fecha_nacimiento" render={({ field }) => (
                     <FormItem><FormLabel>Fecha de nacimiento</FormLabel><FormControl><Input type="date" {...field} /></FormControl><FormMessage /></FormItem>
-                  )} />
-                  <FormField control={form.control} name="comuna" render={({ field }) => (
+                  )} />}
+                  {isFieldVisible('comuna') && <FormField control={form.control} name="comuna" render={({ field }) => (
                     <FormItem><FormLabel>Comuna</FormLabel><FormControl><Input placeholder="Ej: Providencia" {...field} /></FormControl><FormMessage /></FormItem>
-                  )} />
-                  <FormField control={form.control} name="disponibilidad_horaria" render={({ field }) => (
+                  )} />}
+                  {isFieldVisible('disponibilidad_horaria') && <FormField control={form.control} name="disponibilidad_horaria" render={({ field }) => (
                     <FormItem><FormLabel>Disponibilidad horaria</FormLabel><FormControl><Input placeholder="Ej: Lunes a Viernes" {...field} /></FormControl><FormMessage /></FormItem>
-                  )} />
-                  <FormField control={form.control} name="instagram" render={({ field }) => (
+                  )} />}
+                  {isFieldVisible('instagram') && <FormField control={form.control} name="instagram" render={({ field }) => (
                     <FormItem><FormLabel>Instagram</FormLabel><FormControl><Input placeholder="@usuario" {...field} /></FormControl><FormMessage /></FormItem>
-                  )} />
-                  <FormField control={form.control} name="facebook" render={({ field }) => (
+                  )} />}
+                  {isFieldVisible('facebook') && <FormField control={form.control} name="facebook" render={({ field }) => (
                     <FormItem><FormLabel>Facebook</FormLabel><FormControl><Input placeholder="Nombre o URL" {...field} /></FormControl><FormMessage /></FormItem>
-                  )} />
-                  <FormField control={form.control} name="universidad" render={({ field }) => (
+                  )} />}
+                  {isFieldVisible('universidad') && <FormField control={form.control} name="universidad" render={({ field }) => (
                     <FormItem><FormLabel>Universidad</FormLabel><FormControl><Input placeholder="Universidad" {...field} /></FormControl><FormMessage /></FormItem>
-                  )} />
-                  <FormField control={form.control} name="carrera" render={({ field }) => (
+                  )} />}
+                  {isFieldVisible('carrera') && <FormField control={form.control} name="carrera" render={({ field }) => (
                     <FormItem><FormLabel>Carrera</FormLabel><FormControl><Input placeholder="Carrera" {...field} /></FormControl><FormMessage /></FormItem>
-                  )} />
-                  <FormField control={form.control} name="semestre" render={({ field }) => (
+                  )} />}
+                  {isFieldVisible('semestre') && <FormField control={form.control} name="semestre" render={({ field }) => (
                     <FormItem><FormLabel>Semestre</FormLabel><FormControl><Input placeholder="Ej: 5to semestre" {...field} /></FormControl><FormMessage /></FormItem>
-                  )} />
+                  )} />}
                 </div>
 
-                <Separator className="my-4" />
-                <Label className="text-base font-semibold">Contacto de emergencia</Label>
-                <div className="grid gap-4 sm:grid-cols-2 mt-2">
-                  <FormField control={form.control} name="contacto_emergencia_nombre" render={({ field }) => (
-                    <FormItem className="col-span-2"><FormLabel>Nombre del contacto</FormLabel><FormControl><Input placeholder="Nombre completo" {...field} /></FormControl><FormMessage /></FormItem>
-                  )} />
-                  <FormField control={form.control} name="contacto_emergencia_email" render={({ field }) => (
-                    <FormItem><FormLabel>Email del contacto</FormLabel><FormControl><Input type="email" placeholder="correo@ejemplo.cl" {...field} /></FormControl><FormMessage /></FormItem>
-                  )} />
-                  <FormField control={form.control} name="contacto_emergencia_telefono" render={({ field }) => (
-                    <FormItem><FormLabel>Celular del contacto</FormLabel><FormControl><Input placeholder="+56 9 1234 5678" {...field} /></FormControl><FormMessage /></FormItem>
-                  )} />
-                </div>
+                {(['contacto_emergencia_nombre','contacto_emergencia_email','contacto_emergencia_telefono'].some(isFieldVisible)) && (
+                  <>
+                    <Separator className="my-4" />
+                    <Label className="text-base font-semibold">Contacto de emergencia</Label>
+                    <div className="grid gap-4 sm:grid-cols-2 mt-2">
+                      {isFieldVisible('contacto_emergencia_nombre') && <FormField control={form.control} name="contacto_emergencia_nombre" render={({ field }) => (
+                        <FormItem className="col-span-2"><FormLabel>Nombre del contacto</FormLabel><FormControl><Input placeholder="Nombre completo" {...field} /></FormControl><FormMessage /></FormItem>
+                      )} />}
+                      {isFieldVisible('contacto_emergencia_email') && <FormField control={form.control} name="contacto_emergencia_email" render={({ field }) => (
+                        <FormItem><FormLabel>Email del contacto</FormLabel><FormControl><Input type="email" placeholder="correo@ejemplo.cl" {...field} /></FormControl><FormMessage /></FormItem>
+                      )} />}
+                      {isFieldVisible('contacto_emergencia_telefono') && <FormField control={form.control} name="contacto_emergencia_telefono" render={({ field }) => (
+                        <FormItem><FormLabel>Celular del contacto</FormLabel><FormControl><Input placeholder="+56 9 1234 5678" {...field} /></FormControl><FormMessage /></FormItem>
+                      )} />}
+                    </div>
+                  </>
+                )}
 
                 <div className="flex justify-end pt-4">
                   <Button type="submit" disabled={isSaving}>
@@ -536,8 +566,10 @@ export default function ProfilePage() {
             </Form>
           </CardContent>
         </Card>
+        )}
 
         {/* Datos bancarios */}
+        {(['banco','tipo_cuenta','numero_cuenta'].some(isFieldVisible)) && (
         <Card>
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
@@ -549,7 +581,7 @@ export default function ProfilePage() {
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                 <div className="grid gap-4 sm:grid-cols-2">
-                  <FormField control={form.control} name="banco" render={({ field }) => (
+                  {isFieldVisible('banco') && <FormField control={form.control} name="banco" render={({ field }) => (
                     <FormItem>
                       <FormLabel>Banco</FormLabel>
                       <Select onValueChange={field.onChange} value={field.value}>
@@ -560,8 +592,8 @@ export default function ProfilePage() {
                       </Select>
                       <FormMessage />
                     </FormItem>
-                  )} />
-                  <FormField control={form.control} name="tipo_cuenta" render={({ field }) => (
+                  )} />}
+                  {isFieldVisible('tipo_cuenta') && <FormField control={form.control} name="tipo_cuenta" render={({ field }) => (
                     <FormItem>
                       <FormLabel>Tipo de cuenta</FormLabel>
                       <Select onValueChange={field.onChange} value={field.value}>
@@ -572,11 +604,11 @@ export default function ProfilePage() {
                       </Select>
                       <FormMessage />
                     </FormItem>
-                  )} />
+                  )} />}
                 </div>
-                <FormField control={form.control} name="numero_cuenta" render={({ field }) => (
+                {isFieldVisible('numero_cuenta') && <FormField control={form.control} name="numero_cuenta" render={({ field }) => (
                   <FormItem><FormLabel>Número de cuenta</FormLabel><FormControl><Input placeholder="Número de cuenta" {...field} /></FormControl><FormMessage /></FormItem>
-                )} />
+                )} />}
                 <div className="flex justify-end pt-4">
                   <Button type="submit" disabled={isSaving}>
                     {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
@@ -587,6 +619,7 @@ export default function ProfilePage() {
             </Form>
           </CardContent>
         </Card>
+        )}
 
         {/* Security Section */}
         <Card>
