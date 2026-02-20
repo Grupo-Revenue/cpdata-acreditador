@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
@@ -14,6 +14,10 @@ interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   invoice: InvoiceRow | null;
+}
+
+function cleanPhone(phone: string): string {
+  return phone.replace(/\D/g, '');
 }
 
 export function InvoiceWhatsappDialog({ open, onOpenChange, invoice }: Props) {
@@ -36,15 +40,32 @@ export function InvoiceWhatsappDialog({ open, onOpenChange, invoice }: Props) {
   const selected = templates.find((t) => t.id === selectedTemplate);
   const phone = invoice?.profiles?.telefono;
 
-  const handleSend = () => {
-    if (!phone) {
-      toast({ title: 'Error', description: 'El usuario no tiene número de teléfono registrado.', variant: 'destructive' });
-      return;
-    }
-    // UI-only: show success message
-    toast({ title: 'Plantilla enviada', description: `Se envió "${selected?.name}" al número ${phone}` });
-    onOpenChange(false);
-  };
+  const sendMutation = useMutation({
+    mutationFn: async () => {
+      if (!phone) throw new Error('El usuario no tiene número de teléfono registrado.');
+      if (!selected) throw new Error('Selecciona una plantilla.');
+
+      const { data, error } = await supabase.functions.invoke('send-whatsapp-message', {
+        body: {
+          template_name: selected.name,
+          template_language: selected.language || 'es',
+          to_phone: cleanPhone(phone),
+        },
+      });
+
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      return data;
+    },
+    onSuccess: () => {
+      toast({ title: 'Mensaje enviado', description: `Se envió "${selected?.name}" al número ${phone}` });
+      onOpenChange(false);
+      setSelectedTemplate('');
+    },
+    onError: (err: Error) => {
+      toast({ title: 'Error al enviar', description: err.message, variant: 'destructive' });
+    },
+  });
 
   if (!invoice) return null;
 
@@ -86,8 +107,8 @@ export function InvoiceWhatsappDialog({ open, onOpenChange, invoice }: Props) {
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
-          <Button onClick={handleSend} disabled={!selectedTemplate}>
-            Enviar
+          <Button onClick={() => sendMutation.mutate()} disabled={!selectedTemplate || sendMutation.isPending}>
+            {sendMutation.isPending ? 'Enviando...' : 'Enviar'}
           </Button>
         </DialogFooter>
       </DialogContent>
