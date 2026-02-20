@@ -10,13 +10,14 @@ import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { useToast } from '@/hooks/use-toast';
 import { Eye, EyeOff, Save, Trash2, MessageCircle } from 'lucide-react';
 
-const META_KEYS = ['meta_access_token', 'meta_phone_number_id'] as const;
+const META_KEYS = ['meta_access_token', 'meta_phone_number_id', 'meta_waba_id'] as const;
 
 export function MetaIntegration() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [tokenInput, setTokenInput] = useState('');
   const [phoneInput, setPhoneInput] = useState('');
+  const [wabaInput, setWabaInput] = useState('');
   const [showToken, setShowToken] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
@@ -35,13 +36,14 @@ export function MetaIntegration() {
     },
   });
 
-  const hasConfig = !!(settings?.meta_access_token && settings?.meta_phone_number_id);
+  const hasConfig = !!(settings?.meta_access_token && settings?.meta_phone_number_id && settings?.meta_waba_id);
 
   const saveMutation = useMutation({
-    mutationFn: async ({ token, phone }: { token: string; phone: string }) => {
+    mutationFn: async ({ token, phone, waba }: { token: string; phone: string; waba: string }) => {
       const rows = [
         { key: 'meta_access_token', value: token, description: 'Token de acceso de Meta' },
         { key: 'meta_phone_number_id', value: phone, description: 'Phone Number ID de WhatsApp Business' },
+        { key: 'meta_waba_id', value: waba, description: 'WhatsApp Business Account ID' },
       ];
       for (const row of rows) {
         const { error } = await supabase.from('settings').upsert(row, { onConflict: 'key' });
@@ -53,6 +55,7 @@ export function MetaIntegration() {
       toast({ title: 'Configuración guardada', description: 'La integración con Meta fue configurada correctamente.' });
       setTokenInput('');
       setPhoneInput('');
+      setWabaInput('');
       setIsEditing(false);
       setShowToken(false);
     },
@@ -71,6 +74,7 @@ export function MetaIntegration() {
       toast({ title: 'Configuración eliminada', description: 'La integración con Meta fue desconectada.' });
       setTokenInput('');
       setPhoneInput('');
+      setWabaInput('');
       setIsEditing(false);
       setShowToken(false);
     },
@@ -85,8 +89,8 @@ export function MetaIntegration() {
   };
 
   const handleSave = () => {
-    if (!tokenInput.trim() || !phoneInput.trim()) return;
-    saveMutation.mutate({ token: tokenInput.trim(), phone: phoneInput.trim() });
+    if (!tokenInput.trim() || !phoneInput.trim() || !wabaInput.trim()) return;
+    saveMutation.mutate({ token: tokenInput.trim(), phone: phoneInput.trim(), waba: wabaInput.trim() });
   };
 
   if (isLoading) return null;
@@ -156,6 +160,22 @@ export function MetaIntegration() {
             )}
           </div>
 
+          {/* WABA ID */}
+          <div className="space-y-2">
+            <Label>WhatsApp Business Account ID (WABA ID)</Label>
+            {!isEditing && hasConfig ? (
+              <Input readOnly value={settings?.meta_waba_id ?? ''} className="font-mono" />
+            ) : (
+              <Input
+                placeholder="123456789012345"
+                value={wabaInput}
+                onChange={(e) => setWabaInput(e.target.value)}
+                className="font-mono"
+              />
+            )}
+            <p className="text-xs text-muted-foreground">Lo encuentras en Meta Business Suite &gt; WhatsApp &gt; Configuración de la cuenta</p>
+          </div>
+
           <div className="flex gap-2 justify-end">
             {!isEditing && hasConfig ? (
               <>
@@ -170,11 +190,11 @@ export function MetaIntegration() {
             ) : (
               <>
                 {hasConfig && (
-                  <Button variant="ghost" onClick={() => { setIsEditing(false); setTokenInput(''); setPhoneInput(''); }}>
+                  <Button variant="ghost" onClick={() => { setIsEditing(false); setTokenInput(''); setPhoneInput(''); setWabaInput(''); }}>
                     Cancelar
                   </Button>
                 )}
-                <Button onClick={handleSave} disabled={!tokenInput.trim() || !phoneInput.trim() || saveMutation.isPending}>
+                <Button onClick={handleSave} disabled={!tokenInput.trim() || !phoneInput.trim() || !wabaInput.trim() || saveMutation.isPending}>
                   <Save className="w-4 h-4 mr-1" />
                   {saveMutation.isPending ? 'Guardando...' : 'Guardar'}
                 </Button>
