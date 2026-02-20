@@ -1,64 +1,71 @@
 
 
-## Botón "Consultar estado" para plantillas de WhatsApp pendientes
+## Enviar mensajes de WhatsApp reales desde Boletas
 
-### Resumen
+### Problema
 
-Agregar un botón en la tabla de plantillas que consulte la API de Meta para verificar y actualizar el estado de las plantillas pendientes. Usa las credenciales ya configuradas (token de acceso y WABA ID).
+El boton "Enviar" en el dialogo de WhatsApp de boletas **solo muestra un toast de exito** pero nunca envia el mensaje a la API de Meta. Es una implementacion puramente visual (placeholder).
 
-### Paso 1: Crear Edge Function `check-whatsapp-template-status`
+### Solucion
 
-Crear `supabase/functions/check-whatsapp-template-status/index.ts` que:
+Crear una Edge Function que envie el mensaje via la API de Meta y conectarla al dialogo existente.
 
-1. Verifique autenticación del usuario
-2. Reciba el `template_id` local por POST
-3. Lea las credenciales de Meta (`meta_access_token`, `meta_waba_id`) desde la tabla `settings`
-4. Lea el `meta_template_id` de la plantilla local
-5. Consulte la API de Meta: `GET https://graph.facebook.com/v21.0/{meta_template_id}?fields=status,name,category`
-6. Actualice el estado local segun la respuesta de Meta (`APPROVED` -> `approved`, `REJECTED` -> `rejected`, `PENDING` -> `pending`)
-7. Retorne el nuevo estado
+### Paso 1: Crear Edge Function `send-whatsapp-message`
+
+Crear `supabase/functions/send-whatsapp-message/index.ts` que:
+
+1. Reciba por POST: `template_name`, `template_language`, `to_phone` y opcionalmente `components` (variables dinamicas)
+2. Lea las credenciales de Meta (`meta_access_token`, `meta_phone_number_id`) desde la tabla `settings`
+3. Llame a la API de Meta para enviar el mensaje:
+
+```text
+POST https://graph.facebook.com/v21.0/{phone_number_id}/messages
+
+{
+  "messaging_product": "whatsapp",
+  "to": "56912345678",
+  "type": "template",
+  "template": {
+    "name": "msg_prueba",
+    "language": { "code": "es" },
+    "components": []
+  }
+}
+```
+
+4. Retorne el resultado (exito o error de Meta)
 
 ### Paso 2: Registrar la Edge Function
 
 Agregar en `supabase/config.toml`:
 
 ```text
-[functions.check-whatsapp-template-status]
+[functions.send-whatsapp-message]
 verify_jwt = false
 ```
 
-### Paso 3: Agregar botón en WhatsappTemplatesManager
+### Paso 3: Modificar InvoiceWhatsappDialog
 
-Modificar `src/components/settings/WhatsappTemplatesManager.tsx`:
+Actualizar `src/components/invoices/InvoiceWhatsappDialog.tsx`:
 
-- Agregar un botón con icono de "refresh" en cada fila de plantilla con estado `pending`
-- Al hacer clic, llamar a la edge function con `supabase.functions.invoke('check-whatsapp-template-status', { body: { template_id } })`
-- Mostrar un toast con el resultado (aprobada, rechazada, o aún pendiente)
-- Invalidar la query para refrescar la tabla
+- Reemplazar el `handleSend` placeholder por una llamada real a `supabase.functions.invoke('send-whatsapp-message')`
+- Enviar: nombre de plantilla, idioma, numero de telefono del destinatario, y el `meta_template_id`
+- Mostrar estado de carga mientras se envia
+- Mostrar toast de exito o error segun la respuesta real de Meta
+
+### Paso 4: Formato del numero de telefono
+
+El numero debe enviarse en formato internacional sin el signo `+` (ejemplo: `56912345678`). Se agregara una funcion de limpieza que elimine caracteres no numericos del telefono almacenado en el perfil del usuario.
 
 ### Archivos a crear/modificar
 
 | Archivo | Accion |
 |---|---|
-| `supabase/functions/check-whatsapp-template-status/index.ts` | Crear |
-| `supabase/config.toml` | Agregar configuracion de la nueva funcion |
-| `src/components/settings/WhatsappTemplatesManager.tsx` | Agregar boton de consulta de estado |
+| `supabase/functions/send-whatsapp-message/index.ts` | Crear |
+| `supabase/config.toml` | Agregar configuracion |
+| `src/components/invoices/InvoiceWhatsappDialog.tsx` | Conectar con la edge function |
 
-### Detalle tecnico
+### Prerequisito
 
-**Endpoint de Meta para consultar estado:**
-
-```text
-GET https://graph.facebook.com/v21.0/{meta_template_id}?fields=status,name,category
-Authorization: Bearer {access_token}
-```
-
-**Mapeo de estados de Meta a estados locales:**
-
-| Meta | Local |
-|---|---|
-| APPROVED | approved |
-| REJECTED | rejected |
-| PENDING | pending |
-| IN_APPEAL | pending |
+Las credenciales de Meta ya estan configuradas (token de acceso y Phone Number ID en Configuracion > Integraciones). El Phone Number ID (`meta_phone_number_id`) es el que se usa para enviar mensajes, a diferencia del WABA ID que se usa para gestionar plantillas.
 
