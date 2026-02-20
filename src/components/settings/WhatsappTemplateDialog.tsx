@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from '@/components/ui/dialog';
@@ -60,8 +61,10 @@ interface Props {
 
 export function WhatsappTemplateDialog({ open, onOpenChange, template }: Props) {
   const { toast } = useToast();
+  const { session } = useAuth();
   const queryClient = useQueryClient();
   const [form, setForm] = useState<TemplateData>(EMPTY);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const isEdit = !!template?.id;
 
   useEffect(() => {
@@ -121,6 +124,52 @@ export function WhatsappTemplateDialog({ open, onOpenChange, template }: Props) 
   };
 
   const canSave = form.name.trim() && form.body_text.trim();
+
+  const handleSubmitToMeta = async () => {
+    if (!canSave || isSubmitting) return;
+    setIsSubmitting(true);
+    try {
+      // First save as draft
+      const payload = {
+        name: form.name,
+        language: form.language,
+        category: form.category,
+        header_type: form.header_type,
+        header_text: form.header_type === 'text' ? form.header_text : null,
+        header_image_url: form.header_type === 'image' ? form.header_image_url : null,
+        body_text: form.body_text,
+        footer_text: form.footer_text || null,
+        buttons: JSON.parse(JSON.stringify(form.buttons)),
+        status: 'draft',
+      };
+
+      let templateId = form.id;
+      if (isEdit) {
+        const { error } = await supabase.from('whatsapp_templates').update(payload).eq('id', form.id!);
+        if (error) throw error;
+      } else {
+        const { data, error } = await supabase.from('whatsapp_templates').insert(payload).select('id').single();
+        if (error) throw error;
+        templateId = data.id;
+      }
+
+      // Call edge function
+      const { data, error } = await supabase.functions.invoke('submit-whatsapp-template', {
+        body: { template_id: templateId },
+      });
+
+      if (error) throw new Error(error.message || 'Error al enviar a Meta');
+      if (data?.error) throw new Error(data.error);
+
+      queryClient.invalidateQueries({ queryKey: ['whatsapp_templates'] });
+      toast({ title: 'Plantilla enviada a Meta', description: 'El estado cambiará cuando Meta la apruebe.' });
+      onOpenChange(false);
+    } catch (e: any) {
+      toast({ title: 'Error al enviar a Meta', description: e.message, variant: 'destructive' });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -249,11 +298,11 @@ export function WhatsappTemplateDialog({ open, onOpenChange, template }: Props) 
 
         <DialogFooter className="gap-2">
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
-          <Button variant="secondary" onClick={() => saveMutation.mutate('draft')} disabled={!canSave || saveMutation.isPending}>
+          <Button variant="secondary" onClick={() => saveMutation.mutate('draft')} disabled={!canSave || saveMutation.isPending || isSubmitting}>
             Guardar borrador
           </Button>
-          <Button onClick={() => saveMutation.mutate('pending')} disabled={!canSave || saveMutation.isPending}>
-            Enviar a aprobación
+          <Button onClick={handleSubmitToMeta} disabled={!canSave || saveMutation.isPending || isSubmitting}>
+            {isSubmitting ? 'Enviando...' : 'Enviar a aprobación'}
           </Button>
         </DialogFooter>
       </DialogContent>
