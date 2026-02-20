@@ -9,7 +9,7 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { WhatsappTemplateDialog } from './WhatsappTemplateDialog';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, Pencil, Trash2, MessageSquare } from 'lucide-react';
+import { Plus, Pencil, Trash2, MessageSquare, RefreshCw } from 'lucide-react';
 
 const STATUS_MAP: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> = {
   draft: { label: 'Borrador', variant: 'secondary' },
@@ -30,6 +30,27 @@ export function WhatsappTemplatesManager() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editTemplate, setEditTemplate] = useState<any | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [checkingId, setCheckingId] = useState<string | null>(null);
+
+  const checkStatusMutation = useMutation({
+    mutationFn: async (templateId: string) => {
+      const { data, error } = await supabase.functions.invoke('check-whatsapp-template-status', {
+        body: { template_id: templateId },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      return data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['whatsapp_templates'] });
+      const statusLabels: Record<string, string> = { approved: 'Aprobada ✅', rejected: 'Rechazada ❌', pending: 'Aún pendiente ⏳' };
+      toast({ title: 'Estado actualizado', description: statusLabels[data.status] || data.status });
+    },
+    onError: (err: any) => {
+      toast({ title: 'Error', description: err.message || 'No se pudo consultar el estado.', variant: 'destructive' });
+    },
+    onSettled: () => setCheckingId(null),
+  });
 
   const { data: templates, isLoading } = useQuery({
     queryKey: ['whatsapp_templates'],
@@ -113,6 +134,17 @@ export function WhatsappTemplatesManager() {
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex gap-1 justify-end">
+                          {t.status === 'pending' && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              disabled={checkingId === t.id}
+                              onClick={() => { setCheckingId(t.id); checkStatusMutation.mutate(t.id); }}
+                              title="Consultar estado en Meta"
+                            >
+                              <RefreshCw className={`w-4 h-4 ${checkingId === t.id ? 'animate-spin' : ''}`} />
+                            </Button>
+                          )}
                           <Button variant="ghost" size="icon" onClick={() => handleEdit(t)}>
                             <Pencil className="w-4 h-4" />
                           </Button>
