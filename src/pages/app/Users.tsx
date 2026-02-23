@@ -185,7 +185,7 @@ export default function UsersPage() {
     try {
       const { error } = await supabase
         .from('profiles')
-        .update({ is_active: false })
+        .update({ is_active: false, approval_status: 'rejected' })
         .eq('id', selectedUser.id);
 
       if (error) throw error;
