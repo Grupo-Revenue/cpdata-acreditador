@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Pencil, MessageSquare, Upload, CheckCircle } from 'lucide-react';
+import { Pencil, MessageSquare, Upload, CheckCircle, ChevronLeft, ChevronRight } from 'lucide-react';
 import { format } from 'date-fns';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
@@ -86,13 +86,15 @@ const initialFilters: Filters = {
   estado: 'all', evento: 'all', valor: '', fechaEmision: '', fechaPago: '',
 };
 
+const PAGE_SIZE = 25;
+
 export function InvoicesTable({ invoices, isAdmin, paymentDays, onEdit, onWhatsapp, onUpload }: InvoicesTableProps) {
   const [filters, setFilters] = useState<Filters>(initialFilters);
+  const [page, setPage] = useState(1);
 
   const setFilter = (key: keyof Filters, value: string) =>
     setFilters((prev) => ({ ...prev, [key]: value }));
 
-  // Extract unique values for dropdowns
   const uniqueRoles = useMemo(() => {
     const set = new Set<string>();
     invoices.forEach((inv) => inv.roles.forEach((r) => set.add(r)));
@@ -106,6 +108,7 @@ export function InvoicesTable({ invoices, isAdmin, paymentDays, onEdit, onWhatsa
   }, [invoices]);
 
   const filtered = useMemo(() => {
+    setPage(1);
     return invoices.filter((inv) => {
       const name = inv.profiles ? `${inv.profiles.nombre} ${inv.profiles.apellido}` : '';
       const invoiceId = formatInvoiceId(inv.invoice_number);
@@ -132,6 +135,9 @@ export function InvoicesTable({ invoices, isAdmin, paymentDays, onEdit, onWhatsa
       return true;
     });
   }, [invoices, filters, paymentDays]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   return (
     <div className="space-y-3">
@@ -208,6 +214,10 @@ export function InvoicesTable({ invoices, isAdmin, paymentDays, onEdit, onWhatsa
         />
       </div>
 
+      <p className="text-sm text-muted-foreground">
+        Mostrando {paginated.length} de {filtered.length} boletas
+      </p>
+
       <div className="rounded-md border">
         <Table>
           <TableHeader>
@@ -225,14 +235,14 @@ export function InvoicesTable({ invoices, isAdmin, paymentDays, onEdit, onWhatsa
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filtered.length === 0 ? (
+            {paginated.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={10} className="text-center text-muted-foreground py-8">
                   No hay boletas para mostrar
                 </TableCell>
               </TableRow>
             ) : (
-              filtered.map((inv) => {
+              paginated.map((inv) => {
                 const sc = statusConfig[inv.status];
                 const invoiceId = formatInvoiceId(inv.invoice_number);
                 const roles = inv.roles.length > 0 ? inv.roles.join(', ') : '-';
@@ -320,6 +330,22 @@ export function InvoicesTable({ invoices, isAdmin, paymentDays, onEdit, onWhatsa
           </TableBody>
         </Table>
       </div>
+
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between">
+          <p className="text-sm text-muted-foreground">
+            Página {page} de {totalPages}
+          </p>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage(page - 1)}>
+              <ChevronLeft className="h-4 w-4 mr-1" /> Anterior
+            </Button>
+            <Button variant="outline" size="sm" disabled={page >= totalPages} onClick={() => setPage(page + 1)}>
+              Siguiente <ChevronRight className="h-4 w-4 ml-1" />
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

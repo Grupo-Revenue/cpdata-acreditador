@@ -1,4 +1,4 @@
-import { Bell, Menu, User } from 'lucide-react';
+import { Menu, User } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { useAuth, type AppRole } from '@/contexts/AuthContext';
@@ -50,12 +50,6 @@ export function Topbar({ onMenuClick, sidebarCollapsed }: TopbarProps) {
 
         {/* Right side */}
         <div className="flex items-center gap-2">
-          {/* Notifications */}
-          <Button variant="ghost" size="icon" className="relative">
-            <Bell className="w-5 h-5" />
-            <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-destructive rounded-full" />
-          </Button>
-
           {/* Role badge */}
           {primaryRole && (
             <span className="hidden sm:inline-flex text-xs bg-primary/10 text-primary px-3 py-1.5 rounded-full font-medium">
