@@ -19,7 +19,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { UserWithRoles } from './types';
-import { Edit, Shield, Trash2, Search } from 'lucide-react';
+import { Edit, Shield, Trash2, Search, ChevronLeft, ChevronRight } from 'lucide-react';
 
 interface UsersTableProps {
   users: UserWithRoles[];
@@ -35,13 +35,17 @@ const roleLabels: Record<string, string> = {
   acreditador: 'Acreditador',
 };
 
+const PAGE_SIZE = 25;
+
 export function UsersTable({ users, onEdit, onManageRoles, onDelete }: UsersTableProps) {
   const [searchName, setSearchName] = useState('');
   const [searchRut, setSearchRut] = useState('');
   const [searchEmail, setSearchEmail] = useState('');
   const [filterStatus, setFilterStatus] = useState('todos');
+  const [page, setPage] = useState(1);
 
   const filteredUsers = useMemo(() => {
+    setPage(1);
     return users.filter((u) => {
       const fullName = `${u.nombre} ${u.apellido}`.toLowerCase();
       if (searchName && !fullName.includes(searchName.toLowerCase())) return false;
@@ -51,6 +55,9 @@ export function UsersTable({ users, onEdit, onManageRoles, onDelete }: UsersTabl
       return true;
     });
   }, [users, searchName, searchRut, searchEmail, filterStatus]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredUsers.length / PAGE_SIZE));
+  const paginatedUsers = filteredUsers.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   return (
     <div className="space-y-4">
@@ -88,7 +95,7 @@ export function UsersTable({ users, onEdit, onManageRoles, onDelete }: UsersTabl
       </div>
 
       <p className="text-sm text-muted-foreground">
-        Mostrando {filteredUsers.length} de {users.length} usuarios
+        Mostrando {paginatedUsers.length} de {filteredUsers.length} usuarios
       </p>
 
       <div className="rounded-md border">
@@ -104,7 +111,7 @@ export function UsersTable({ users, onEdit, onManageRoles, onDelete }: UsersTabl
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filteredUsers.map((user) => (
+            {paginatedUsers.map((user) => (
               <TableRow key={user.id}>
                 <TableCell className="font-medium">
                   {user.nombre || user.apellido ? (
@@ -162,6 +169,22 @@ export function UsersTable({ users, onEdit, onManageRoles, onDelete }: UsersTabl
           </TableBody>
         </Table>
       </div>
+
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between">
+          <p className="text-sm text-muted-foreground">
+            Página {page} de {totalPages}
+          </p>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage(page - 1)}>
+              <ChevronLeft className="h-4 w-4 mr-1" /> Anterior
+            </Button>
+            <Button variant="outline" size="sm" disabled={page >= totalPages} onClick={() => setPage(page + 1)}>
+              Siguiente <ChevronRight className="h-4 w-4 ml-1" />
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
