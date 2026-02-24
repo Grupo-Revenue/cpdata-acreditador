@@ -25,7 +25,7 @@ export default function SettingsPage() {
       />
 
       <Tabs defaultValue="general" className="space-y-4">
-        <TabsList>
+        <TabsList className="flex-wrap h-auto gap-1">
           <TabsTrigger value="general">General</TabsTrigger>
           <TabsTrigger value="permisos">Permisos</TabsTrigger>
           <TabsTrigger value="integrations">Integraciones</TabsTrigger>

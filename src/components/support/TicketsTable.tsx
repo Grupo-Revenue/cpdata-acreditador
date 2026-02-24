@@ -56,8 +56,8 @@ export function TicketsTable({ tickets, canEdit, canView, showCreatorColumns = t
   const baseCols = 4 + (showCreatorColumns ? 2 : 0);
   const totalCols = baseCols + (showActions ? 1 : 0);
   return (
-    <div className="rounded-md border">
-      <Table>
+    <div className="rounded-md border overflow-x-auto">
+      <Table className="min-w-[700px]">
         <TableHeader>
           <TableRow>
             <TableHead className="w-20">ID</TableHead>
