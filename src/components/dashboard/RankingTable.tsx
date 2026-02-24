@@ -98,7 +98,8 @@ export function RankingTable({ limit = 10, className }: RankingTableProps) {
               ))}
             </div>
           ) : ranking && ranking.length > 0 ? (
-            <Table>
+            <div className="overflow-x-auto">
+            <Table className="min-w-[500px]">
               <TableHeader>
                 <TableRow>
                   <TableHead className="w-12">#</TableHead>
@@ -149,6 +150,7 @@ export function RankingTable({ limit = 10, className }: RankingTableProps) {
                 ))}
               </TableBody>
             </Table>
+            </div>
           ) : (
             <div className="text-center py-8">
               <Trophy className="w-12 h-12 mx-auto text-muted-foreground/50 mb-3" />

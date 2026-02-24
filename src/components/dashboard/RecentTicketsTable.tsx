@@ -43,7 +43,8 @@ export function RecentTicketsTable() {
       return <EmptyState icon={MessageCircle} title="Sin tickets" description="No hay tickets en esta categoría" />;
     }
     return (
-      <Table>
+      <div className="overflow-x-auto">
+      <Table className="min-w-[500px]">
         <TableHeader>
           <TableRow>
             <TableHead className="w-16">#</TableHead>
@@ -71,6 +72,7 @@ export function RecentTicketsTable() {
           ))}
         </TableBody>
       </Table>
+      </div>
     );
   };
 

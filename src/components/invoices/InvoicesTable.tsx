@@ -142,7 +142,7 @@ export function InvoicesTable({ invoices, isAdmin, paymentDays, onEdit, onWhatsa
   return (
     <div className="space-y-3">
       {/* Filter row */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 lg:grid-cols-9 gap-2">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 xl:grid-cols-9 gap-2">
         <Input
           placeholder="Nombre..."
           value={filters.nombre}
@@ -218,8 +218,8 @@ export function InvoicesTable({ invoices, isAdmin, paymentDays, onEdit, onWhatsa
         Mostrando {paginated.length} de {filtered.length} boletas
       </p>
 
-      <div className="rounded-md border">
-        <Table>
+      <div className="rounded-md border overflow-x-auto">
+        <Table className="min-w-[900px]">
           <TableHeader>
             <TableRow>
               <TableHead>Nombre</TableHead>

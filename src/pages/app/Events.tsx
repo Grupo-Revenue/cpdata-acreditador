@@ -98,7 +98,7 @@ export default function EventsPage() {
 
   return (
     <AppShell>
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-start justify-between gap-4">
         <PageHeader
           title="Eventos"
           description="Gestión de eventos y acreditaciones"

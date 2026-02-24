@@ -98,8 +98,8 @@ export function UsersTable({ users, onEdit, onManageRoles, onDelete }: UsersTabl
         Mostrando {paginatedUsers.length} de {filteredUsers.length} usuarios
       </p>
 
-      <div className="rounded-md border">
-        <Table>
+      <div className="rounded-md border overflow-x-auto">
+        <Table className="min-w-[700px]">
           <TableHeader>
             <TableRow>
               <TableHead>Nombre</TableHead>

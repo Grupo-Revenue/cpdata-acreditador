@@ -114,7 +114,7 @@ export default function RegisterPage() {
             </FormItem>
           )} />
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <FormField control={form.control} name="nombre" render={({ field }) => (
               <FormItem>
                 <FormLabel>Nombre *</FormLabel>
@@ -149,7 +149,7 @@ export default function RegisterPage() {
             </FormItem>
           )} />
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <FormField control={form.control} name="telefono" render={({ field }) => (
               <FormItem>
                 <FormLabel>Teléfono *</FormLabel>
@@ -189,7 +189,7 @@ export default function RegisterPage() {
           {/* Datos adicionales */}
           <p className="text-sm font-semibold text-foreground">Datos adicionales</p>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <FormField control={form.control} name="comuna" render={({ field }) => (
               <FormItem>
                 <FormLabel className="flex items-center gap-1"><MapPin className="h-3.5 w-3.5" /> Comuna</FormLabel>
@@ -206,7 +206,7 @@ export default function RegisterPage() {
             )} />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <FormField control={form.control} name="instagram" render={({ field }) => (
               <FormItem>
                 <FormLabel className="flex items-center gap-1"><Instagram className="h-3.5 w-3.5" /> Instagram</FormLabel>
@@ -223,7 +223,7 @@ export default function RegisterPage() {
             )} />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <FormField control={form.control} name="idioma" render={({ field }) => (
               <FormItem>
                 <FormLabel>Idiomas</FormLabel>
@@ -253,7 +253,7 @@ export default function RegisterPage() {
           {/* Datos académicos */}
           <p className="text-sm font-semibold text-foreground flex items-center gap-1"><GraduationCap className="h-4 w-4" /> Datos académicos</p>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <FormField control={form.control} name="universidad" render={({ field }) => (
               <FormItem>
                 <FormLabel>Universidad o Institución</FormLabel>
@@ -291,7 +291,7 @@ export default function RegisterPage() {
             </FormItem>
           )} />
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <FormField control={form.control} name="contacto_emergencia_email" render={({ field }) => (
               <FormItem>
                 <FormLabel>Email del contacto</FormLabel>
