@@ -215,34 +215,25 @@ export default function UsersPage() {
     
     setIsDeleting(true);
     try {
-      // First delete user roles
-      const { error: rolesError } = await supabase
-        .from('user_roles')
-        .delete()
-        .eq('user_id', deletingUser.id);
+      const { data, error } = await supabase.functions.invoke('delete-user', {
+        body: { user_id: deletingUser.id },
+      });
 
-      if (rolesError) throw rolesError;
-
-      // Then delete the profile
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .delete()
-        .eq('id', deletingUser.id);
-
-      if (profileError) throw profileError;
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
 
       toast({
         title: 'Usuario eliminado',
-        description: `${deletingUser.nombre || deletingUser.email} ha sido eliminado.`,
+        description: `${deletingUser.nombre || deletingUser.email} ha sido eliminado completamente.`,
       });
 
       handleRefresh();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error deleting user:', error);
       toast({
         variant: 'destructive',
         title: 'Error',
-        description: 'No se pudo eliminar el usuario.',
+        description: error?.message || 'No se pudo eliminar el usuario.',
       });
     } finally {
       setIsDeleting(false);
