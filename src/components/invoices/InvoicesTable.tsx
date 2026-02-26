@@ -330,7 +330,11 @@ export function InvoicesTable({ invoices, isAdmin, paymentDays, onEdit, onWhatsa
                             </Button>
                           )
                         ) : (
-                          inv.file_url ? <CheckCircle className="h-4 w-4 text-success" /> : null
+                          inv.file_url ? <CheckCircle className="h-4 w-4 text-success" /> : (
+                            <Button variant="ghost" size="icon" onClick={() => onUpload(inv)} title="Subir boleta">
+                              <Upload className="h-4 w-4" />
+                            </Button>
+                          )
                         )}
                       </div>
                     </TableCell>
