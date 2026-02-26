@@ -1,36 +1,23 @@
 
 
-## Diagnostico
+## Plan
 
-El usuario `gabriel@revopslatam.com` tiene 4 roles: superadmin, administracion, supervisor y acreditador. La funcion RLS `is_admin(auth.uid())` verifica la tabla `user_roles` directamente, donde este usuario **siempre** es admin, sin importar que rol activo haya elegido en la interfaz.
+### Cambio 1: Ocultar boton de subir boleta para admin/superadmin en `InvoicesTable.tsx`
 
-Por lo tanto, la politica `"Admins can view all invoices"` siempre se cumple para este usuario, mostrando todas las boletas incluso cuando opera como supervisor.
+En las lineas 324-338, cambiar la logica para que:
+- **Admin**: solo muestra check verde si hay archivo, o nada si no hay. Sin boton de upload.
+- **No-admin (supervisor/acreditador)**: muestra check verde si hay archivo, o boton de upload si no.
 
-## Solucion
+### Cambio 2: Agregar campo "Numero de boleta" al `InvoiceUploadDialog.tsx`
 
-Este es un problema de **diseño de seguridad vs UX**. Hay dos caminos:
+Antes de permitir subir el archivo, el dialog debe incluir un campo de texto para ingresar el numero de boleta (`numero_boleta`). Al hacer submit, se actualizan ambos campos (`file_url` y `numero_boleta`) en la tabla `invoices`.
 
-### Opcion A: Filtrar en el frontend (recomendado, rapido)
+- Agregar estado `numeroBoleta` al dialog
+- Agregar `<Input>` para el numero de boleta antes del file input
+- Validar que ambos campos esten completos antes de subir
+- Actualizar el `.update()` para incluir `numero_boleta`
 
-En `Invoices.tsx`, cuando el usuario NO tiene rol activo admin, filtrar las boletas del lado cliente para mostrar solo las propias:
-
-```tsx
-// En la query o despues de obtener datos:
-const filtered = isAdmin ? invoices : invoices.filter(inv => inv.user_id === user?.id);
-```
-
-Esto respeta el concepto de "rol activo" sin modificar RLS (que correctamente protege a nivel DB). Un usuario con rol admin en BD siempre podra ver todo via API, pero la UI respeta su eleccion de contexto.
-
-### Opcion B: Modificar RLS para respetar rol activo (complejo, no recomendado)
-
-Requeriria pasar el rol activo como parametro de sesion en cada request (`set_config`), lo cual implica cambios profundos en el cliente Supabase y todas las funciones RLS. Demasiado invasivo.
-
-## Plan de implementacion (Opcion A)
-
-**1 archivo**: `src/pages/app/Invoices.tsx`
-
-- Despues de obtener `invoices` del query, aplicar filtro basado en `isAdmin`:
-  - Si `isAdmin` es `true` → mostrar todas
-  - Si `isAdmin` es `false` → filtrar por `user_id === user.id`
-- Usar `user` del `useAuth()` para obtener el ID
+### Archivos a modificar
+1. `src/components/invoices/InvoicesTable.tsx` — logica de acciones
+2. `src/components/invoices/InvoiceUploadDialog.tsx` — agregar campo numero de boleta
 
