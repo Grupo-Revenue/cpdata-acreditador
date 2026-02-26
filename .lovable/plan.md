@@ -1,34 +1,38 @@
 
 
-## Diagnóstico: RLS bloquea la visibilidad de acreditadores en Gestión de Evento
+## Diagnóstico: Recursión infinita en RLS de `event_accreditors`
 
-### Problema
-La tabla `event_accreditors` tiene estas políticas RLS de SELECT:
-- **Admins can view all event_accreditors**: solo para admins
-- **Users can view own assignments**: solo `user_id = auth.uid()`
+La política recién creada "Event members can view co-assigned accreditors" consulta la misma tabla `event_accreditors` dentro de su `USING`, causando recursión infinita. Esto rompe **todas** las consultas que tocan `event_accreditors`, incluyendo eventos, boletas y postulantes.
 
-Cuando un supervisor abre "Gestión de Evento", el query busca TODOS los acreditadores del evento, pero RLS solo le devuelve su propia fila. Por eso aparece "No hay acreditadores aceptados con contrato firmado" aunque existan.
+### Solución: Migración SQL
 
-### Solución
-
-**Migración SQL**: Agregar una política RLS que permita a usuarios asignados a un evento ver a todos los demás asignados del mismo evento:
+1. **Eliminar** la política recursiva.
+2. **Crear una función `SECURITY DEFINER`** que verifique si un usuario está asignado a un evento sin pasar por RLS.
+3. **Crear la política corregida** usando esa función.
 
 ```sql
+-- 1. Drop recursive policy
+DROP POLICY "Event members can view co-assigned accreditors" ON event_accreditors;
+
+-- 2. Security definer function to avoid recursion
+CREATE OR REPLACE FUNCTION public.is_event_member(_user_id uuid, _event_id uuid)
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM event_accreditors
+    WHERE user_id = _user_id AND event_id = _event_id
+  )
+$$;
+
+-- 3. Recreate policy using the function
 CREATE POLICY "Event members can view co-assigned accreditors"
   ON event_accreditors FOR SELECT
-  USING (
-    EXISTS (
-      SELECT 1 FROM event_accreditors ea
-      WHERE ea.event_id = event_accreditors.event_id
-        AND ea.user_id = auth.uid()
-    )
-  );
+  USING (public.is_event_member(auth.uid(), event_id));
 ```
 
-Esto permite que si estás asignado a un evento (como supervisor), puedas ver a todos los acreditadores de ese mismo evento. No se requieren cambios en el código frontend.
-
-### Impacto en seguridad
-- Solo usuarios ya asignados al evento pueden ver a los co-asignados
-- No expone datos de otros eventos
-- Consistente con las políticas existentes de `attendance_records` y `event_expenses`
+No se requieren cambios en el frontend.
 
