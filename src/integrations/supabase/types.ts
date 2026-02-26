@@ -671,6 +671,16 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_accreditor_ranking: {
+        Args: { _limit?: number }
+        Returns: {
+          apellido: string
+          events_count: number
+          id: string
+          nombre: string
+          total_points: number
+        }[]
+      }
       get_user_roles: {
         Args: { _user_id: string }
         Returns: Database["public"]["Enums"]["app_role"][]
