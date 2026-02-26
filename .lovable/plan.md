@@ -1,28 +1,44 @@
 
 
-## Problema: "Eventos del Mes" muestra cero
+## Problema: Formato de fecha incompatible
 
 ### Causa raiz
 
-La Edge Function `hubspot-deals` tiene `limit: 100` en la busqueda de HubSpot y **no implementa paginacion**. Si hay mas de 100 deals en el pipeline/stage filtrado, los deals restantes nunca se obtienen. Ademas, si los eventos de este mes caen fuera de los primeros 100 resultados (ordenados por HubSpot internamente), el conteo en el dashboard sera 0.
+Los datos de HubSpot devuelven `fecha_inicio_del_evento` en formato **DD-MM-YYYY** (ejemplo: `"12-03-2026"`, `"23-02-2026"`), pero los dashboards comparan estas fechas contra strings en formato **YYYY-MM-DD** (ejemplo: `"2026-02-01"`).
+
+La comparacion de strings `"23-02-2026" >= "2026-02-01"` falla porque alfabeticamente `"2" < "2026"`, por lo que ningun evento coincide.
+
+Evidencia directa del response de HubSpot:
+- `"fecha_inicio_del_evento": "23-02-2026"` (DD-MM-YYYY)
+- `"fecha_inicio_del_evento": "12-03-2026"` (DD-MM-YYYY)
 
 ### Solucion
 
-Modificar `supabase/functions/hubspot-deals/index.ts` para implementar **paginacion con cursor `after`** del API de HubSpot Search, iterando hasta obtener todos los deals.
+Crear una funcion helper que convierta `"DD-MM-YYYY"` a `"YYYY-MM-DD"` antes de comparar. Aplicar en los 3 dashboards que filtran por fecha:
 
-#### Cambios en `hubspot-deals/index.ts`:
+1. `src/pages/dashboard/SuperadminDashboard.tsx`
+2. `src/pages/dashboard/AdminDashboard.tsx`
+3. `src/pages/dashboard/AcreditadorDashboard.tsx`
 
-1. Envolver la llamada a HubSpot Search en un loop que use el campo `paging.next.after` de la respuesta para solicitar la siguiente pagina
-2. Acumular todos los results en un array antes de procesarlos
-3. Mantener el `limit: 100` por pagina (maximo permitido por HubSpot)
-
-```text
-Loop:
-  POST /crm/v3/objects/deals/search  (with after cursor if not first page)
-  Append results to allResults[]
-  If paging.next.after exists → continue
-  Else → break
+La funcion:
+```typescript
+const parseDate = (d: string | null | undefined): string | null => {
+  if (!d) return null;
+  const parts = d.split('-');
+  if (parts.length === 3 && parts[0].length === 2) {
+    return `${parts[2]}-${parts[1]}-${parts[0]}`; // DD-MM-YYYY -> YYYY-MM-DD
+  }
+  return d; // already YYYY-MM-DD
+};
 ```
 
-No se requieren cambios en los dashboards (`SuperadminDashboard.tsx`, `AdminDashboard.tsx`, `AcreditadorDashboard.tsx`) ya que la logica de filtrado por fecha es correcta; solo necesitan recibir todos los deals.
+Luego reemplazar cada `d.fecha_inicio_del_evento` por `parseDate(d.fecha_inicio_del_evento)` en los filtros de today/week/month.
+
+### Archivos a modificar
+
+| Archivo | Cambio |
+|---|---|
+| `SuperadminDashboard.tsx` | Agregar parseDate, usarla en filtros |
+| `AdminDashboard.tsx` | Agregar parseDate, usarla en filtros |
+| `AcreditadorDashboard.tsx` | Verificar si tiene el mismo patron y corregir |
 
