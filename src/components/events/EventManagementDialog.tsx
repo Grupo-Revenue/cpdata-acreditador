@@ -12,7 +12,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { Separator } from '@/components/ui/separator';
 import { Textarea } from '@/components/ui/textarea';
-import { Save, Plus, Trash2, Lock, Upload, DollarSign } from 'lucide-react';
+import { Save, Plus, Trash2, Lock, Upload, DollarSign, Search } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
 
 interface EventManagementDialogProps {
@@ -34,6 +35,10 @@ interface AttendanceRow {
   userId: string;
   nombre: string;
   apellido: string;
+  rut: string;
+  telefono: string;
+  applicationStatus: string;
+  contractStatus: string;
   status: AttendanceStatus;
   attendanceDate: string;
   checkInTime: string;
@@ -57,6 +62,7 @@ export function EventManagementDialog({ open, onOpenChange, hubspotDealId, dealN
   const [confirmClose, setConfirmClose] = useState(false);
   const [closingEvent, setClosingEvent] = useState(false);
   const [attendanceRows, setAttendanceRows] = useState<AttendanceRow[]>([]);
+  const [searchFilter, setSearchFilter] = useState('');
   const [newExpenses, setNewExpenses] = useState<Record<string, { name: string; amount: string; file: File | null }>>({});
 
   // Resolve local event from hubspot_deal_id
@@ -84,19 +90,32 @@ export function EventManagementDialog({ open, onOpenChange, hubspotDealId, dealN
     queryFn: async () => {
       const { data: assignments, error } = await supabase
         .from('event_accreditors')
-        .select('user_id')
+        .select('user_id, application_status, contract_status')
         .eq('event_id', eventId!);
       if (error) throw error;
 
-      const userIds = (assignments ?? []).map(a => a.user_id);
+      // Filter: only accepted or contract signed
+      const filtered = (assignments ?? []).filter(
+        a => a.application_status === 'aceptado' || a.contract_status === 'firmado'
+      );
+
+      const userIds = filtered.map(a => a.user_id);
       if (userIds.length === 0) return [];
 
       const { data: profiles, error: pErr } = await supabase
         .from('profiles')
-        .select('id, nombre, apellido')
+        .select('id, nombre, apellido, rut, telefono')
         .in('id', userIds);
       if (pErr) throw pErr;
-      return profiles ?? [];
+
+      return (profiles ?? []).map(p => {
+        const assignment = filtered.find(a => a.user_id === p.id);
+        return {
+          ...p,
+          applicationStatus: assignment?.application_status ?? 'pendiente',
+          contractStatus: assignment?.contract_status ?? 'pendiente',
+        };
+      });
     },
   });
 
@@ -164,6 +183,10 @@ export function EventManagementDialog({ open, onOpenChange, hubspotDealId, dealN
         userId: acc.id,
         nombre: acc.nombre,
         apellido: acc.apellido,
+        rut: acc.rut ?? '',
+        telefono: acc.telefono ?? '',
+        applicationStatus: acc.applicationStatus,
+        contractStatus: acc.contractStatus,
         status: (existing?.status as AttendanceStatus) ?? 'presente',
         attendanceDate: existing?.attendance_date ?? today,
         checkInTime: existing?.check_in_time?.substring(0, 5) ?? '',
@@ -311,15 +334,24 @@ export function EventManagementDialog({ open, onOpenChange, hubspotDealId, dealN
     }
   };
 
-  const updateAttendanceRow = (index: number, field: keyof AttendanceRow, value: any) => {
+  const updateAttendanceRow = (userId: string, field: keyof AttendanceRow, value: any) => {
     setAttendanceRows(prev => {
-      const next = [...prev];
-      next[index] = { ...next[index], [field]: value };
-      return next;
+      return prev.map(row => row.userId === userId ? { ...row, [field]: value } : row);
     });
   };
 
   const getExpenseInput = (userId: string) => newExpenses[userId] ?? { name: '', amount: '', file: null };
+
+  const searchLower = searchFilter.toLowerCase();
+  const filteredRows = attendanceRows.filter(row => {
+    if (!searchFilter) return true;
+    return (
+      row.nombre.toLowerCase().includes(searchLower) ||
+      row.apellido.toLowerCase().includes(searchLower) ||
+      row.rut.toLowerCase().includes(searchLower) ||
+      (row.telefono ?? '').toLowerCase().includes(searchLower)
+    );
+  });
 
   return (
     <>
@@ -344,15 +376,38 @@ export function EventManagementDialog({ open, onOpenChange, hubspotDealId, dealN
                   <CardTitle className="text-base">Registro de Asistencia</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
+                  {attendanceRows.length > 0 && (
+                    <div className="relative">
+                      <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        placeholder="Buscar por nombre, RUT o teléfono..."
+                        value={searchFilter}
+                        onChange={(e) => setSearchFilter(e.target.value)}
+                        className="pl-9 h-9 text-sm"
+                      />
+                    </div>
+                  )}
                   {attendanceRows.length === 0 ? (
                     <p className="text-center text-muted-foreground py-6">
-                      No hay acreditadores asignados a este evento.
+                      No hay acreditadores aceptados o con contrato firmado.
+                    </p>
+                  ) : filteredRows.length === 0 ? (
+                    <p className="text-center text-muted-foreground py-6">
+                      No se encontraron resultados para "{searchFilter}".
                     </p>
                   ) : (
-                    attendanceRows.map((row, i) => (
+                    filteredRows.map((row, i) => (
                       <div key={row.userId} className="border rounded-lg p-3 space-y-3">
                         <div className="flex items-center justify-between">
-                          <p className="text-sm font-medium">{row.nombre} {row.apellido}</p>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <p className="text-sm font-medium">{row.nombre} {row.apellido}</p>
+                            {row.contractStatus === 'firmado' && (
+                              <Badge variant="default" className="text-[10px] px-1.5 py-0">Contrato Firmado</Badge>
+                            )}
+                            {row.applicationStatus === 'aceptado' && row.contractStatus !== 'firmado' && (
+                              <Badge variant="secondary" className="text-[10px] px-1.5 py-0">Aceptado</Badge>
+                            )}
+                          </div>
                           {!isClosed && (
                             <Button
                               variant="ghost"
@@ -371,7 +426,7 @@ export function EventManagementDialog({ open, onOpenChange, hubspotDealId, dealN
                             <Select
                               value={row.status}
                               disabled={isClosed}
-                              onValueChange={(v) => updateAttendanceRow(i, 'status', v)}
+                              onValueChange={(v) => updateAttendanceRow(row.userId, 'status', v)}
                             >
                               <SelectTrigger className="h-8 text-xs">
                                 <SelectValue />
@@ -395,7 +450,7 @@ export function EventManagementDialog({ open, onOpenChange, hubspotDealId, dealN
                               type="date"
                               value={row.attendanceDate}
                               disabled={isClosed}
-                              onChange={(e) => updateAttendanceRow(i, 'attendanceDate', e.target.value)}
+                              onChange={(e) => updateAttendanceRow(row.userId, 'attendanceDate', e.target.value)}
                               className="h-8 text-xs"
                             />
                           </div>
@@ -405,7 +460,7 @@ export function EventManagementDialog({ open, onOpenChange, hubspotDealId, dealN
                               type="time"
                               value={row.checkInTime}
                               disabled={isClosed}
-                              onChange={(e) => updateAttendanceRow(i, 'checkInTime', e.target.value)}
+                              onChange={(e) => updateAttendanceRow(row.userId, 'checkInTime', e.target.value)}
                               className="h-8 text-xs"
                             />
                           </div>
@@ -414,7 +469,7 @@ export function EventManagementDialog({ open, onOpenChange, hubspotDealId, dealN
                           placeholder="Comentario..."
                           value={row.comment}
                           disabled={isClosed}
-                          onChange={(e) => updateAttendanceRow(i, 'comment', e.target.value)}
+                          onChange={(e) => updateAttendanceRow(row.userId, 'comment', e.target.value)}
                           className="min-h-[40px] h-10 text-xs resize-none"
                         />
                       </div>
