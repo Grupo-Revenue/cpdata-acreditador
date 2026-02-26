@@ -77,13 +77,14 @@ interface Filters {
   estado: string;
   evento: string;
   valor: string;
+  fechaEvento: string;
   fechaEmision: string;
   fechaPago: string;
 }
 
 const initialFilters: Filters = {
   nombre: '', rol: '', idBoleta: '', numeroBoleta: '',
-  estado: 'all', evento: 'all', valor: '', fechaEmision: '', fechaPago: '',
+  estado: 'all', evento: 'all', valor: '', fechaEvento: '', fechaEmision: '', fechaPago: '',
 };
 
 const PAGE_SIZE = 25;
@@ -113,6 +114,7 @@ export function InvoicesTable({ invoices, isAdmin, paymentDays, onEdit, onWhatsa
       const name = inv.profiles ? `${inv.profiles.nombre} ${inv.profiles.apellido}` : '';
       const invoiceId = formatInvoiceId(inv.invoice_number);
       const roles = inv.roles.join(', ');
+      const eventDateStr = inv.events?.event_date ? formatDateSafe(inv.events.event_date) : '';
       const paymentDateStr = inv.payment_date
         ? formatDateSafe(inv.payment_date)
         : inv.events?.event_date
@@ -129,6 +131,7 @@ export function InvoicesTable({ invoices, isAdmin, paymentDays, onEdit, onWhatsa
       if (filters.estado !== 'all' && inv.status !== filters.estado) return false;
       if (filters.evento !== 'all' && inv.events?.name !== filters.evento) return false;
       if (!match(formatCLP(inv.amount), filters.valor)) return false;
+      if (!match(eventDateStr, filters.fechaEvento)) return false;
       if (!match(formatDateSafe(inv.emission_date), filters.fechaEmision)) return false;
       if (!match(paymentDateStr, filters.fechaPago)) return false;
 
@@ -142,7 +145,7 @@ export function InvoicesTable({ invoices, isAdmin, paymentDays, onEdit, onWhatsa
   return (
     <div className="space-y-3">
       {/* Filter row */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 xl:grid-cols-9 gap-2">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 xl:grid-cols-10 gap-2">
         <Input
           placeholder="Nombre..."
           value={filters.nombre}
@@ -201,6 +204,12 @@ export function InvoicesTable({ invoices, isAdmin, paymentDays, onEdit, onWhatsa
           className="h-8 text-xs"
         />
         <Input
+          placeholder="F. evento..."
+          value={filters.fechaEvento}
+          onChange={(e) => setFilter('fechaEvento', e.target.value)}
+          className="h-8 text-xs"
+        />
+        <Input
           placeholder="F. emisión..."
           value={filters.fechaEmision}
           onChange={(e) => setFilter('fechaEmision', e.target.value)}
@@ -229,6 +238,7 @@ export function InvoicesTable({ invoices, isAdmin, paymentDays, onEdit, onWhatsa
               <TableHead>Estado</TableHead>
               <TableHead>Evento</TableHead>
               <TableHead>Valor</TableHead>
+              <TableHead>Fecha evento</TableHead>
               <TableHead>Fecha emisión</TableHead>
               <TableHead>Fecha de pago</TableHead>
               <TableHead>Acciones</TableHead>
@@ -237,7 +247,7 @@ export function InvoicesTable({ invoices, isAdmin, paymentDays, onEdit, onWhatsa
           <TableBody>
             {paginated.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={10} className="text-center text-muted-foreground py-8">
+                <TableCell colSpan={11} className="text-center text-muted-foreground py-8">
                   No hay boletas para mostrar
                 </TableCell>
               </TableRow>
@@ -290,6 +300,7 @@ export function InvoicesTable({ invoices, isAdmin, paymentDays, onEdit, onWhatsa
                         formatCLP(inv.amount)
                       )}
                     </TableCell>
+                    <TableCell>{inv.events?.event_date ? formatDateSafe(inv.events.event_date) : '-'}</TableCell>
                     <TableCell>{formatDateSafe(inv.emission_date)}</TableCell>
                     <TableCell>
                       {inv.payment_date
