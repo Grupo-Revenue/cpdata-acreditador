@@ -86,6 +86,8 @@ export function EventApplicantsDialog({ open, onOpenChange }: EventApplicantsDia
   const { data: rawData, isLoading } = useQuery({
     queryKey: ['event-applicants'],
     enabled: open,
+    refetchOnMount: 'always',
+    staleTime: 0,
     queryFn: async () => {
       const { data, error } = await supabase
         .from('event_accreditors')
