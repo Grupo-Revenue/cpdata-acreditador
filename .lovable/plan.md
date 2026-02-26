@@ -1,30 +1,36 @@
 
 
-## Problema
+## Diagnostico
 
-En `InvoicesTable.tsx` (líneas 324-334), la lógica de acciones para usuarios no-admin solo muestra el check verde si ya hay archivo, pero **no muestra el botón de subir** cuando no hay archivo:
+El usuario `gabriel@revopslatam.com` tiene 4 roles: superadmin, administracion, supervisor y acreditador. La funcion RLS `is_admin(auth.uid())` verifica la tabla `user_roles` directamente, donde este usuario **siempre** es admin, sin importar que rol activo haya elegido en la interfaz.
+
+Por lo tanto, la politica `"Admins can view all invoices"` siempre se cumple para este usuario, mostrando todas las boletas incluso cuando opera como supervisor.
+
+## Solucion
+
+Este es un problema de **diseño de seguridad vs UX**. Hay dos caminos:
+
+### Opcion A: Filtrar en el frontend (recomendado, rapido)
+
+En `Invoices.tsx`, cuando el usuario NO tiene rol activo admin, filtrar las boletas del lado cliente para mostrar solo las propias:
 
 ```tsx
-// Línea 332-334: usuario no-admin sin file_url → null (nada)
-: (
-  inv.file_url ? <CheckCircle ... /> : null
-)
+// En la query o despues de obtener datos:
+const filtered = isAdmin ? invoices : invoices.filter(inv => inv.user_id === user?.id);
 ```
 
-## Solución
+Esto respeta el concepto de "rol activo" sin modificar RLS (que correctamente protege a nivel DB). Un usuario con rol admin en BD siempre podra ver todo via API, pero la UI respeta su eleccion de contexto.
 
-Cambiar la rama no-admin para que muestre el botón `Upload` cuando `file_url` está vacío, igual que los admins:
+### Opcion B: Modificar RLS para respetar rol activo (complejo, no recomendado)
 
-```tsx
-// Para no-admin:
-inv.file_url ? (
-  <CheckCircle className="h-4 w-4 text-success" />
-) : (
-  <Button variant="ghost" size="icon" onClick={() => onUpload(inv)} title="Subir boleta">
-    <Upload className="h-4 w-4" />
-  </Button>
-)
-```
+Requeriria pasar el rol activo como parametro de sesion en cada request (`set_config`), lo cual implica cambios profundos en el cliente Supabase y todas las funciones RLS. Demasiado invasivo.
 
-Un cambio de 2 líneas en `src/components/invoices/InvoicesTable.tsx`.
+## Plan de implementacion (Opcion A)
+
+**1 archivo**: `src/pages/app/Invoices.tsx`
+
+- Despues de obtener `invoices` del query, aplicar filtro basado en `isAdmin`:
+  - Si `isAdmin` es `true` → mostrar todas
+  - Si `isAdmin` es `false` → filtrar por `user_id === user.id`
+- Usar `user` del `useAuth()` para obtener el ID
 
