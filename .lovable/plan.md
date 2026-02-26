@@ -1,27 +1,14 @@
 
 
-## Fix: Permitir a todos los usuarios crear tickets de soporte
+## Plan: Simplificar filtro y eliminar badges en Gestión de Evento
 
-### Problema
-El botón "Crear Ticket" en la página de Soporte solo es visible para administradores (`isAdmin`), pero todos los usuarios autenticados deberían poder crear tickets.
+### Cambios en `src/components/events/EventManagementDialog.tsx`
 
-### Cambio en `src/pages/app/Support.tsx`
+1. **Filtro más estricto** (líneas 99-102): Cambiar la condición OR a AND — solo mostrar acreditadores con `application_status === 'aceptado'` **Y** `contract_status === 'firmado'`.
 
-Eliminar la condición `isAdmin &&` que envuelve el botón "Crear Ticket" en el `PageHeader` (línea ~114), para que todos los roles puedan ver y usar el botón.
+2. **Eliminar badges** (líneas 406-411): Remover los dos `<Badge>` de "Contrato Firmado" y "Aceptado", dejando solo el nombre.
 
-```tsx
-// Antes:
-actions={
-  isAdmin && (
-    <Button onClick={() => setCreateOpen(true)}>...
-  )
-}
+3. **Limpiar interfaz** (líneas 40-41): Eliminar `applicationStatus` y `contractStatus` de `AttendanceRow` y del mapeo, ya que no se usarán más en la UI.
 
-// Después:
-actions={
-  <Button onClick={() => setCreateOpen(true)}>...
-}
-```
-
-No se requieren cambios en la base de datos: la política RLS `Authenticated users can create tickets` ya permite a cualquier usuario autenticado insertar tickets.
+4. **Actualizar mensaje vacío** (línea 394): Cambiar texto a "No hay acreditadores aceptados con contrato firmado."
 
