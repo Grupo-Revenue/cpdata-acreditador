@@ -89,9 +89,19 @@ export function EventApplicantsDialog({ open, onOpenChange }: EventApplicantsDia
     queryFn: async () => {
       const { data, error } = await supabase
         .from('event_accreditors')
-        .select('id, user_id, event_id, application_status, contract_status, payment_amount, events(name, event_date)');
+        .select('id, user_id, event_id, application_status, contract_status, payment_amount, events(name, event_date, hubspot_deal_id)');
       if (error) throw error;
       return data as any[];
+    },
+  });
+
+  const { data: hubspotDeals } = useQuery({
+    queryKey: ['hubspot-deals-for-applicants'],
+    enabled: open,
+    queryFn: async () => {
+      const { data, error } = await supabase.functions.invoke('hubspot-deals');
+      if (error) throw error;
+      return (data?.deals ?? []) as any[];
     },
   });
 
@@ -123,6 +133,14 @@ export function EventApplicantsDialog({ open, onOpenChange }: EventApplicantsDia
     },
   });
 
+  const hubspotDealMap = useMemo(() => {
+    const map = new Map<string, any>();
+    for (const deal of hubspotDeals ?? []) {
+      if (deal.dealId) map.set(deal.dealId, deal);
+    }
+    return map;
+  }, [hubspotDeals]);
+
   const applicants: Applicant[] = useMemo(() => {
     if (!rawData || !profiles || !userRoles) return [];
     const profileMap = new Map(profiles.map((p) => [p.id, p]));
@@ -133,6 +151,7 @@ export function EventApplicantsDialog({ open, onOpenChange }: EventApplicantsDia
     }
     return rawData.map((r: any) => {
       const profile = profileMap.get(r.user_id);
+      const hubspotDeal = r.events?.hubspot_deal_id ? hubspotDealMap.get(r.events.hubspot_deal_id) : null;
       return {
         id: r.id,
         user_id: r.user_id,
@@ -143,12 +162,15 @@ export function EventApplicantsDialog({ open, onOpenChange }: EventApplicantsDia
         apellido: profile?.apellido ?? '',
         ranking: profile?.ranking ?? null,
         payment_amount: r.payment_amount ?? null,
-        event_name: r.events?.name ?? 'Sin nombre',
+        event_name: r.events?.name
+          || hubspotDeal?.nombre_del_evento
+          || hubspotDeal?.dealname
+          || 'Sin nombre',
         event_date: r.events?.event_date ?? '',
         role: roleMap.get(r.user_id) ?? 'Acreditador',
       };
     });
-  }, [rawData, profiles, userRoles]);
+  }, [rawData, profiles, userRoles, hubspotDealMap]);
 
   const eventNames = useMemo(() => [...new Set(applicants.map((a) => a.event_name))].sort(), [applicants]);
 
