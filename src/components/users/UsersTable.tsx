@@ -19,13 +19,14 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { UserWithRoles } from './types';
-import { Edit, Shield, Trash2, Search, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Edit, Shield, Trash2, Search, ChevronLeft, ChevronRight, MessageSquare } from 'lucide-react';
 
 interface UsersTableProps {
   users: UserWithRoles[];
   onEdit: (user: UserWithRoles) => void;
   onManageRoles: (user: UserWithRoles) => void;
   onDelete: (user: UserWithRoles) => void;
+  onComment?: (user: UserWithRoles) => void;
 }
 
 const roleLabels: Record<string, string> = {
@@ -37,7 +38,7 @@ const roleLabels: Record<string, string> = {
 
 const PAGE_SIZE = 25;
 
-export function UsersTable({ users, onEdit, onManageRoles, onDelete }: UsersTableProps) {
+export function UsersTable({ users, onEdit, onManageRoles, onDelete, onComment }: UsersTableProps) {
   const [searchName, setSearchName] = useState('');
   const [searchRut, setSearchRut] = useState('');
   const [searchEmail, setSearchEmail] = useState('');
@@ -145,6 +146,12 @@ export function UsersTable({ users, onEdit, onManageRoles, onDelete }: UsersTabl
                 </TableCell>
                 <TableCell className="text-right">
                   <div className="flex justify-end gap-2">
+                    {onComment && (user.roles.includes('acreditador') || user.roles.includes('supervisor')) && (
+                      <Button variant="ghost" size="sm" onClick={() => onComment(user)}>
+                        <MessageSquare className="h-4 w-4" />
+                        <span className="sr-only">Comentario</span>
+                      </Button>
+                    )}
                     <Button variant="ghost" size="sm" onClick={() => onEdit(user)}>
                       <Edit className="h-4 w-4" />
                       <span className="sr-only">Editar</span>

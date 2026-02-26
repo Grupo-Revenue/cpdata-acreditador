@@ -594,6 +594,30 @@ export type Database = {
         }
         Relationships: []
       }
+      user_comments: {
+        Row: {
+          comment: string
+          created_at: string
+          created_by: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          comment: string
+          created_at?: string
+          created_by?: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          comment?: string
+          created_at?: string
+          created_by?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string
