@@ -110,12 +110,10 @@ export default function SupportPage() {
           { label: 'Soporte' },
         ]}
         actions={
-          isAdmin && (
-            <Button onClick={() => setCreateOpen(true)}>
-              <Plus className="h-4 w-4 mr-2" />
-              Crear Ticket
-            </Button>
-          )
+          <Button onClick={() => setCreateOpen(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            Crear Ticket
+          </Button>
         }
       />
 
