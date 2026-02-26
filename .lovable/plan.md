@@ -1,14 +1,34 @@
 
 
-## Plan: Simplificar filtro y eliminar badges en Gestión de Evento
+## Diagnóstico: RLS bloquea la visibilidad de acreditadores en Gestión de Evento
 
-### Cambios en `src/components/events/EventManagementDialog.tsx`
+### Problema
+La tabla `event_accreditors` tiene estas políticas RLS de SELECT:
+- **Admins can view all event_accreditors**: solo para admins
+- **Users can view own assignments**: solo `user_id = auth.uid()`
 
-1. **Filtro más estricto** (líneas 99-102): Cambiar la condición OR a AND — solo mostrar acreditadores con `application_status === 'aceptado'` **Y** `contract_status === 'firmado'`.
+Cuando un supervisor abre "Gestión de Evento", el query busca TODOS los acreditadores del evento, pero RLS solo le devuelve su propia fila. Por eso aparece "No hay acreditadores aceptados con contrato firmado" aunque existan.
 
-2. **Eliminar badges** (líneas 406-411): Remover los dos `<Badge>` de "Contrato Firmado" y "Aceptado", dejando solo el nombre.
+### Solución
 
-3. **Limpiar interfaz** (líneas 40-41): Eliminar `applicationStatus` y `contractStatus` de `AttendanceRow` y del mapeo, ya que no se usarán más en la UI.
+**Migración SQL**: Agregar una política RLS que permita a usuarios asignados a un evento ver a todos los demás asignados del mismo evento:
 
-4. **Actualizar mensaje vacío** (línea 394): Cambiar texto a "No hay acreditadores aceptados con contrato firmado."
+```sql
+CREATE POLICY "Event members can view co-assigned accreditors"
+  ON event_accreditors FOR SELECT
+  USING (
+    EXISTS (
+      SELECT 1 FROM event_accreditors ea
+      WHERE ea.event_id = event_accreditors.event_id
+        AND ea.user_id = auth.uid()
+    )
+  );
+```
+
+Esto permite que si estás asignado a un evento (como supervisor), puedas ver a todos los acreditadores de ese mismo evento. No se requieren cambios en el código frontend.
+
+### Impacto en seguridad
+- Solo usuarios ya asignados al evento pueden ver a los co-asignados
+- No expone datos de otros eventos
+- Consistente con las políticas existentes de `attendance_records` y `event_expenses`
 
