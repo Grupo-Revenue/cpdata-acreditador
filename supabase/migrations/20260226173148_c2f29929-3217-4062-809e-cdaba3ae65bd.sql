@@ -1,0 +1,1 @@
+UPDATE event_accreditors SET contract_status = 'firmado' WHERE user_id = '0ed20181-fb70-4936-bde4-f12659a8e1ca' AND event_id = '1e087724-916c-49b5-9da9-6dda41a229f6';
