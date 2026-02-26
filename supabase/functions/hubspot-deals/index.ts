@@ -58,8 +58,8 @@ serve(async (req) => {
 
     const hubspotToken = setting.value;
 
-    // Search deals in HubSpot
-    const searchBody = {
+    // Search deals in HubSpot with pagination
+    const baseSearchBody = {
       filterGroups: [
         {
           filters: [
@@ -82,25 +82,39 @@ serve(async (req) => {
       limit: 100,
     };
 
-    const hubspotRes = await fetch(
-      "https://api.hubapi.com/crm/v3/objects/deals/search",
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${hubspotToken}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(searchBody),
+    let allResults: any[] = [];
+    let afterCursor: string | undefined = undefined;
+
+    do {
+      const searchBody: any = { ...baseSearchBody };
+      if (afterCursor) {
+        searchBody.after = afterCursor;
       }
-    );
 
-    if (!hubspotRes.ok) {
-      const errorBody = await hubspotRes.text();
-      console.error(`HubSpot API error [${hubspotRes.status}]: ${errorBody}`);
-      throw new Error(`HubSpot API error: ${hubspotRes.status}`);
-    }
+      const hubspotRes = await fetch(
+        "https://api.hubapi.com/crm/v3/objects/deals/search",
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${hubspotToken}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(searchBody),
+        }
+      );
 
-    const hubspotData = await hubspotRes.json();
+      if (!hubspotRes.ok) {
+        const errorBody = await hubspotRes.text();
+        console.error(`HubSpot API error [${hubspotRes.status}]: ${errorBody}`);
+        throw new Error(`HubSpot API error: ${hubspotRes.status}`);
+      }
+
+      const hubspotData = await hubspotRes.json();
+      allResults.push(...(hubspotData.results || []));
+      afterCursor = hubspotData.paging?.next?.after ?? undefined;
+    } while (afterCursor);
+
+    console.log(`Fetched ${allResults.length} deals from HubSpot`);
 
     // Fetch stage labels
     const stagesRes = await fetch(
@@ -118,7 +132,7 @@ serve(async (req) => {
       }
     }
 
-    const deals = (hubspotData.results || [])
+    const deals = allResults
       .map((deal: any) => ({
         id: deal.id,
         ...deal.properties,
