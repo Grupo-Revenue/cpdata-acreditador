@@ -57,6 +57,8 @@ interface SignUpData {
   instagram?: string;
   facebook?: string;
   talla_polera?: string;
+  altura?: string;
+  idioma?: string;
   contacto_emergencia_nombre?: string;
   contacto_emergencia_email?: string;
   contacto_emergencia_telefono?: string;
@@ -269,6 +271,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             instagram: data.instagram || null,
             facebook: data.facebook || null,
             talla_polera: data.talla_polera || null,
+            altura: data.altura || null,
+            idioma: data.idioma || null,
             contacto_emergencia_nombre: data.contacto_emergencia_nombre || null,
             contacto_emergencia_email: data.contacto_emergencia_email || null,
             contacto_emergencia_telefono: data.contacto_emergencia_telefono || null,
