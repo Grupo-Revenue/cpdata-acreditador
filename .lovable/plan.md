@@ -1,26 +1,26 @@
 
 
-## Problema
+## Plan: Filtrar acreditadores por estado y agregar búsqueda en Gestión de Evento
 
-El diálogo de Postulantes muestra datos en caché de la sesión anterior. React Query sirve la data antigua (stale) al reabrir el diálogo, por lo que un registro aceptado previamente sigue mostrando "Pendiente".
+### Problema
+El diálogo de Gestión de Evento muestra todos los acreditadores asignados sin importar su estado de postulación o contrato. Debería mostrar solo los aceptados y los que firmaron contrato. Además, no hay filtro de búsqueda, lo cual es problemático con más de 10 acreditadores.
 
-## Solución
+### Cambios en `src/components/events/EventManagementDialog.tsx`
 
-En `src/components/events/EventApplicantsDialog.tsx`, agregar `refetchOnMount: 'always'` al query principal `['event-applicants']` para forzar un refetch cada vez que el diálogo se abre, en lugar de servir datos del caché.
+1. **Modificar el query de acreditadores** (líneas 84-101): incluir `application_status` y `contract_status` en el select de `event_accreditors`, y también `rut, telefono` del perfil para el filtro de búsqueda.
 
-### Cambio
+2. **Filtrar solo acreditadores aceptados o con contrato firmado**: en el mapeo, incluir solo registros donde `application_status = 'aceptado'` o `contract_status = 'firmado'`.
 
-Línea ~86-96: agregar `refetchOnMount: 'always'` y opcionalmente `staleTime: 0` al query de `event_accreditors`:
+3. **Agregar estado de filtro de búsqueda**: nuevo state `searchFilter` que filtre por nombre, apellido, RUT o teléfono.
 
-```typescript
-const { data: rawData, isLoading } = useQuery({
-  queryKey: ['event-applicants'],
-  enabled: open,
-  refetchOnMount: 'always',
-  staleTime: 0,
-  queryFn: async () => { ... },
-});
-```
+4. **Agregar campo de búsqueda en la UI**: un `Input` con placeholder de búsqueda sobre la sección de asistencia, siguiendo el patrón de filtros en cuadrícula externa.
 
-Esto garantiza que cada vez que se abra el diálogo, se obtengan los datos frescos de la base de datos.
+5. **Mostrar badges de estado**: indicar visualmente si el acreditador está "Aceptado" o "Contrato Firmado" junto a su nombre.
+
+### Detalle técnico
+
+- Query modificado: `.select('user_id, application_status, contract_status')` + filtro `.in('application_status', ['aceptado'])` o filtro en JS post-fetch para incluir también `contract_status = 'firmado'`
+- Perfil: `.select('id, nombre, apellido, rut, telefono')`
+- Filtro JS: `attendanceRows.filter(row => row.nombre.includes(search) || row.rut.includes(search) || ...)`
+- Interfaces `AttendanceRow` extendida con `rut`, `telefono`, `applicationStatus`, `contractStatus`
 
