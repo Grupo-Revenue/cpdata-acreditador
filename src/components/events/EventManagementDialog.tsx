@@ -13,7 +13,7 @@ import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { Separator } from '@/components/ui/separator';
 import { Textarea } from '@/components/ui/textarea';
 import { Save, Plus, Trash2, Lock, Upload, DollarSign, Search } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
+
 import { format } from 'date-fns';
 
 interface EventManagementDialogProps {
@@ -37,8 +37,6 @@ interface AttendanceRow {
   apellido: string;
   rut: string;
   telefono: string;
-  applicationStatus: string;
-  contractStatus: string;
   status: AttendanceStatus;
   attendanceDate: string;
   checkInTime: string;
@@ -96,9 +94,9 @@ export function EventManagementDialog({ open, onOpenChange, hubspotDealId, dealN
         .eq('event_id', eventId!);
       if (error) throw error;
 
-      // Filter: only accepted or contract signed
+      // Filter: only accepted AND contract signed
       const filtered = (assignments ?? []).filter(
-        a => a.application_status === 'aceptado' || a.contract_status === 'firmado'
+        a => a.application_status === 'aceptado' && a.contract_status === 'firmado'
       );
 
       const userIds = filtered.map(a => a.user_id);
@@ -110,14 +108,7 @@ export function EventManagementDialog({ open, onOpenChange, hubspotDealId, dealN
         .in('id', userIds);
       if (pErr) throw pErr;
 
-      return (profiles ?? []).map(p => {
-        const assignment = filtered.find(a => a.user_id === p.id);
-        return {
-          ...p,
-          applicationStatus: assignment?.application_status ?? 'pendiente',
-          contractStatus: assignment?.contract_status ?? 'pendiente',
-        };
-      });
+      return profiles ?? [];
     },
   });
 
@@ -187,8 +178,6 @@ export function EventManagementDialog({ open, onOpenChange, hubspotDealId, dealN
         apellido: acc.apellido,
         rut: acc.rut ?? '',
         telefono: acc.telefono ?? '',
-        applicationStatus: acc.applicationStatus,
-        contractStatus: acc.contractStatus,
         status: (existing?.status as AttendanceStatus) ?? 'presente',
         attendanceDate: existing?.attendance_date ?? today,
         checkInTime: existing?.check_in_time?.substring(0, 5) ?? '',
@@ -391,7 +380,7 @@ export function EventManagementDialog({ open, onOpenChange, hubspotDealId, dealN
                   )}
                   {attendanceRows.length === 0 ? (
                     <p className="text-center text-muted-foreground py-6">
-                      No hay acreditadores aceptados o con contrato firmado.
+                      No hay acreditadores aceptados con contrato firmado.
                     </p>
                   ) : filteredRows.length === 0 ? (
                     <p className="text-center text-muted-foreground py-6">
@@ -401,15 +390,7 @@ export function EventManagementDialog({ open, onOpenChange, hubspotDealId, dealN
                     filteredRows.map((row, i) => (
                       <div key={row.userId} className="border rounded-lg p-3 space-y-3">
                         <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <p className="text-sm font-medium">{row.nombre} {row.apellido}</p>
-                            {row.contractStatus === 'firmado' && (
-                              <Badge variant="default" className="text-[10px] px-1.5 py-0">Contrato Firmado</Badge>
-                            )}
-                            {row.applicationStatus === 'aceptado' && row.contractStatus !== 'firmado' && (
-                              <Badge variant="secondary" className="text-[10px] px-1.5 py-0">Aceptado</Badge>
-                            )}
-                          </div>
+                          <p className="text-sm font-medium">{row.nombre} {row.apellido}</p>
                           {!isClosed && (
                             <Button
                               variant="ghost"
