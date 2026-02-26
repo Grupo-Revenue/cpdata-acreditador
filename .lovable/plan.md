@@ -1,37 +1,37 @@
 
 
-## Diagnóstico: Recursión infinita en RLS de `event_accreditors`
+## Diagnóstico: `contract_status` no se actualiza por RLS
 
-La política recién creada "Event members can view co-assigned accreditors" consulta la misma tabla `event_accreditors` dentro de su `USING`, causando recursión infinita. Esto rompe **todas** las consultas que tocan `event_accreditors`, incluyendo eventos, boletas y postulantes.
+En `DigitalSignatureDialog.tsx` (línea 131-135), después de firmar el contrato se ejecuta:
+
+```ts
+await supabase
+  .from('event_accreditors')
+  .update({ contract_status: 'firmado' })
+  .eq('event_id', internalEventId)
+  .eq('user_id', userId);
+```
+
+Sin embargo, la tabla `event_accreditors` **no tiene ninguna política RLS de UPDATE para usuarios normales** — solo admins tienen acceso ALL. Este update falla silenciosamente, dejando `contract_status` en "pendiente" aunque la firma sí se registró en `digital_signatures`.
 
 ### Solución: Migración SQL
 
-1. **Eliminar** la política recursiva.
-2. **Crear una función `SECURITY DEFINER`** que verifique si un usuario está asignado a un evento sin pasar por RLS.
-3. **Crear la política corregida** usando esa función.
+Agregar una política que permita a los usuarios actualizar **solo su propia fila** en `event_accreditors`:
 
 ```sql
--- 1. Drop recursive policy
-DROP POLICY "Event members can view co-assigned accreditors" ON event_accreditors;
+CREATE POLICY "Users can update own accreditor record"
+  ON event_accreditors FOR UPDATE
+  USING (user_id = auth.uid())
+  WITH CHECK (user_id = auth.uid());
+```
 
--- 2. Security definer function to avoid recursion
-CREATE OR REPLACE FUNCTION public.is_event_member(_user_id uuid, _event_id uuid)
-RETURNS boolean
-LANGUAGE sql
-STABLE
-SECURITY DEFINER
-SET search_path = public
-AS $$
-  SELECT EXISTS (
-    SELECT 1 FROM event_accreditors
-    WHERE user_id = _user_id AND event_id = _event_id
-  )
-$$;
+Después, actualizar manualmente el registro de Gabriel Espoz:
 
--- 3. Recreate policy using the function
-CREATE POLICY "Event members can view co-assigned accreditors"
-  ON event_accreditors FOR SELECT
-  USING (public.is_event_member(auth.uid(), event_id));
+```sql
+UPDATE event_accreditors
+SET contract_status = 'firmado'
+WHERE user_id = '<gabriel_user_id>'
+  AND event_id = '<event_id>';
 ```
 
 No se requieren cambios en el frontend.
