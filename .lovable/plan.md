@@ -1,21 +1,27 @@
 
 
-## Fix: Badge de estado desactualizado en Gestión de Evento
+## Fix: Permitir a todos los usuarios crear tickets de soporte
 
 ### Problema
-El query `event-accreditors-mgmt` usa caché de React Query y no refresca al reabrir el diálogo, mostrando `contract_status` antiguo (ej: "pendiente" cuando ya es "firmado").
+El botón "Crear Ticket" en la página de Soporte solo es visible para administradores (`isAdmin`), pero todos los usuarios autenticados deberían poder crear tickets.
 
-### Cambio en `src/components/events/EventManagementDialog.tsx`
+### Cambio en `src/pages/app/Support.tsx`
 
-Agregar `refetchOnMount: 'always'` y `staleTime: 0` al query de acreditadores (líneas 87-89) para forzar datos frescos cada vez que se abre el diálogo:
+Eliminar la condición `isAdmin &&` que envuelve el botón "Crear Ticket" en el `PageHeader` (línea ~114), para que todos los roles puedan ver y usar el botón.
 
-```typescript
-const { data: accreditors } = useQuery({
-  queryKey: ['event-accreditors-mgmt', eventId],
-  enabled: !!eventId,
-  refetchOnMount: 'always',
-  staleTime: 0,
-  queryFn: async () => { ... },
-});
+```tsx
+// Antes:
+actions={
+  isAdmin && (
+    <Button onClick={() => setCreateOpen(true)}>...
+  )
+}
+
+// Después:
+actions={
+  <Button onClick={() => setCreateOpen(true)}>...
+}
 ```
+
+No se requieren cambios en la base de datos: la política RLS `Authenticated users can create tickets` ya permite a cualquier usuario autenticado insertar tickets.
 
