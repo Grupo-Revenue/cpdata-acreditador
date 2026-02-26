@@ -1,23 +1,50 @@
 
 
-## Plan
+## Problema
 
-### Cambio 1: Ocultar boton de subir boleta para admin/superadmin en `InvoicesTable.tsx`
+La query del ranking consulta 3 tablas (`user_roles`, `profiles`, `attendance_records`) que tienen RLS restrictivo. Un supervisor o acreditador solo puede ver sus propios datos en `profiles` y `attendance_records`, y solo sus propios roles en `user_roles`. Por lo tanto, el ranking aparece vacio o incompleto para roles no-admin.
 
-En las lineas 324-338, cambiar la logica para que:
-- **Admin**: solo muestra check verde si hay archivo, o nada si no hay. Sin boton de upload.
-- **No-admin (supervisor/acreditador)**: muestra check verde si hay archivo, o boton de upload si no.
+## Solucion
 
-### Cambio 2: Agregar campo "Numero de boleta" al `InvoiceUploadDialog.tsx`
+Crear una funcion de base de datos `SECURITY DEFINER` que retorne el ranking completo, accesible por cualquier usuario autenticado. Luego actualizar `RankingTable.tsx` para usar `.rpc()` en lugar de las 3 queries separadas.
 
-Antes de permitir subir el archivo, el dialog debe incluir un campo de texto para ingresar el numero de boleta (`numero_boleta`). Al hacer submit, se actualizan ambos campos (`file_url` y `numero_boleta`) en la tabla `invoices`.
+### Paso 1: Migracion SQL
 
-- Agregar estado `numeroBoleta` al dialog
-- Agregar `<Input>` para el numero de boleta antes del file input
-- Validar que ambos campos esten completos antes de subir
-- Actualizar el `.update()` para incluir `numero_boleta`
+```sql
+CREATE OR REPLACE FUNCTION public.get_accreditor_ranking(_limit integer DEFAULT 50)
+RETURNS TABLE (
+  id uuid,
+  nombre text,
+  apellido text,
+  total_points bigint,
+  events_count bigint
+)
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT
+    p.id,
+    p.nombre,
+    p.apellido,
+    COALESCE(SUM(ar.ranking_points), 0) AS total_points,
+    COUNT(ar.id) AS events_count
+  FROM user_roles ur
+  JOIN profiles p ON p.id = ur.user_id
+  LEFT JOIN attendance_records ar ON ar.user_id = ur.user_id
+  WHERE ur.role = 'acreditador'
+  GROUP BY p.id, p.nombre, p.apellido
+  ORDER BY total_points DESC
+  LIMIT _limit;
+$$;
+```
+
+### Paso 2: Actualizar `RankingTable.tsx`
+
+Reemplazar las 3 queries por una sola llamada `.rpc('get_accreditor_ranking', { _limit: limit })`. El resultado ya viene ordenado y limitado.
 
 ### Archivos a modificar
-1. `src/components/invoices/InvoicesTable.tsx` — logica de acciones
-2. `src/components/invoices/InvoiceUploadDialog.tsx` — agregar campo numero de boleta
+1. **Migracion SQL** — crear funcion `get_accreditor_ranking`
+2. **`src/components/dashboard/RankingTable.tsx`** — usar `.rpc()` y simplificar la query
 
