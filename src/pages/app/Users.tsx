@@ -17,6 +17,7 @@ import { UserEditDialog } from '@/components/users/UserEditDialog';
 import { UserRolesDialog } from '@/components/users/UserRolesDialog';
 import { UserCreateDialog } from '@/components/users/UserCreateDialog';
 import { UserBulkUploadDialog } from '@/components/users/UserBulkUploadDialog';
+import { UserCommentDialog } from '@/components/users/UserCommentDialog';
 import { UserWithRoles } from '@/components/users/types';
 
 interface PendingUser {
@@ -49,6 +50,7 @@ export default function UsersPage() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isBulkUploadDialogOpen, setIsBulkUploadDialogOpen] = useState(false);
+  const [commentingUser, setCommentingUser] = useState<UserWithRoles | null>(null);
   
   const { toast } = useToast();
 
@@ -273,6 +275,7 @@ export default function UsersPage() {
               onEdit={(user) => setEditingUser(user)}
               onManageRoles={(user) => setManagingRolesUser(user)}
               onDelete={(user) => setDeletingUser(user)}
+              onComment={(user) => setCommentingUser(user)}
             />
           )}
         </CardContent>
@@ -392,6 +395,7 @@ export default function UsersPage() {
             onEdit={(user) => setEditingUser(user)}
             onManageRoles={(user) => setManagingRolesUser(user)}
             onDelete={(user) => setDeletingUser(user)}
+            onComment={(user) => setCommentingUser(user)}
           />
         )}
       </CardContent>
@@ -549,6 +553,15 @@ export default function UsersPage() {
         onOpenChange={setIsBulkUploadDialogOpen}
         onSuccess={handleRefresh}
       />
+
+      {commentingUser && (
+        <UserCommentDialog
+          open={!!commentingUser}
+          onOpenChange={(open) => !open && setCommentingUser(null)}
+          userId={commentingUser.id}
+          userName={`${commentingUser.nombre} ${commentingUser.apellido}`.trim()}
+        />
+      )}
     </AppShell>
   );
 }

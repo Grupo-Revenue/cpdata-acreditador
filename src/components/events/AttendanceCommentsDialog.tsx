@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Badge } from '@/components/ui/badge';
 import { MessageSquare, Calendar, MapPin, User } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { format } from 'date-fns';
@@ -20,6 +21,7 @@ interface CommentWithContext {
   event_name: string;
   supervisor_nombre: string;
   supervisor_apellido: string;
+  is_general: boolean;
 }
 
 export function AttendanceCommentsDialog({ open, onOpenChange, userId, userName }: AttendanceCommentsDialogProps) {
@@ -27,7 +29,7 @@ export function AttendanceCommentsDialog({ open, onOpenChange, userId, userName 
     queryKey: ['attendance-comments', userId],
     enabled: open && !!userId,
     queryFn: async () => {
-      // Get comments for this user
+      // Get attendance comments
       const { data: rawComments, error } = await supabase
         .from('attendance_comments')
         .select('id, comment, created_at, created_by, attendance_record_id')
@@ -35,45 +37,89 @@ export function AttendanceCommentsDialog({ open, onOpenChange, userId, userName 
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      if (!rawComments || rawComments.length === 0) return [];
 
-      // Get attendance records to find event_ids
-      const recordIds = [...new Set(rawComments.map(c => c.attendance_record_id))];
-      const { data: records } = await supabase
-        .from('attendance_records')
-        .select('id, event_id')
-        .in('id', recordIds);
+      // Get general user comments
+      const { data: generalComments, error: generalError } = await supabase
+        .from('user_comments' as any)
+        .select('id, comment, created_at, created_by')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false });
 
-      // Get event names
-      const eventIds = [...new Set((records ?? []).map(r => r.event_id))];
-      const { data: events } = await supabase
-        .from('events')
-        .select('id, name')
-        .in('id', eventIds);
+      if (generalError) throw generalError;
 
-      // Get supervisor profiles
-      const supervisorIds = [...new Set(rawComments.map(c => c.created_by))];
-      const { data: supervisors } = await supabase
-        .from('profiles')
-        .select('id, nombre, apellido')
-        .in('id', supervisorIds);
+      const allCreatorIds = new Set<string>();
 
-      const eventsMap = new Map((events ?? []).map(e => [e.id, e.name]));
-      const recordsMap = new Map((records ?? []).map(r => [r.id, r.event_id]));
-      const supervisorsMap = new Map((supervisors ?? []).map(s => [s.id, s]));
+      // Process attendance comments
+      let attendanceResults: CommentWithContext[] = [];
+      if (rawComments && rawComments.length > 0) {
+        const recordIds = [...new Set(rawComments.map(c => c.attendance_record_id))];
+        const { data: records } = await supabase
+          .from('attendance_records')
+          .select('id, event_id')
+          .in('id', recordIds);
 
-      return rawComments.map(c => {
-        const eventId = recordsMap.get(c.attendance_record_id);
-        const supervisor = supervisorsMap.get(c.created_by);
+        const eventIds = [...new Set((records ?? []).map(r => r.event_id))];
+        const { data: events } = await supabase
+          .from('events')
+          .select('id, name')
+          .in('id', eventIds);
+
+        rawComments.forEach(c => allCreatorIds.add(c.created_by));
+
+        const eventsMap = new Map((events ?? []).map(e => [e.id, e.name]));
+        const recordsMap = new Map((records ?? []).map(r => [r.id, r.event_id]));
+
+        attendanceResults = rawComments.map(c => {
+          const eventId = recordsMap.get(c.attendance_record_id);
+          return {
+            id: c.id,
+            comment: c.comment,
+            created_at: c.created_at,
+            event_name: eventId ? eventsMap.get(eventId) ?? 'Evento desconocido' : 'Evento desconocido',
+            supervisor_nombre: '',
+            supervisor_apellido: '',
+            is_general: false,
+          };
+        });
+      }
+
+      // Process general comments
+      const generalResults: CommentWithContext[] = ((generalComments as any[]) ?? []).map((c: any) => {
+        allCreatorIds.add(c.created_by);
         return {
           id: c.id,
           comment: c.comment,
           created_at: c.created_at,
-          event_name: eventId ? eventsMap.get(eventId) ?? 'Evento desconocido' : 'Evento desconocido',
-          supervisor_nombre: supervisor?.nombre ?? '',
-          supervisor_apellido: supervisor?.apellido ?? '',
-        } as CommentWithContext;
+          event_name: 'General',
+          supervisor_nombre: '',
+          supervisor_apellido: '',
+          is_general: true,
+        };
       });
+
+      // Fetch all creator profiles at once
+      if (allCreatorIds.size > 0) {
+        const { data: supervisors } = await supabase
+          .from('profiles')
+          .select('id, nombre, apellido')
+          .in('id', [...allCreatorIds]);
+
+        const supervisorsMap = new Map((supervisors ?? []).map(s => [s.id, s]));
+
+        const fillSupervisor = (c: CommentWithContext, createdBy: string) => {
+          const sup = supervisorsMap.get(createdBy);
+          c.supervisor_nombre = sup?.nombre ?? '';
+          c.supervisor_apellido = sup?.apellido ?? '';
+        };
+
+        rawComments?.forEach((raw, i) => fillSupervisor(attendanceResults[i], raw.created_by));
+        ((generalComments as any[]) ?? []).forEach((raw: any, i: number) => fillSupervisor(generalResults[i], raw.created_by));
+      }
+
+      // Merge and sort by date desc
+      return [...attendanceResults, ...generalResults].sort(
+        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      );
     },
   });
 
@@ -105,7 +151,9 @@ export function AttendanceCommentsDialog({ open, onOpenChange, userId, userName 
                   </span>
                   <span className="flex items-center gap-1">
                     <MapPin className="h-3 w-3" />
-                    {c.event_name}
+                    {c.is_general ? (
+                      <Badge variant="secondary" className="text-[10px] px-1.5 py-0">General</Badge>
+                    ) : c.event_name}
                   </span>
                   <span className="flex items-center gap-1">
                     <User className="h-3 w-3" />
