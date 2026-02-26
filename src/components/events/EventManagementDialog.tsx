@@ -87,6 +87,8 @@ export function EventManagementDialog({ open, onOpenChange, hubspotDealId, dealN
   const { data: accreditors } = useQuery({
     queryKey: ['event-accreditors-mgmt', eventId],
     enabled: !!eventId,
+    refetchOnMount: 'always',
+    staleTime: 0,
     queryFn: async () => {
       const { data: assignments, error } = await supabase
         .from('event_accreditors')
