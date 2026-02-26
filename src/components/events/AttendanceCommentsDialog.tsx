@@ -1,11 +1,16 @@
+import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
-import { MessageSquare, Calendar, MapPin, User } from 'lucide-react';
+import { MessageSquare, Calendar, MapPin, User, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Button } from '@/components/ui/button';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
+
+const ITEMS_PER_PAGE = 5;
 
 interface AttendanceCommentsDialogProps {
   open: boolean;
@@ -25,6 +30,10 @@ interface CommentWithContext {
 }
 
 export function AttendanceCommentsDialog({ open, onOpenChange, userId, userName }: AttendanceCommentsDialogProps) {
+  const [page, setPage] = useState(1);
+
+  useEffect(() => { setPage(1); }, [userId]);
+
   const { data: comments, isLoading } = useQuery({
     queryKey: ['attendance-comments', userId],
     enabled: open && !!userId,
@@ -123,9 +132,14 @@ export function AttendanceCommentsDialog({ open, onOpenChange, userId, userName 
     },
   });
 
+  const totalComments = comments?.length ?? 0;
+  const totalPages = Math.ceil(totalComments / ITEMS_PER_PAGE);
+  const startIndex = (page - 1) * ITEMS_PER_PAGE;
+  const paginatedComments = comments?.slice(startIndex, startIndex + ITEMS_PER_PAGE) ?? [];
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
+      <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <MessageSquare className="h-5 w-5 text-primary" />
@@ -140,30 +154,62 @@ export function AttendanceCommentsDialog({ open, onOpenChange, userId, userName 
           <div className="space-y-3">
             {[1, 2, 3].map(i => <Skeleton key={i} className="h-20 w-full" />)}
           </div>
-        ) : comments && comments.length > 0 ? (
-          <div className="space-y-3">
-            {comments.map(c => (
-              <div key={c.id} className="border rounded-lg p-3 space-y-1.5">
-                <div className="flex items-center gap-3 text-xs text-muted-foreground flex-wrap">
-                  <span className="flex items-center gap-1">
-                    <Calendar className="h-3 w-3" />
-                    {format(new Date(c.created_at), "dd MMM yyyy", { locale: es })}
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <MapPin className="h-3 w-3" />
-                    {c.is_general ? (
-                      <Badge variant="secondary" className="text-[10px] px-1.5 py-0">General</Badge>
-                    ) : c.event_name}
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <User className="h-3 w-3" />
-                    {c.supervisor_nombre} {c.supervisor_apellido}
-                  </span>
-                </div>
-                <p className="text-sm">{c.comment}</p>
+        ) : totalComments > 0 ? (
+          <>
+            <ScrollArea className="max-h-[400px] pr-3">
+              <div className="space-y-3">
+                {paginatedComments.map(c => (
+                  <div key={c.id} className="border rounded-lg p-3 space-y-1.5">
+                    <div className="flex items-center gap-3 text-xs text-muted-foreground flex-wrap">
+                      <span className="flex items-center gap-1">
+                        <Calendar className="h-3 w-3" />
+                        {format(new Date(c.created_at), "dd MMM yyyy", { locale: es })}
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <MapPin className="h-3 w-3" />
+                        {c.is_general ? (
+                          <Badge variant="secondary" className="text-[10px] px-1.5 py-0">General</Badge>
+                        ) : c.event_name}
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <User className="h-3 w-3" />
+                        {c.supervisor_nombre} {c.supervisor_apellido}
+                      </span>
+                    </div>
+                    <p className="text-sm">{c.comment}</p>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
+            </ScrollArea>
+
+            {totalPages > 1 && (
+              <div className="flex items-center justify-between pt-2 border-t">
+                <span className="text-xs text-muted-foreground">
+                  Mostrando {startIndex + 1}–{Math.min(startIndex + ITEMS_PER_PAGE, totalComments)} de {totalComments}
+                </span>
+                <div className="flex items-center gap-1">
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="h-8 w-8"
+                    disabled={page <= 1}
+                    onClick={() => setPage(p => p - 1)}
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="h-8 w-8"
+                    disabled={page >= totalPages}
+                    onClick={() => setPage(p => p + 1)}
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            )}
+          </>
         ) : (
           <div className="text-center py-8">
             <MessageSquare className="w-10 h-10 mx-auto text-muted-foreground/50 mb-2" />
