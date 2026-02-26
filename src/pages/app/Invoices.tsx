@@ -15,7 +15,7 @@ import { InvoiceUploadDialog } from '@/components/invoices/InvoiceUploadDialog';
 import { InvoiceWhatsappDialog } from '@/components/invoices/InvoiceWhatsappDialog';
 
 export default function InvoicesPage() {
-  const { isAdmin } = useAuth();
+  const { isAdmin, user } = useAuth();
   const [createOpen, setCreateOpen] = useState(false);
   const [editInvoice, setEditInvoice] = useState<InvoiceRow | null>(null);
   const [uploadInvoice, setUploadInvoice] = useState<InvoiceRow | null>(null);
@@ -112,9 +112,11 @@ export default function InvoicesPage() {
         ) : undefined}
       />
 
-      {isLoading ? (
-        <LoadingState />
-      ) : invoices.length === 0 ? (
+      {(() => {
+        const displayInvoices = isAdmin ? invoices : invoices.filter(inv => inv.user_id === user?.id);
+        return isLoading ? (
+          <LoadingState />
+        ) : displayInvoices.length === 0 ? (
         <EmptyState
           icon={FileText}
           title="Sin boletas"
@@ -122,14 +124,15 @@ export default function InvoicesPage() {
         />
       ) : (
         <InvoicesTable
-          invoices={invoices}
+          invoices={displayInvoices}
           isAdmin={isAdmin}
           paymentDays={paymentDays}
           onEdit={setEditInvoice}
           onWhatsapp={setWhatsappInvoice}
           onUpload={setUploadInvoice}
         />
-      )}
+        );
+      })()}
 
       <InvoiceCreateDialog open={createOpen} onOpenChange={setCreateOpen} />
       <InvoiceEditDialog open={!!editInvoice} onOpenChange={(o) => !o && setEditInvoice(null)} invoice={editInvoice} />
