@@ -31,46 +31,9 @@ export function RankingTable({ limit = 10, className }: RankingTableProps) {
   const { data: ranking, isLoading } = useQuery({
     queryKey: ['accreditor-ranking', limit],
     queryFn: async () => {
-      const { data: accreditors, error: accreditorsError } = await supabase
-        .from('user_roles')
-        .select('user_id')
-        .eq('role', 'acreditador');
-
-      if (accreditorsError) throw accreditorsError;
-      if (!accreditors || accreditors.length === 0) return [];
-
-      const userIds = accreditors.map(a => a.user_id);
-
-      const { data: profiles, error: profilesError } = await supabase
-        .from('profiles')
-        .select('id, nombre, apellido')
-        .in('id', userIds);
-
-      if (profilesError) throw profilesError;
-
-      const { data: attendance, error: attError } = await supabase
-        .from('attendance_records')
-        .select('user_id, ranking_points')
-        .in('user_id', userIds);
-
-      if (attError) throw attError;
-
-      const rankingData: AccreditorRanking[] = (profiles || []).map(profile => {
-        const userRecords = (attendance || []).filter(a => a.user_id === profile.id);
-        const totalPoints = userRecords.reduce((sum, r) => sum + (r.ranking_points || 0), 0);
-
-        return {
-          id: profile.id,
-          nombre: profile.nombre,
-          apellido: profile.apellido,
-          total_points: totalPoints,
-          events_count: userRecords.length,
-        };
-      });
-
-      return rankingData
-        .sort((a, b) => b.total_points - a.total_points)
-        .slice(0, limit);
+      const { data, error } = await supabase.rpc('get_accreditor_ranking', { _limit: limit });
+      if (error) throw error;
+      return (data || []) as AccreditorRanking[];
     }
   });
 
