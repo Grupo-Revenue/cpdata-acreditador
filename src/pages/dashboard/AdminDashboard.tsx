@@ -32,16 +32,27 @@ export default function AdminDashboard() {
       const { data, error } = await supabase.functions.invoke('hubspot-deals');
       if (error) throw error;
       const deals: { fecha_inicio_del_evento?: string | null }[] = data?.deals ?? [];
+
+      const parseDate = (d: string | null | undefined): string | null => {
+        if (!d) return null;
+        const parts = d.split('-');
+        if (parts.length === 3 && parts[0].length === 2) {
+          return `${parts[2]}-${parts[1]}-${parts[0]}`;
+        }
+        return d;
+      };
+
       const today = new Date().toISOString().split('T')[0];
       const now = new Date();
       const weekStart = startOfWeek(now, { weekStartsOn: 1 }).toISOString().split('T')[0];
       const weekEnd = endOfWeek(now, { weekStartsOn: 1 }).toISOString().split('T')[0];
       const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
       const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
+
       return {
-        today: deals.filter(d => d.fecha_inicio_del_evento === today).length,
-        week: deals.filter(d => d.fecha_inicio_del_evento && d.fecha_inicio_del_evento >= weekStart && d.fecha_inicio_del_evento <= weekEnd).length,
-        month: deals.filter(d => d.fecha_inicio_del_evento && d.fecha_inicio_del_evento >= monthStart && d.fecha_inicio_del_evento <= monthEnd).length,
+        today: deals.filter(d => parseDate(d.fecha_inicio_del_evento) === today).length,
+        week: deals.filter(d => { const p = parseDate(d.fecha_inicio_del_evento); return p != null && p >= weekStart && p <= weekEnd; }).length,
+        month: deals.filter(d => { const p = parseDate(d.fecha_inicio_del_evento); return p != null && p >= monthStart && p <= monthEnd; }).length,
       };
     },
   });
