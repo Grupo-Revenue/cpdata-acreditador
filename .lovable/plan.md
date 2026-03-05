@@ -1,21 +1,13 @@
 
 
-## Plan: Permitir a superadmins editar el RUT de usuarios
+## Plan: Scroll y paginacion en dialogo de comentarios
 
-### Cambios
+### Cambios en `src/components/events/AttendanceCommentsDialog.tsx`
 
-**Archivo: `src/components/users/UserEditDialog.tsx`**
-
-1. Importar `useAuth` desde `@/contexts/AuthContext`
-2. Obtener `activeRole` del contexto de autenticacion
-3. Agregar `rut` al estado `formData` (inicializado desde `user.rut`)
-4. Cambiar el campo RUT de siempre-deshabilitado a condicionalmente editable: habilitado solo cuando `activeRole === 'superadmin'`
-5. Incluir `rut` en el objeto de update a Supabase cuando el rol activo es superadmin
-
-### Detalle tecnico
-
-- El campo RUT actualmente usa `<Input disabled className="bg-muted" />` con el valor directo de `user?.rut`
-- Se cambiara a usar `formData.rut` como valor, con `disabled={activeRole !== 'superadmin'}`
-- En el `handleSubmit`, se agregara `rut: formData.rut` al objeto de update
-- No se requieren cambios de base de datos; la columna `rut` ya existe en `profiles` y los admins ya tienen politica de UPDATE
+1. Agregar estado de paginacion (`page`, `ITEMS_PER_PAGE = 5`)
+2. Resetear pagina a 1 cuando cambia el `userId`
+3. Calcular `paginatedComments` como slice del array total
+4. Envolver la lista de comentarios en un `ScrollArea` con altura maxima fija (~400px)
+5. Mostrar controles de paginacion debajo: contador "Mostrando X-Y de Z" + botones Anterior/Siguiente
+6. Importar `ScrollArea` y `Button`
 
