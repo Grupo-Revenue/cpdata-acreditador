@@ -1,13 +1,14 @@
 
 
-## Plan: Scroll y paginacion en dialogo de comentarios
+## Plan: Usar RUTInput en el diálogo de edición de usuario
 
-### Cambios en `src/components/events/AttendanceCommentsDialog.tsx`
+### Cambio
 
-1. Agregar estado de paginacion (`page`, `ITEMS_PER_PAGE = 5`)
-2. Resetear pagina a 1 cuando cambia el `userId`
-3. Calcular `paginatedComments` como slice del array total
-4. Envolver la lista de comentarios en un `ScrollArea` con altura maxima fija (~400px)
-5. Mostrar controles de paginacion debajo: contador "Mostrando X-Y de Z" + botones Anterior/Siguiente
-6. Importar `ScrollArea` y `Button`
+**Archivo: `src/components/users/UserEditDialog.tsx`**
+
+Reemplazar el `<Input>` del campo RUT por el componente `<RUTInput>` existente, que ya formatea automáticamente con puntos y guión (ej: `11.111.111-1`).
+
+- Importar `RUTInput` desde `@/components/ui/RUTInput`
+- Sustituir el `<Input>` de RUT por `<RUTInput>` pasando `value={formData.rut}`, `onChange` y `disabled={activeRole !== 'superadmin'}`
+- Mantener la lógica condicional de superadmin sin cambios
 
