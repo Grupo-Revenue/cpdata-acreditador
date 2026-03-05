@@ -13,7 +13,7 @@ import {
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { UserWithRoles } from './types';
-import { ApprovalStatus } from '@/contexts/AuthContext';
+import { ApprovalStatus, useAuth } from '@/contexts/AuthContext';
 import { BANCOS_CHILE, TIPOS_CUENTA } from './constants';
 import { LanguageTagsInput } from '@/components/ui/LanguageTagsInput';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
@@ -27,7 +27,9 @@ interface UserEditDialogProps {
 
 export function UserEditDialog({ user, open, onOpenChange, onSuccess }: UserEditDialogProps) {
   const [isLoading, setIsLoading] = useState(false);
+  const { activeRole } = useAuth();
   const [formData, setFormData] = useState({
+    rut: '',
     nombre: '',
     apellido: '',
     telefono: '',
@@ -57,6 +59,7 @@ export function UserEditDialog({ user, open, onOpenChange, onSuccess }: UserEdit
   useEffect(() => {
     if (user) {
       setFormData({
+        rut: user.rut || '',
         nombre: user.nombre,
         apellido: user.apellido,
         telefono: user.telefono || '',
@@ -90,9 +93,7 @@ export function UserEditDialog({ user, open, onOpenChange, onSuccess }: UserEdit
 
     setIsLoading(true);
     try {
-      const { error } = await supabase
-        .from('profiles')
-        .update({
+      const updateData: Record<string, any> = {
           nombre: formData.nombre,
           apellido: formData.apellido,
           telefono: formData.telefono || null,
@@ -116,7 +117,15 @@ export function UserEditDialog({ user, open, onOpenChange, onSuccess }: UserEdit
           contacto_emergencia_nombre: formData.contacto_emergencia_nombre || null,
           contacto_emergencia_email: formData.contacto_emergencia_email || null,
           contacto_emergencia_telefono: formData.contacto_emergencia_telefono || null,
-        } as any)
+      };
+
+      if (activeRole === 'superadmin') {
+        updateData.rut = formData.rut;
+      }
+
+      const { error } = await supabase
+        .from('profiles')
+        .update(updateData as any)
         .eq('id', user.id);
 
       if (error) throw error;
@@ -153,7 +162,7 @@ export function UserEditDialog({ user, open, onOpenChange, onSuccess }: UserEdit
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
               <Label htmlFor="rut">RUT</Label>
-              <Input id="rut" value={user?.rut || ''} disabled className="bg-muted" />
+              <Input id="rut" value={formData.rut} onChange={(e) => set('rut', e.target.value)} disabled={activeRole !== 'superadmin'} className={activeRole !== 'superadmin' ? 'bg-muted' : ''} />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
