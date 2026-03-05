@@ -16,6 +16,7 @@ import { UserWithRoles } from './types';
 import { ApprovalStatus, useAuth } from '@/contexts/AuthContext';
 import { BANCOS_CHILE, TIPOS_CUENTA } from './constants';
 import { LanguageTagsInput } from '@/components/ui/LanguageTagsInput';
+import { RUTInput } from '@/components/ui/RUTInput';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 
 interface UserEditDialogProps {
@@ -162,7 +163,7 @@ export function UserEditDialog({ user, open, onOpenChange, onSuccess }: UserEdit
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
               <Label htmlFor="rut">RUT</Label>
-              <Input id="rut" value={formData.rut} onChange={(e) => set('rut', e.target.value)} disabled={activeRole !== 'superadmin'} className={activeRole !== 'superadmin' ? 'bg-muted' : ''} />
+              <RUTInput value={formData.rut} onChange={(val) => set('rut', val)} disabled={activeRole !== 'superadmin'} className={activeRole !== 'superadmin' ? 'bg-muted' : ''} />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
