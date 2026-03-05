@@ -102,8 +102,16 @@ Deno.serve(async (req) => {
       auth: { autoRefreshToken: false, persistSession: false },
     });
 
-    const { data: existingRut } = await adminClient
-      .from("profiles").select("id").eq("rut", rut).maybeSingle();
+    // Normalize RUT for comparison - clean both sides
+    const cleanedRut = rut.replace(/[^0-9kK]/g, '').toUpperCase();
+    
+    // Check for existing RUT by fetching all profiles and comparing cleaned versions
+    const { data: allProfiles } = await adminClient
+      .from("profiles").select("id, rut");
+    
+    const existingRut = (allProfiles || []).find(p => 
+      p.rut.replace(/[^0-9kK]/g, '').toUpperCase() === cleanedRut
+    );
 
     if (existingRut) {
       return new Response(
