@@ -462,7 +462,7 @@ export default function UsersPage() {
               )}
             </TabsTrigger>
             <TabsTrigger value="administradores">
-              Administradores
+              Administración
               {filterByRole('administracion').length > 0 && (
                 <span className="ml-2 text-xs text-muted-foreground">
                   ({filterByRole('administracion').length})
@@ -483,7 +483,7 @@ export default function UsersPage() {
             <RoleTabContent role="supervisor" title="Supervisores" icon="" />
           </TabsContent>
           <TabsContent value="administradores">
-            <RoleTabContent role="administracion" title="Administradores" icon="" />
+            <RoleTabContent role="administracion" title="Administración" icon="" />
           </TabsContent>
         </Tabs>
       ) : (
