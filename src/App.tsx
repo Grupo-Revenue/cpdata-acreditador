@@ -12,6 +12,7 @@ import { PublicRoute } from "@/components/auth/PublicRoute";
 import LoginPage from "@/pages/auth/Login";
 import RegisterPage from "@/pages/auth/Register";
 import RecoverPage from "@/pages/auth/Recover";
+import ResetPasswordPage from "@/pages/auth/ResetPassword";
 import PendingPage from "@/pages/auth/Pending";
 
 // Dashboard pages
@@ -65,6 +66,7 @@ const App = () => (
               </PublicRoute>
             } />
             
+            <Route path="/auth/reset-password" element={<ResetPasswordPage />} />
             <Route path="/auth/pending" element={<PendingPage />} />
 
             {/* Protected routes */}
