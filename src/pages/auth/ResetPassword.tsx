@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -9,7 +9,9 @@ import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { Loader2, Lock, CheckCircle } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
+import { Loader2, Lock, CheckCircle, AlertCircle } from 'lucide-react';
+import { LoadingState } from '@/components/ui/LoadingState';
 
 const resetSchema = z.object({
   password: z.string().min(6, 'La contraseña debe tener al menos 6 caracteres'),
@@ -24,8 +26,38 @@ type ResetForm = z.infer<typeof resetSchema>;
 export default function ResetPasswordPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [sessionReady, setSessionReady] = useState(false);
+  const [checking, setChecking] = useState(true);
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { isRecoveryMode, session } = useAuth();
+
+  useEffect(() => {
+    // Check if we already have a recovery session
+    if (isRecoveryMode && session) {
+      setSessionReady(true);
+      setChecking(false);
+      return;
+    }
+
+    // Listen for PASSWORD_RECOVERY event in case it fires after mount
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'PASSWORD_RECOVERY') {
+        setSessionReady(true);
+        setChecking(false);
+      }
+    });
+
+    // Timeout after 5 seconds if no recovery event
+    const timeout = setTimeout(() => {
+      setChecking(false);
+    }, 5000);
+
+    return () => {
+      subscription.unsubscribe();
+      clearTimeout(timeout);
+    };
+  }, [isRecoveryMode, session]);
 
   const form = useForm<ResetForm>({
     resolver: zodResolver(resetSchema),
@@ -55,6 +87,33 @@ export default function ResetPasswordPage() {
     setSuccess(true);
     setIsLoading(false);
   };
+
+  if (checking) {
+    return <LoadingState fullScreen text="Verificando enlace..." />;
+  }
+
+  if (!sessionReady) {
+    return (
+      <AuthLayout
+        title="Enlace inválido"
+        subtitle="El enlace de recuperación ha expirado o ya fue utilizado"
+      >
+        <div className="text-center space-y-6">
+          <div className="inline-flex p-4 rounded-full bg-destructive/10">
+            <AlertCircle className="w-12 h-12 text-destructive" />
+          </div>
+
+          <p className="text-muted-foreground">
+            Por favor solicita un nuevo enlace de recuperación.
+          </p>
+
+          <Button className="w-full" onClick={() => navigate('/auth/recover')}>
+            Solicitar nuevo enlace
+          </Button>
+        </div>
+      </AuthLayout>
+    );
+  }
 
   if (success) {
     return (

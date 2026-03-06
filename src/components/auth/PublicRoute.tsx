@@ -8,10 +8,15 @@ interface PublicRouteProps {
 }
 
 export function PublicRoute({ children }: PublicRouteProps) {
-  const { user, isLoading, isApproved, isActive } = useAuth();
+  const { user, isLoading, isApproved, isActive, isRecoveryMode } = useAuth();
 
   if (isLoading) {
     return <LoadingState fullScreen text="Cargando..." />;
+  }
+
+  // Don't redirect during password recovery flow
+  if (isRecoveryMode) {
+    return <>{children}</>;
   }
 
   // Si hay usuario autenticado y aprobado, redirigir al dashboard
