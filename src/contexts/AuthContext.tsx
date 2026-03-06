@@ -31,6 +31,7 @@ interface AuthContextType {
   isLoading: boolean;
   isApproved: boolean;
   isActive: boolean;
+  isRecoveryMode: boolean;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signUp: (data: SignUpData) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
@@ -85,6 +86,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const [activeRole, _setActiveRole] = useState<AppRole | null>(getStoredRole);
   const [isLoading, setIsLoading] = useState(true);
+  const [isRecoveryMode, setIsRecoveryMode] = useState(false);
   const { toast } = useToast();
 
   const handleSetActiveRole = (role: AppRole | null) => {
@@ -176,6 +178,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (event === 'SIGNED_OUT') {
           setProfile(null);
           setRoles([]);
+          setIsRecoveryMode(false);
+          setIsLoading(false);
+          return;
+        }
+
+        if (event === 'PASSWORD_RECOVERY') {
+          setIsRecoveryMode(true);
           setIsLoading(false);
           return;
         }
@@ -326,6 +335,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         isLoading,
         isApproved,
         isActive,
+        isRecoveryMode,
         signIn,
         signUp,
         signOut,
