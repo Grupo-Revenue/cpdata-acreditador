@@ -17,7 +17,7 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    const { template_name, template_language, to_phone, components } = await req.json();
+    const { template_name, template_language, to_phone, components, parameters } = await req.json();
 
     if (!template_name || !to_phone) {
       return new Response(
