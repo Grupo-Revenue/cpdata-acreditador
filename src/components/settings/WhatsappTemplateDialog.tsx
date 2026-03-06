@@ -241,15 +241,27 @@ export function WhatsappTemplateDialog({ open, onOpenChange, template }: Props) 
           {/* Body */}
           <div className="space-y-2">
             <Label>Cuerpo del mensaje *</Label>
-            <Textarea
+          <Textarea
               placeholder="Hola {{1}}, tu cita es el {{2}} a las {{3}}."
               value={form.body_text}
               onChange={(e) => set('body_text', e.target.value)}
               rows={4}
             />
-            <p className="text-xs text-muted-foreground">
-              Usa {'{{1}}'}, {'{{2}}'}, etc. para variables dinámicas
-            </p>
+            {(() => {
+              const matches = form.body_text.match(/\{\{\d+\}\}/g);
+              const uniqueVars = matches ? [...new Set(matches)].sort() : [];
+              return (
+                <div className="text-xs text-muted-foreground space-y-1">
+                  <p>Usa {'{{1}}'}, {'{{2}}'}, etc. para variables dinámicas que se reemplazan al enviar el mensaje.</p>
+                  <p className="text-muted-foreground/70">Ejemplo: "Hola {'{{1}}'}, tu factura #{'{{2}}'} está lista" → al enviar se pasan los valores en orden.</p>
+                  {uniqueVars.length > 0 && (
+                    <p className="font-medium text-foreground/80">
+                      Variables detectadas: {uniqueVars.join(', ')} ({uniqueVars.length} {uniqueVars.length === 1 ? 'variable' : 'variables'})
+                    </p>
+                  )}
+                </div>
+              );
+            })()}
           </div>
 
           {/* Footer */}
