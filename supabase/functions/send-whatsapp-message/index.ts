@@ -58,7 +58,17 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Call Meta API
+    // Build components: use explicit parameters if provided, fall back to legacy components
+    let templateComponents = components || [];
+    if (parameters && Array.isArray(parameters) && parameters.length > 0) {
+      templateComponents = [
+        {
+          type: "body",
+          parameters: parameters.map((val: string) => ({ type: "text", text: val })),
+        },
+      ];
+    }
+
     const metaPayload: Record<string, unknown> = {
       messaging_product: "whatsapp",
       to: cleanPhone,
@@ -66,7 +76,7 @@ Deno.serve(async (req) => {
       template: {
         name: template_name,
         language: { code: template_language || "es" },
-        components: components || [],
+        components: templateComponents,
       },
     };
 

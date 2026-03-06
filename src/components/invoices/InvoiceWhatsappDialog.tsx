@@ -62,7 +62,7 @@ export function InvoiceWhatsappDialog({ open, onOpenChange, invoice }: Props) {
     let text = selected.body_text;
     variables.forEach((v) => {
       const val = variableValues[v];
-      if (val) text = text.replaceAll(v, val);
+      if (val) text = text.split(v).join(val);
     });
     return text;
   }, [selected, variables, variableValues]);
