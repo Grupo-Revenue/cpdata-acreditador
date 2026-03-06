@@ -1,21 +1,13 @@
 
 
-## Problem
+## Plan: Scroll y paginacion en dialogo de comentarios
 
-When the password reset email is sent, the link redirects to `/auth/reset-password`, but that route doesn't exist in `App.tsx` — hence the 404.
+### Cambios en `src/components/events/AttendanceCommentsDialog.tsx`
 
-Additionally, the `redirectTo` in `AuthContext.tsx` uses `window.location.origin`, which works on Vercel (`https://cpdata-acreditador.vercel.app`), but the route itself is missing.
-
-## Solution
-
-Two changes:
-
-**1. Create `src/pages/auth/ResetPassword.tsx`**
-- Form with "new password" and "confirm password" fields
-- Uses `supabase.auth.updateUser({ password })` to set the new password
-- Uses `AuthLayout` for consistent look
-- Redirects to `/auth/login` on success
-
-**2. Add route in `src/App.tsx`**
-- Add `/auth/reset-password` route (public, no `PublicRoute` wrapper since the user arrives from an email link with a recovery token)
+1. Agregar estado de paginacion (`page`, `ITEMS_PER_PAGE = 5`)
+2. Resetear pagina a 1 cuando cambia el `userId`
+3. Calcular `paginatedComments` como slice del array total
+4. Envolver la lista de comentarios en un `ScrollArea` con altura maxima fija (~400px)
+5. Mostrar controles de paginacion debajo: contador "Mostrando X-Y de Z" + botones Anterior/Siguiente
+6. Importar `ScrollArea` y `Button`
 
