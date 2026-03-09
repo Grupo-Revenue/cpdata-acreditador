@@ -209,12 +209,13 @@ export function WhatsappTemplateDialog({ open, onOpenChange, template }: Props) 
             </div>
             <div className="space-y-2">
               <Label>Idioma</Label>
-              <Select value={form.language} onValueChange={(v) => set('language', v)}>
+              <Select value={form.language} onValueChange={(v) => set('language', v)} disabled={hasMetaId}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {LANGUAGES.map((l) => <SelectItem key={l.value} value={l.value}>{l.label}</SelectItem>)}
                 </SelectContent>
               </Select>
+              {hasMetaId && <p className="text-xs text-muted-foreground">No se puede cambiar el idioma</p>}
             </div>
           </div>
 
