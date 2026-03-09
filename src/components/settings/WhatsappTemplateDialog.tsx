@@ -66,6 +66,8 @@ export function WhatsappTemplateDialog({ open, onOpenChange, template }: Props) 
   const [form, setForm] = useState<TemplateData>(EMPTY);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const isEdit = !!template?.id;
+  const hasMetaId = !!(template as any)?.meta_template_id;
+  const isRejected = template?.status === 'rejected';
 
   useEffect(() => {
     if (open) {
@@ -180,7 +182,9 @@ export function WhatsappTemplateDialog({ open, onOpenChange, template }: Props) 
         <DialogHeader>
           <DialogTitle>{isEdit ? 'Editar Plantilla' : 'Nueva Plantilla'}</DialogTitle>
           <DialogDescription>
-            Completa los campos para {isEdit ? 'editar' : 'crear'} una plantilla de mensaje de WhatsApp.
+            {isRejected
+              ? 'Modifica la plantilla rechazada y reenvíala a Meta para una nueva revisión.'
+              : `Completa los campos para ${isEdit ? 'editar' : 'crear'} una plantilla de mensaje de WhatsApp.`}
           </DialogDescription>
         </DialogHeader>
 
@@ -188,8 +192,10 @@ export function WhatsappTemplateDialog({ open, onOpenChange, template }: Props) 
           {/* Name */}
           <div className="space-y-2">
             <Label>Nombre de la plantilla *</Label>
-            <Input placeholder="bienvenida_cliente" value={form.name} onChange={(e) => set('name', e.target.value)} />
-            <p className="text-xs text-muted-foreground">Solo letras minúsculas, números y guiones bajos</p>
+            <Input placeholder="bienvenida_cliente" value={form.name} onChange={(e) => set('name', e.target.value)} disabled={hasMetaId} />
+            <p className="text-xs text-muted-foreground">
+              {hasMetaId ? 'El nombre no se puede cambiar una vez enviado a Meta' : 'Solo letras minúsculas, números y guiones bajos'}
+            </p>
           </div>
 
           {/* Category + Language */}
@@ -205,12 +211,13 @@ export function WhatsappTemplateDialog({ open, onOpenChange, template }: Props) 
             </div>
             <div className="space-y-2">
               <Label>Idioma</Label>
-              <Select value={form.language} onValueChange={(v) => set('language', v)}>
+              <Select value={form.language} onValueChange={(v) => set('language', v)} disabled={hasMetaId}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {LANGUAGES.map((l) => <SelectItem key={l.value} value={l.value}>{l.label}</SelectItem>)}
                 </SelectContent>
               </Select>
+              {hasMetaId && <p className="text-xs text-muted-foreground">No se puede cambiar el idioma</p>}
             </div>
           </div>
 

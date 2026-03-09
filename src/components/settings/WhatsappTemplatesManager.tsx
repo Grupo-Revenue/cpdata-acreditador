@@ -134,7 +134,7 @@ export function WhatsappTemplatesManager() {
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex gap-1 justify-end">
-                          {t.status === 'pending' && (
+                          {(t.status === 'pending' || t.status === 'rejected') && (
                             <Button
                               variant="ghost"
                               size="icon"
