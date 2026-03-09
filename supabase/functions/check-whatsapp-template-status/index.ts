@@ -94,7 +94,7 @@ Deno.serve(async (req) => {
 
     // Query Meta API
     const metaRes = await fetch(
-      `https://graph.facebook.com/v21.0/${template.meta_template_id}?fields=status,name,category`,
+      `https://graph.facebook.com/v21.0/${template.meta_template_id}?fields=status,name,category,rejected_reason`,
       { headers: { Authorization: `Bearer ${accessToken}` } },
     );
     const metaData = await metaRes.json();
@@ -108,11 +108,12 @@ Deno.serve(async (req) => {
     }
 
     const newStatus = STATUS_MAP[metaData.status] || "pending";
+    const rejectionReason = newStatus === "rejected" ? (metaData.rejected_reason || null) : null;
 
     // Update local status
     const { error: updateError } = await adminClient
       .from("whatsapp_templates")
-      .update({ status: newStatus })
+      .update({ status: newStatus, rejection_reason: rejectionReason })
       .eq("id", template_id);
     if (updateError) throw updateError;
 

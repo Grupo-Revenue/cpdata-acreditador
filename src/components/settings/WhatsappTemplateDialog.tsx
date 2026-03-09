@@ -10,8 +10,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, Trash2 } from 'lucide-react';
+import { Plus, Trash2, AlertTriangle } from 'lucide-react';
 
 interface TemplateButton {
   type: 'URL' | 'PHONE_NUMBER' | 'QUICK_REPLY';
@@ -32,6 +33,7 @@ interface TemplateData {
   footer_text: string;
   buttons: TemplateButton[];
   status?: string;
+  rejection_reason?: string;
 }
 
 const EMPTY: TemplateData = {
@@ -187,6 +189,15 @@ export function WhatsappTemplateDialog({ open, onOpenChange, template }: Props) 
               : `Completa los campos para ${isEdit ? 'editar' : 'crear'} una plantilla de mensaje de WhatsApp.`}
           </DialogDescription>
         </DialogHeader>
+
+        {isRejected && template?.rejection_reason && (
+          <Alert variant="destructive" className="flex items-start gap-2">
+            <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
+            <AlertDescription>
+              <span className="font-medium">Motivo de rechazo de Meta:</span> {template.rejection_reason}
+            </AlertDescription>
+          </Alert>
+        )}
 
         <div className="space-y-4">
           {/* Name */}
