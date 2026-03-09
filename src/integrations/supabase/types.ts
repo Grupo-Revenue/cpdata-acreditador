@@ -653,6 +653,7 @@ export type Database = {
           language: string
           meta_template_id: string | null
           name: string
+          rejection_reason: string | null
           status: string
           updated_at: string
         }
@@ -669,6 +670,7 @@ export type Database = {
           language?: string
           meta_template_id?: string | null
           name: string
+          rejection_reason?: string | null
           status?: string
           updated_at?: string
         }
@@ -685,6 +687,7 @@ export type Database = {
           language?: string
           meta_template_id?: string | null
           name?: string
+          rejection_reason?: string | null
           status?: string
           updated_at?: string
         }

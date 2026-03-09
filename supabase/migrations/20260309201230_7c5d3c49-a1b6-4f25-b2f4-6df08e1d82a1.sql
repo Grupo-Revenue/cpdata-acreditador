@@ -1,0 +1,1 @@
+ALTER TABLE public.whatsapp_templates ADD COLUMN rejection_reason text;
