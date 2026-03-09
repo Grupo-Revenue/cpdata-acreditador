@@ -159,7 +159,10 @@ export function WhatsappTemplateDialog({ open, onOpenChange, template }: Props) 
       });
 
       if (error) throw new Error(error.message || 'Error al enviar a Meta');
-      if (data?.error) throw new Error(data.error);
+      if (data?.error) {
+        const userMsg = data?.meta_error?.error_user_msg || data.error;
+        throw new Error(userMsg);
+      }
 
       queryClient.invalidateQueries({ queryKey: ['whatsapp_templates'] });
       toast({ title: 'Plantilla enviada a Meta', description: 'El estado cambiará cuando Meta la apruebe.' });
