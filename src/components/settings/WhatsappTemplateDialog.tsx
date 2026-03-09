@@ -190,8 +190,10 @@ export function WhatsappTemplateDialog({ open, onOpenChange, template }: Props) 
           {/* Name */}
           <div className="space-y-2">
             <Label>Nombre de la plantilla *</Label>
-            <Input placeholder="bienvenida_cliente" value={form.name} onChange={(e) => set('name', e.target.value)} />
-            <p className="text-xs text-muted-foreground">Solo letras minúsculas, números y guiones bajos</p>
+            <Input placeholder="bienvenida_cliente" value={form.name} onChange={(e) => set('name', e.target.value)} disabled={hasMetaId} />
+            <p className="text-xs text-muted-foreground">
+              {hasMetaId ? 'El nombre no se puede cambiar una vez enviado a Meta' : 'Solo letras minúsculas, números y guiones bajos'}
+            </p>
           </div>
 
           {/* Category + Language */}
