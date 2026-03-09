@@ -158,18 +158,34 @@ Deno.serve(async (req) => {
 
     console.log("Sending to Meta API:", JSON.stringify(metaPayload));
 
+    // Determine if this is an edit (template already exists in Meta) or a new creation
+    const isMetaEdit = !!template.meta_template_id;
+
+    let metaUrl: string;
+    let metaBody: Record<string, unknown>;
+
+    if (isMetaEdit) {
+      // EDIT existing template: only components and category can be changed
+      metaUrl = `https://graph.facebook.com/v21.0/${template.meta_template_id}`;
+      metaBody = { components, category: template.category };
+      console.log("Editing existing Meta template:", template.meta_template_id);
+    } else {
+      // CREATE new template
+      metaUrl = `https://graph.facebook.com/v21.0/${wabaId}/message_templates`;
+      metaBody = metaPayload;
+    }
+
+    console.log("Sending to Meta API:", JSON.stringify(metaBody));
+
     // Call Meta API
-    const metaRes = await fetch(
-      `https://graph.facebook.com/v21.0/${wabaId}/message_templates`,
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(metaPayload),
-      }
-    );
+    const metaRes = await fetch(metaUrl, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(metaBody),
+    });
 
     const metaData = await metaRes.json();
     console.log("Meta API response:", JSON.stringify(metaData));
@@ -187,12 +203,13 @@ Deno.serve(async (req) => {
     }
 
     // Update local template with meta_template_id and status
+    const updatePayload: Record<string, string> = { status: "pending" };
+    if (!isMetaEdit && metaData.id) {
+      updatePayload.meta_template_id = metaData.id;
+    }
     const { error: updateError } = await adminClient
       .from("whatsapp_templates")
-      .update({
-        meta_template_id: metaData.id,
-        status: "pending",
-      })
+      .update(updatePayload)
       .eq("id", template_id);
 
     if (updateError) throw updateError;

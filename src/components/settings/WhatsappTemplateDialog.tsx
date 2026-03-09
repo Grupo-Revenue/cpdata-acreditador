@@ -182,7 +182,9 @@ export function WhatsappTemplateDialog({ open, onOpenChange, template }: Props) 
         <DialogHeader>
           <DialogTitle>{isEdit ? 'Editar Plantilla' : 'Nueva Plantilla'}</DialogTitle>
           <DialogDescription>
-            Completa los campos para {isEdit ? 'editar' : 'crear'} una plantilla de mensaje de WhatsApp.
+            {isRejected
+              ? 'Modifica la plantilla rechazada y reenvíala a Meta para una nueva revisión.'
+              : `Completa los campos para ${isEdit ? 'editar' : 'crear'} una plantilla de mensaje de WhatsApp.`}
           </DialogDescription>
         </DialogHeader>
 
