@@ -33,6 +33,7 @@ interface TemplateData {
   footer_text: string;
   buttons: TemplateButton[];
   status?: string;
+  rejection_reason?: string;
 }
 
 const EMPTY: TemplateData = {
