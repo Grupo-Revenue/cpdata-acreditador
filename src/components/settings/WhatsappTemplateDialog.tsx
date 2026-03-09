@@ -190,6 +190,15 @@ export function WhatsappTemplateDialog({ open, onOpenChange, template }: Props) 
           </DialogDescription>
         </DialogHeader>
 
+        {isRejected && template?.rejection_reason && (
+          <Alert variant="destructive" className="flex items-start gap-2">
+            <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
+            <AlertDescription>
+              <span className="font-medium">Motivo de rechazo de Meta:</span> {template.rejection_reason}
+            </AlertDescription>
+          </Alert>
+        )}
+
         <div className="space-y-4">
           {/* Name */}
           <div className="space-y-2">
