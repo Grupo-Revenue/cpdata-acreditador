@@ -66,6 +66,8 @@ export function WhatsappTemplateDialog({ open, onOpenChange, template }: Props) 
   const [form, setForm] = useState<TemplateData>(EMPTY);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const isEdit = !!template?.id;
+  const hasMetaId = !!(template as any)?.meta_template_id;
+  const isRejected = template?.status === 'rejected';
 
   useEffect(() => {
     if (open) {
