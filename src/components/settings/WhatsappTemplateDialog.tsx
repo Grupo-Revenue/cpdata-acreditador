@@ -74,7 +74,7 @@ export function WhatsappTemplateDialog({ open, onOpenChange, template }: Props) 
 
   useEffect(() => {
     if (open) {
-      setForm(template ? { ...template, buttons: template.buttons ?? [] } : { ...EMPTY });
+      setForm(template ? { ...template, buttons: template.buttons ?? [], body_examples: (template as any).body_examples ?? [] } : { ...EMPTY });
     }
   }, [open, template]);
 

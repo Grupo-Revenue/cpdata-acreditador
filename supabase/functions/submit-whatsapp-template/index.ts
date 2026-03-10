@@ -116,7 +116,23 @@ Deno.serve(async (req) => {
     }
 
     // Body
-    components.push({ type: "BODY", text: template.body_text });
+    const bodyComponent: Record<string, unknown> = { type: "BODY", text: template.body_text };
+
+    // Add examples for variables if provided
+    const varMatches = template.body_text.match(/\{\{\d+\}\}/g);
+    if (varMatches) {
+      const uniqueVars = [...new Set(varMatches)].sort();
+      const userExamples = (template.body_examples as string[]) || [];
+      if (userExamples.length >= uniqueVars.length && userExamples.every((v: string) => v?.trim())) {
+        bodyComponent.example = { body_text: [userExamples.slice(0, uniqueVars.length)] };
+      } else {
+        // Fallback defaults
+        const defaults = ["Juan", "12/03/2025", "10:00", "Santiago"];
+        bodyComponent.example = { body_text: [uniqueVars.map((_: string, i: number) => defaults[i] || `ejemplo_${i + 1}`)] };
+      }
+    }
+
+    components.push(bodyComponent);
 
     // Footer
     if (template.footer_text) {
