@@ -8,10 +8,14 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { LoadingState } from '@/components/ui/LoadingState';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
+import { Checkbox } from '@/components/ui/checkbox';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth, AppRole } from '@/contexts/AuthContext';
-import { Users, Check, X, RefreshCw, UserPlus, Upload } from 'lucide-react';
+import { Users, Check, X, RefreshCw, UserPlus, Upload, MessageSquare } from 'lucide-react';
 import { UsersTable } from '@/components/users/UsersTable';
 import { UserEditDialog } from '@/components/users/UserEditDialog';
 import { UserRolesDialog } from '@/components/users/UserRolesDialog';
@@ -29,6 +33,14 @@ interface PendingUser {
   telefono: string | null;
   referencia_contacto: string | null;
   created_at: string;
+}
+
+interface WhatsappTemplate {
+  id: string;
+  name: string;
+  body_text: string;
+  language: string;
+  status: string;
 }
 
 export default function UsersPage() {
@@ -51,6 +63,13 @@ export default function UsersPage() {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isBulkUploadDialogOpen, setIsBulkUploadDialogOpen] = useState(false);
   const [commentingUser, setCommentingUser] = useState<UserWithRoles | null>(null);
+
+  // Bulk WhatsApp states
+  const [showBulkWhatsappDialog, setShowBulkWhatsappDialog] = useState(false);
+  const [whatsappTemplates, setWhatsappTemplates] = useState<WhatsappTemplate[]>([]);
+  const [bulkWhatsappTemplate, setBulkWhatsappTemplate] = useState<string>('');
+  const [selectedWhatsappUsers, setSelectedWhatsappUsers] = useState<Set<string>>(new Set());
+  const [isSendingBulk, setIsSendingBulk] = useState(false);
   
   const { toast } = useToast();
 
@@ -160,10 +179,44 @@ export default function UsersPage() {
         if (roleError) throw roleError;
       }
 
-      toast({
-        title: 'Usuario aprobado',
-        description: `${selectedUser.nombre} ${selectedUser.apellido} ha sido aprobado.`,
-      });
+      // Send welcome WhatsApp message
+      const phone = selectedUser.telefono?.trim();
+      if (phone) {
+        try {
+          const { error: whatsappError } = await supabase.functions.invoke('send-whatsapp-message', {
+            body: {
+              template_name: 'msg_bienvenida',
+              template_language: 'es',
+              to_phone: phone,
+              parameters: [selectedUser.nombre],
+            },
+          });
+          if (whatsappError) {
+            console.error('WhatsApp send error:', whatsappError);
+            toast({
+              variant: 'default',
+              title: 'Usuario aprobado',
+              description: `${selectedUser.nombre} fue aprobado, pero no se pudo enviar el WhatsApp de bienvenida.`,
+            });
+          } else {
+            toast({
+              title: 'Usuario aprobado',
+              description: `${selectedUser.nombre} ${selectedUser.apellido} ha sido aprobado y se envió el WhatsApp de bienvenida.`,
+            });
+          }
+        } catch (e) {
+          console.error('WhatsApp send exception:', e);
+          toast({
+            title: 'Usuario aprobado',
+            description: `${selectedUser.nombre} fue aprobado, pero falló el envío del WhatsApp.`,
+          });
+        }
+      } else {
+        toast({
+          title: 'Usuario aprobado',
+          description: `${selectedUser.nombre} ${selectedUser.apellido} ha sido aprobado. No tiene teléfono para enviar WhatsApp.`,
+        });
+      }
 
       handleRefresh();
     } catch (error) {
@@ -240,6 +293,94 @@ export default function UsersPage() {
     } finally {
       setIsDeleting(false);
       setDeletingUser(null);
+    }
+  };
+
+  // Bulk WhatsApp
+  const openBulkWhatsappDialog = async () => {
+    // Fetch approved templates
+    const { data, error } = await supabase
+      .from('whatsapp_templates')
+      .select('id, name, body_text, language, status')
+      .eq('status', 'approved');
+
+    if (error) {
+      toast({ variant: 'destructive', title: 'Error', description: 'No se pudieron cargar las plantillas.' });
+      return;
+    }
+
+    if (!data || data.length === 0) {
+      toast({ variant: 'destructive', title: 'Sin plantillas', description: 'No hay plantillas aprobadas disponibles.' });
+      return;
+    }
+
+    setWhatsappTemplates(data);
+    setBulkWhatsappTemplate('');
+    // Pre-select all users with phone
+    const usersWithPhone = allUsers.filter(u => !!u.telefono?.trim());
+    setSelectedWhatsappUsers(new Set(usersWithPhone.map(u => u.id)));
+    setShowBulkWhatsappDialog(true);
+  };
+
+  const usersWithPhone = allUsers.filter(u => !!u.telefono?.trim());
+
+  const handleBulkWhatsappSend = async () => {
+    if (!bulkWhatsappTemplate || selectedWhatsappUsers.size === 0) return;
+
+    const template = whatsappTemplates.find(t => t.id === bulkWhatsappTemplate);
+    if (!template) return;
+
+    setIsSendingBulk(true);
+    let sent = 0;
+    let failed = 0;
+
+    const targets = usersWithPhone.filter(u => selectedWhatsappUsers.has(u.id));
+
+    for (const user of targets) {
+      try {
+        const { error } = await supabase.functions.invoke('send-whatsapp-message', {
+          body: {
+            template_name: template.name,
+            template_language: template.language || 'es',
+            to_phone: user.telefono!.trim(),
+            parameters: [user.nombre],
+          },
+        });
+        if (error) {
+          failed++;
+          console.error(`Failed to send to ${user.nombre}:`, error);
+        } else {
+          sent++;
+        }
+      } catch (e) {
+        failed++;
+        console.error(`Exception sending to ${user.nombre}:`, e);
+      }
+    }
+
+    setIsSendingBulk(false);
+    setShowBulkWhatsappDialog(false);
+
+    toast({
+      title: 'Envío masivo completado',
+      description: `Enviados: ${sent} | Fallidos: ${failed}`,
+    });
+  };
+
+  const toggleWhatsappUser = (userId: string) => {
+    setSelectedWhatsappUsers(prev => {
+      const next = new Set(prev);
+      if (next.has(userId)) next.delete(userId);
+      else next.add(userId);
+      return next;
+    });
+  };
+
+  const toggleAllWhatsappUsers = () => {
+    if (selectedWhatsappUsers.size === usersWithPhone.length) {
+      setSelectedWhatsappUsers(new Set());
+    } else {
+      setSelectedWhatsappUsers(new Set(usersWithPhone.map(u => u.id)));
     }
   };
 
@@ -415,6 +556,10 @@ export default function UsersPage() {
           <div className="flex gap-2">
             {isSuperadmin && (
               <>
+                <Button variant="outline" onClick={openBulkWhatsappDialog}>
+                  <MessageSquare className="w-4 h-4 mr-2" />
+                  Enviar WhatsApp
+                </Button>
                 <Button variant="outline" onClick={() => setIsBulkUploadDialogOpen(true)}>
                   <Upload className="w-4 h-4 mr-2" />
                   Cargar Usuarios
@@ -562,6 +707,85 @@ export default function UsersPage() {
           userName={`${commentingUser.nombre} ${commentingUser.apellido}`.trim()}
         />
       )}
+
+      {/* Bulk WhatsApp Dialog */}
+      <Dialog open={showBulkWhatsappDialog} onOpenChange={setShowBulkWhatsappDialog}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Enviar WhatsApp Masivo</DialogTitle>
+            <DialogDescription>Selecciona una plantilla y los destinatarios para enviar mensajes.</DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            {/* Template selector */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Plantilla</label>
+              <Select value={bulkWhatsappTemplate} onValueChange={setBulkWhatsappTemplate}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Seleccionar plantilla" />
+                </SelectTrigger>
+                <SelectContent>
+                  {whatsappTemplates.map(t => (
+                    <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {bulkWhatsappTemplate && (
+                <p className="text-xs text-muted-foreground border rounded p-2 bg-muted/30">
+                  {whatsappTemplates.find(t => t.id === bulkWhatsappTemplate)?.body_text}
+                </p>
+              )}
+            </div>
+
+            {/* Recipients */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="text-sm font-medium">
+                  Destinatarios ({selectedWhatsappUsers.size} de {usersWithPhone.length})
+                </label>
+                <Button variant="ghost" size="sm" onClick={toggleAllWhatsappUsers}>
+                  {selectedWhatsappUsers.size === usersWithPhone.length ? 'Deseleccionar todos' : 'Seleccionar todos'}
+                </Button>
+              </div>
+              <ScrollArea className="h-[300px] border rounded-md p-2">
+                {usersWithPhone.length === 0 ? (
+                  <p className="text-sm text-muted-foreground text-center py-4">No hay usuarios con teléfono registrado.</p>
+                ) : (
+                  <div className="space-y-1">
+                    {usersWithPhone.map(user => (
+                      <label
+                        key={user.id}
+                        className="flex items-center gap-3 p-2 rounded hover:bg-muted/50 cursor-pointer"
+                      >
+                        <Checkbox
+                          checked={selectedWhatsappUsers.has(user.id)}
+                          onCheckedChange={() => toggleWhatsappUser(user.id)}
+                        />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium truncate">{user.nombre} {user.apellido}</p>
+                          <p className="text-xs text-muted-foreground truncate">{user.telefono}</p>
+                        </div>
+                      </label>
+                    ))}
+                  </div>
+                )}
+              </ScrollArea>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowBulkWhatsappDialog(false)} disabled={isSendingBulk}>
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleBulkWhatsappSend}
+              disabled={!bulkWhatsappTemplate || selectedWhatsappUsers.size === 0 || isSendingBulk}
+            >
+              {isSendingBulk ? 'Enviando...' : `Enviar a ${selectedWhatsappUsers.size} usuario${selectedWhatsappUsers.size !== 1 ? 's' : ''}`}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </AppShell>
   );
 }
