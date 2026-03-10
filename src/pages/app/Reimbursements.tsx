@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { AppShell } from '@/components/layout/AppShell';
@@ -12,6 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Wallet, Lock, Unlock, CheckCircle, XCircle, DollarSign, Plus, Trash2, Upload, Search, Download, MessageSquare } from 'lucide-react';
 import { downloadFile } from '@/lib/csv-parser';
@@ -40,6 +41,8 @@ export default function ReimbursementsPage() {
   const [submitting, setSubmitting] = useState(false);
   const [sendingWsp, setSendingWsp] = useState<string | null>(null);
   const [sendingBulk, setSendingBulk] = useState(false);
+  const [showBulkConfirm, setShowBulkConfirm] = useState(false);
+  const [bulkTargets, setBulkTargets] = useState<{ eventId: string; eventName: string; sup: SupervisorInfo }[]>([]);
 
   // For supervisors: get assigned events; for admins: get all events with expenses
   const { data: events, isLoading: eventsLoading } = useQuery({
@@ -305,31 +308,38 @@ export default function ReimbursementsPage() {
     }
   };
 
-  // Bulk WhatsApp to all supervisors with unclosed reimbursements
-  const sendBulkWhatsapp = async () => {
+  // Prepare bulk WhatsApp targets and show confirmation
+  const prepareBulkWhatsapp = () => {
     if (!supervisorMap) return;
     const unclosedEvents = filteredEvents.filter(e => !e.reimbursement_closed_at);
     const targets = unclosedEvents
-      .map(e => ({ eventId: e.id, sup: supervisorMap[e.id] }))
-      .filter(t => t.sup?.phone);
+      .map(e => ({ eventId: e.id, eventName: e.name, sup: supervisorMap[e.id] }))
+      .filter((t): t is { eventId: string; eventName: string; sup: SupervisorInfo } => !!t.sup?.phone);
 
     if (targets.length === 0) {
       toast({ title: 'No hay supervisores con teléfono para notificar', variant: 'destructive' });
       return;
     }
 
+    setBulkTargets(targets);
+    setShowBulkConfirm(true);
+  };
+
+  // Execute bulk send after confirmation
+  const executeBulkWhatsapp = async () => {
+    setShowBulkConfirm(false);
     setSendingBulk(true);
     let sent = 0;
     let failed = 0;
 
-    for (const t of targets) {
+    for (const t of bulkTargets) {
       try {
         const { data, error } = await supabase.functions.invoke('send-whatsapp-message', {
           body: {
             template_name: 'msg_rendiciones_pendientes',
             template_language: 'es',
-            to_phone: t.sup!.phone,
-            parameters: [t.sup!.name],
+            to_phone: t.sup.phone,
+            parameters: [t.sup.name],
           },
         });
         if (error || data?.error) { failed++; } else { sent++; }
@@ -414,7 +424,7 @@ export default function ReimbursementsPage() {
                 <Button
                   size="sm"
                   variant="outline"
-                  onClick={sendBulkWhatsapp}
+                  onClick={prepareBulkWhatsapp}
                   disabled={sendingBulk || !supervisorMap}
                 >
                   <MessageSquare className="h-4 w-4 mr-1" />
@@ -611,6 +621,35 @@ export default function ReimbursementsPage() {
         onConfirm={handleConfirm}
         isLoading={processing}
       />
+
+      <Dialog open={showBulkConfirm} onOpenChange={setShowBulkConfirm}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Confirmar envío masivo</DialogTitle>
+            <DialogDescription>
+              Se enviarán {bulkTargets.length} mensaje{bulkTargets.length !== 1 ? 's' : ''} de WhatsApp a los siguientes supervisores:
+            </DialogDescription>
+          </DialogHeader>
+          <div className="max-h-[300px] overflow-y-auto space-y-2">
+            {bulkTargets.map((t) => (
+              <div key={t.eventId} className="flex items-center justify-between rounded-md border p-3 text-sm">
+                <div>
+                  <p className="font-medium">{t.sup.name}</p>
+                  <p className="text-muted-foreground text-xs">{t.eventName}</p>
+                </div>
+                <span className="text-muted-foreground text-xs">{t.sup.phone}</span>
+              </div>
+            ))}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowBulkConfirm(false)}>Cancelar</Button>
+            <Button onClick={executeBulkWhatsapp}>
+              <MessageSquare className="h-4 w-4 mr-1" />
+              Enviar {bulkTargets.length} mensaje{bulkTargets.length !== 1 ? 's' : ''}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </AppShell>
   );
 }
