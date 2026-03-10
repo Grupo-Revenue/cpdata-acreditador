@@ -635,13 +635,48 @@ export default function ReimbursementsPage() {
           <DialogHeader>
             <DialogTitle>Confirmar envío masivo</DialogTitle>
             <DialogDescription>
-              Se enviarán {bulkTargets.length} mensaje{bulkTargets.length !== 1 ? 's' : ''} de WhatsApp a los siguientes supervisores:
+              Selecciona los supervisores a los que deseas enviar WhatsApp:
             </DialogDescription>
           </DialogHeader>
+          <div className="flex items-center gap-2 pb-2 border-b">
+            <Checkbox
+              checked={selectedBulkTargets.size === bulkTargets.length}
+              onCheckedChange={(checked) => {
+                if (checked) {
+                  setSelectedBulkTargets(new Set(bulkTargets.map(t => t.eventId)));
+                } else {
+                  setSelectedBulkTargets(new Set());
+                }
+              }}
+            />
+            <span className="text-sm font-medium">Seleccionar todos</span>
+          </div>
           <div className="max-h-[300px] overflow-y-auto space-y-2">
             {bulkTargets.map((t) => (
-              <div key={t.eventId} className="flex items-center justify-between rounded-md border p-3 text-sm">
-                <div>
+              <div
+                key={t.eventId}
+                className="flex items-center gap-3 rounded-md border p-3 text-sm cursor-pointer hover:bg-accent/50"
+                onClick={() => {
+                  setSelectedBulkTargets(prev => {
+                    const next = new Set(prev);
+                    if (next.has(t.eventId)) next.delete(t.eventId);
+                    else next.add(t.eventId);
+                    return next;
+                  });
+                }}
+              >
+                <Checkbox
+                  checked={selectedBulkTargets.has(t.eventId)}
+                  onCheckedChange={(checked) => {
+                    setSelectedBulkTargets(prev => {
+                      const next = new Set(prev);
+                      if (checked) next.add(t.eventId);
+                      else next.delete(t.eventId);
+                      return next;
+                    });
+                  }}
+                />
+                <div className="flex-1">
                   <p className="font-medium">{t.sup.name}</p>
                   <p className="text-muted-foreground text-xs">{t.eventName}</p>
                 </div>
@@ -651,9 +686,9 @@ export default function ReimbursementsPage() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowBulkConfirm(false)}>Cancelar</Button>
-            <Button onClick={executeBulkWhatsapp}>
+            <Button onClick={executeBulkWhatsapp} disabled={selectedBulkTargets.size === 0}>
               <MessageSquare className="h-4 w-4 mr-1" />
-              Enviar {bulkTargets.length} mensaje{bulkTargets.length !== 1 ? 's' : ''}
+              Enviar {selectedBulkTargets.size} mensaje{selectedBulkTargets.size !== 1 ? 's' : ''}
             </Button>
           </DialogFooter>
         </DialogContent>
