@@ -32,6 +32,7 @@ interface TemplateData {
   body_text: string;
   footer_text: string;
   buttons: TemplateButton[];
+  body_examples: string[];
   status?: string;
   rejection_reason?: string;
 }
