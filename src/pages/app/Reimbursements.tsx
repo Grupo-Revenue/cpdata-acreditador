@@ -14,6 +14,7 @@ import { Badge } from '@/components/ui/badge';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Wallet, Lock, Unlock, CheckCircle, XCircle, DollarSign, Plus, Trash2, Upload, Search, Download, MessageSquare } from 'lucide-react';
 import { downloadFile } from '@/lib/csv-parser';
 
@@ -43,6 +44,7 @@ export default function ReimbursementsPage() {
   const [sendingBulk, setSendingBulk] = useState(false);
   const [showBulkConfirm, setShowBulkConfirm] = useState(false);
   const [bulkTargets, setBulkTargets] = useState<{ eventId: string; eventName: string; sup: SupervisorInfo }[]>([]);
+  const [selectedBulkTargets, setSelectedBulkTargets] = useState<Set<string>>(new Set());
 
   // For supervisors: get assigned events; for admins: get all events with expenses
   const { data: events, isLoading: eventsLoading } = useQuery({
@@ -314,7 +316,7 @@ export default function ReimbursementsPage() {
     const unclosedEvents = filteredEvents.filter(e => !e.reimbursement_closed_at);
     const targets = unclosedEvents
       .map(e => ({ eventId: e.id, eventName: e.name, sup: supervisorMap[e.id] }))
-      .filter((t): t is { eventId: string; eventName: string; sup: SupervisorInfo } => !!t.sup?.phone);
+      .filter((t): t is { eventId: string; eventName: string; sup: SupervisorInfo } => !!t.sup?.phone?.trim());
 
     if (targets.length === 0) {
       toast({ title: 'No hay supervisores con teléfono para notificar', variant: 'destructive' });
@@ -322,17 +324,23 @@ export default function ReimbursementsPage() {
     }
 
     setBulkTargets(targets);
+    setSelectedBulkTargets(new Set(targets.map(t => t.eventId)));
     setShowBulkConfirm(true);
   };
 
   // Execute bulk send after confirmation
   const executeBulkWhatsapp = async () => {
+    const toSend = bulkTargets.filter(t => selectedBulkTargets.has(t.eventId));
+    if (toSend.length === 0) {
+      toast({ title: 'No hay supervisores seleccionados', variant: 'destructive' });
+      return;
+    }
     setShowBulkConfirm(false);
     setSendingBulk(true);
     let sent = 0;
     let failed = 0;
 
-    for (const t of bulkTargets) {
+    for (const t of toSend) {
       try {
         const { data, error } = await supabase.functions.invoke('send-whatsapp-message', {
           body: {
@@ -627,13 +635,48 @@ export default function ReimbursementsPage() {
           <DialogHeader>
             <DialogTitle>Confirmar envío masivo</DialogTitle>
             <DialogDescription>
-              Se enviarán {bulkTargets.length} mensaje{bulkTargets.length !== 1 ? 's' : ''} de WhatsApp a los siguientes supervisores:
+              Selecciona los supervisores a los que deseas enviar WhatsApp:
             </DialogDescription>
           </DialogHeader>
+          <div className="flex items-center gap-2 pb-2 border-b">
+            <Checkbox
+              checked={selectedBulkTargets.size === bulkTargets.length}
+              onCheckedChange={(checked) => {
+                if (checked) {
+                  setSelectedBulkTargets(new Set(bulkTargets.map(t => t.eventId)));
+                } else {
+                  setSelectedBulkTargets(new Set());
+                }
+              }}
+            />
+            <span className="text-sm font-medium">Seleccionar todos</span>
+          </div>
           <div className="max-h-[300px] overflow-y-auto space-y-2">
             {bulkTargets.map((t) => (
-              <div key={t.eventId} className="flex items-center justify-between rounded-md border p-3 text-sm">
-                <div>
+              <div
+                key={t.eventId}
+                className="flex items-center gap-3 rounded-md border p-3 text-sm cursor-pointer hover:bg-accent/50"
+                onClick={() => {
+                  setSelectedBulkTargets(prev => {
+                    const next = new Set(prev);
+                    if (next.has(t.eventId)) next.delete(t.eventId);
+                    else next.add(t.eventId);
+                    return next;
+                  });
+                }}
+              >
+                <Checkbox
+                  checked={selectedBulkTargets.has(t.eventId)}
+                  onCheckedChange={(checked) => {
+                    setSelectedBulkTargets(prev => {
+                      const next = new Set(prev);
+                      if (checked) next.add(t.eventId);
+                      else next.delete(t.eventId);
+                      return next;
+                    });
+                  }}
+                />
+                <div className="flex-1">
                   <p className="font-medium">{t.sup.name}</p>
                   <p className="text-muted-foreground text-xs">{t.eventName}</p>
                 </div>
@@ -643,9 +686,9 @@ export default function ReimbursementsPage() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowBulkConfirm(false)}>Cancelar</Button>
-            <Button onClick={executeBulkWhatsapp}>
+            <Button onClick={executeBulkWhatsapp} disabled={selectedBulkTargets.size === 0}>
               <MessageSquare className="h-4 w-4 mr-1" />
-              Enviar {bulkTargets.length} mensaje{bulkTargets.length !== 1 ? 's' : ''}
+              Enviar {selectedBulkTargets.size} mensaje{selectedBulkTargets.size !== 1 ? 's' : ''}
             </Button>
           </DialogFooter>
         </DialogContent>
