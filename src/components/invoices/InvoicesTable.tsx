@@ -322,9 +322,9 @@ export function InvoicesTable({ invoices, isAdmin, paymentDays, onEdit, onWhatsa
                           </Button>
                         )}
                         {isAdmin ? (
-                          inv.file_url ? <CheckCircle className="h-4 w-4 text-success" /> : null
+                          inv.file_url ? <Button variant="ghost" size="icon" className="pointer-events-none" title="Boleta subida"><CheckCircle className="h-4 w-4 text-success" /></Button> : null
                         ) : (
-                          inv.file_url ? <CheckCircle className="h-4 w-4 text-success" /> : (
+                          inv.file_url ? <Button variant="ghost" size="icon" className="pointer-events-none" title="Boleta subida"><CheckCircle className="h-4 w-4 text-success" /></Button> : (
                             <Button variant="ghost" size="icon" onClick={() => onUpload(inv)} title="Subir boleta">
                               <Upload className="h-4 w-4" />
                             </Button>
