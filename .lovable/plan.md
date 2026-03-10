@@ -1,13 +1,25 @@
 
 
-## Plan: Scroll y paginacion en dialogo de comentarios
+## Plan: Add confirmation dialog before bulk WhatsApp send in Reimbursements
 
-### Cambios en `src/components/events/AttendanceCommentsDialog.tsx`
+### Change: `src/pages/app/Reimbursements.tsx`
 
-1. Agregar estado de paginacion (`page`, `ITEMS_PER_PAGE = 5`)
-2. Resetear pagina a 1 cuando cambia el `userId`
-3. Calcular `paginatedComments` como slice del array total
-4. Envolver la lista de comentarios en un `ScrollArea` con altura maxima fija (~400px)
-5. Mostrar controles de paginacion debajo: contador "Mostrando X-Y de Z" + botones Anterior/Siguiente
-6. Importar `ScrollArea` y `Button`
+**1. Add state for confirmation dialog**
+
+Add `showBulkConfirm` boolean state and a `bulkTargets` state to hold the list of supervisors to notify.
+
+**2. Split `sendBulkWhatsapp` into two steps**
+
+- **Step 1 (on button click):** Compute the `targets` list (unclosed events with supervisor phone), store in `bulkTargets`, and open the confirm dialog (`showBulkConfirm = true`). If no targets, show toast and return.
+- **Step 2 (on confirm):** Execute the existing send loop using `bulkTargets`.
+
+**3. Add confirmation dialog UI**
+
+Use a `Dialog` (not `ConfirmDialog` since we need custom content) that shows:
+- Title: "Confirmar envío masivo"
+- A table/list of supervisors with their name and phone number
+- Count: "Se enviarán X mensajes"
+- Cancel and Confirm buttons
+
+This gives the admin full visibility before sending.
 
