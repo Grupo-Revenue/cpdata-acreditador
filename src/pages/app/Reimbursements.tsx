@@ -316,7 +316,7 @@ export default function ReimbursementsPage() {
     const unclosedEvents = filteredEvents.filter(e => !e.reimbursement_closed_at);
     const targets = unclosedEvents
       .map(e => ({ eventId: e.id, eventName: e.name, sup: supervisorMap[e.id] }))
-      .filter((t): t is { eventId: string; eventName: string; sup: SupervisorInfo } => !!t.sup?.phone);
+      .filter((t): t is { eventId: string; eventName: string; sup: SupervisorInfo } => !!t.sup?.phone?.trim());
 
     if (targets.length === 0) {
       toast({ title: 'No hay supervisores con teléfono para notificar', variant: 'destructive' });
@@ -324,6 +324,7 @@ export default function ReimbursementsPage() {
     }
 
     setBulkTargets(targets);
+    setSelectedBulkTargets(new Set(targets.map(t => t.eventId)));
     setShowBulkConfirm(true);
   };
 
