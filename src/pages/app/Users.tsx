@@ -326,6 +326,12 @@ export default function UsersPage() {
   };
 
   const usersWithPhone = allUsers.filter(u => !!u.telefono?.trim());
+  const filteredUsersWithPhone = usersWithPhone.filter(u => {
+    if (!bulkWhatsappSearch.trim()) return true;
+    const search = bulkWhatsappSearch.toLowerCase();
+    const fullName = `${u.nombre} ${u.apellido}`.toLowerCase();
+    return fullName.includes(search) || u.telefono?.includes(bulkWhatsappSearch.trim());
+  });
 
   const handleBulkWhatsappSend = async () => {
     if (!bulkWhatsappTemplate || selectedWhatsappUsers.size === 0) return;
