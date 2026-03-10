@@ -39,7 +39,7 @@ interface TemplateData {
 
 const EMPTY: TemplateData = {
   name: '', language: 'es', category: 'MARKETING', header_type: 'none',
-  header_text: '', header_image_url: '', body_text: '', footer_text: '', buttons: [],
+  header_text: '', header_image_url: '', body_text: '', footer_text: '', buttons: [], body_examples: [],
 };
 
 const LANGUAGES = [
