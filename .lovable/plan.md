@@ -1,13 +1,27 @@
 
 
-## Plan: Scroll y paginacion en dialogo de comentarios
+## Plan: Fix bulk WhatsApp and add selection checkboxes
 
-### Cambios en `src/components/events/AttendanceCommentsDialog.tsx`
+### Problem 1: "No hay supervisores con teléfono"
+The filter on line 317 checks `!!t.sup?.phone` which fails for empty strings `""`. Also, the `telefono` field might have whitespace. Fix: trim the phone value and treat empty strings as no phone.
 
-1. Agregar estado de paginacion (`page`, `ITEMS_PER_PAGE = 5`)
-2. Resetear pagina a 1 cuando cambia el `userId`
-3. Calcular `paginatedComments` como slice del array total
-4. Envolver la lista de comentarios en un `ScrollArea` con altura maxima fija (~400px)
-5. Mostrar controles de paginacion debajo: contador "Mostrando X-Y de Z" + botones Anterior/Siguiente
-6. Importar `ScrollArea` y `Button`
+### Problem 2: Allow selecting which supervisors to notify
+
+### Changes to `src/pages/app/Reimbursements.tsx`
+
+**1. Add selection state**
+Add `selectedBulkTargets` state as a `Set<string>` of eventIds. Initialize it with all targets when the dialog opens.
+
+**2. Fix phone filtering in `prepareBulkWhatsapp`**
+Change the filter from `!!t.sup?.phone` to `!!t.sup?.phone?.trim()` to handle empty strings and whitespace.
+
+**3. Update bulk confirmation dialog**
+- Add a `Checkbox` next to each supervisor row
+- Toggle selection on click
+- Show selected count in the send button
+- Only send to selected targets in `executeBulkWhatsapp`
+- Add a "Select all / Deselect all" toggle at the top
+
+**4. Update `executeBulkWhatsapp`**
+Filter `bulkTargets` by `selectedBulkTargets` before sending.
 
