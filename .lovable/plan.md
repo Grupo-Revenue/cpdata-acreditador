@@ -1,13 +1,29 @@
 
 
-## Plan: Scroll y paginacion en dialogo de comentarios
+## Plan: Add search filter to bulk WhatsApp dialog in Users
 
-### Cambios en `src/components/events/AttendanceCommentsDialog.tsx`
+### Change: `src/pages/app/Users.tsx`
 
-1. Agregar estado de paginacion (`page`, `ITEMS_PER_PAGE = 5`)
-2. Resetear pagina a 1 cuando cambia el `userId`
-3. Calcular `paginatedComments` como slice del array total
-4. Envolver la lista de comentarios en un `ScrollArea` con altura maxima fija (~400px)
-5. Mostrar controles de paginacion debajo: contador "Mostrando X-Y de Z" + botones Anterior/Siguiente
-6. Importar `ScrollArea` y `Button`
+**1. Add search state**
+
+Add `bulkWhatsappSearch` state (string) for filtering the recipient list.
+
+**2. Add filtered list**
+
+Create `filteredUsersWithPhone` that filters `usersWithPhone` by name or phone matching the search term (case-insensitive).
+
+**3. Update toggle all**
+
+Make "Seleccionar todos / Deseleccionar todos" operate on the **filtered** list so the user can search, then select/deselect just the visible results.
+
+**4. Add search input in the dialog**
+
+Insert an `Input` with a `Search` icon above the `ScrollArea` (inside the Recipients section), similar to the pattern used in `UsersTable`. Render `filteredUsersWithPhone` instead of `usersWithPhone` in the list.
+
+**5. Reset search on dialog open**
+
+Clear `bulkWhatsappSearch` when opening the dialog.
+
+### Files changed
+- `src/pages/app/Users.tsx`
 
