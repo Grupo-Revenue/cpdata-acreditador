@@ -15,7 +15,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth, AppRole } from '@/contexts/AuthContext';
-import { Users, Check, X, RefreshCw, UserPlus, Upload, MessageSquare } from 'lucide-react';
+import { Users, Check, X, RefreshCw, UserPlus, Upload, MessageSquare, Search } from 'lucide-react';
+import { Input } from '@/components/ui/input';
 import { UsersTable } from '@/components/users/UsersTable';
 import { UserEditDialog } from '@/components/users/UserEditDialog';
 import { UserRolesDialog } from '@/components/users/UserRolesDialog';
