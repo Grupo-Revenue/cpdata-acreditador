@@ -183,7 +183,7 @@ Deno.serve(async (req) => {
     if (isMetaEdit) {
       // EDIT existing template: only components and category can be changed
       metaUrl = `https://graph.facebook.com/v21.0/${template.meta_template_id}`;
-      metaBody = { components, category: template.category };
+      metaBody = { components };
       console.log("Editing existing Meta template:", template.meta_template_id);
     } else {
       // CREATE new template
