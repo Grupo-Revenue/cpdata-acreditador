@@ -44,6 +44,7 @@ export default function ReimbursementsPage() {
   const [sendingBulk, setSendingBulk] = useState(false);
   const [showBulkConfirm, setShowBulkConfirm] = useState(false);
   const [bulkTargets, setBulkTargets] = useState<{ eventId: string; eventName: string; sup: SupervisorInfo }[]>([]);
+  const [selectedBulkTargets, setSelectedBulkTargets] = useState<Set<string>>(new Set());
 
   // For supervisors: get assigned events; for admins: get all events with expenses
   const { data: events, isLoading: eventsLoading } = useQuery({
