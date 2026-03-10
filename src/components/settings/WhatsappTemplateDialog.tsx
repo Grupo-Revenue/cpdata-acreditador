@@ -146,6 +146,7 @@ export function WhatsappTemplateDialog({ open, onOpenChange, template }: Props) 
         body_text: form.body_text,
         footer_text: form.footer_text || null,
         buttons: JSON.parse(JSON.stringify(form.buttons)),
+        body_examples: JSON.parse(JSON.stringify(form.body_examples)),
         status: 'draft',
       };
 
