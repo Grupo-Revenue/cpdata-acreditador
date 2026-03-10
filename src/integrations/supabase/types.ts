@@ -641,6 +641,7 @@ export type Database = {
       }
       whatsapp_templates: {
         Row: {
+          body_examples: Json | null
           body_text: string
           buttons: Json | null
           category: string
@@ -658,6 +659,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          body_examples?: Json | null
           body_text: string
           buttons?: Json | null
           category?: string
@@ -675,6 +677,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          body_examples?: Json | null
           body_text?: string
           buttons?: Json | null
           category?: string

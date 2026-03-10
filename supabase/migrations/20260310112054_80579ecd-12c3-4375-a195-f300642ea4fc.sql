@@ -1,0 +1,1 @@
+ALTER TABLE public.whatsapp_templates ADD COLUMN body_examples jsonb DEFAULT '[]'::jsonb;

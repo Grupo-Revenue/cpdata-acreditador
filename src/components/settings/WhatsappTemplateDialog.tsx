@@ -32,13 +32,14 @@ interface TemplateData {
   body_text: string;
   footer_text: string;
   buttons: TemplateButton[];
+  body_examples: string[];
   status?: string;
   rejection_reason?: string;
 }
 
 const EMPTY: TemplateData = {
   name: '', language: 'es', category: 'MARKETING', header_type: 'none',
-  header_text: '', header_image_url: '', body_text: '', footer_text: '', buttons: [],
+  header_text: '', header_image_url: '', body_text: '', footer_text: '', buttons: [], body_examples: [],
 };
 
 const LANGUAGES = [
@@ -73,7 +74,7 @@ export function WhatsappTemplateDialog({ open, onOpenChange, template }: Props) 
 
   useEffect(() => {
     if (open) {
-      setForm(template ? { ...template, buttons: template.buttons ?? [] } : { ...EMPTY });
+      setForm(template ? { ...template, buttons: template.buttons ?? [], body_examples: (template as any).body_examples ?? [] } : { ...EMPTY });
     }
   }, [open, template]);
 
@@ -92,6 +93,7 @@ export function WhatsappTemplateDialog({ open, onOpenChange, template }: Props) 
         body_text: form.body_text,
         footer_text: form.footer_text || null,
         buttons: JSON.parse(JSON.stringify(form.buttons)),
+        body_examples: JSON.parse(JSON.stringify(form.body_examples)),
         status,
       };
 
@@ -144,6 +146,7 @@ export function WhatsappTemplateDialog({ open, onOpenChange, template }: Props) 
         body_text: form.body_text,
         footer_text: form.footer_text || null,
         buttons: JSON.parse(JSON.stringify(form.buttons)),
+        body_examples: JSON.parse(JSON.stringify(form.body_examples)),
         status: 'draft',
       };
 
@@ -276,9 +279,29 @@ export function WhatsappTemplateDialog({ open, onOpenChange, template }: Props) 
                   <p>Usa {'{{1}}'}, {'{{2}}'}, etc. para variables dinámicas que se reemplazan al enviar el mensaje.</p>
                   <p className="text-muted-foreground/70">Ejemplo: "Hola {'{{1}}'}, tu factura #{'{{2}}'} está lista" → al enviar se pasan los valores en orden.</p>
                   {uniqueVars.length > 0 && (
-                    <p className="font-medium text-foreground/80">
-                      Variables detectadas: {uniqueVars.join(', ')} ({uniqueVars.length} {uniqueVars.length === 1 ? 'variable' : 'variables'})
-                    </p>
+                    <>
+                      <p className="font-medium text-foreground/80">
+                        Variables detectadas: {uniqueVars.join(', ')} ({uniqueVars.length} {uniqueVars.length === 1 ? 'variable' : 'variables'})
+                      </p>
+                      <div className="mt-2 space-y-2">
+                        <p className="font-medium text-foreground/80">Ejemplos para Meta (obligatorio):</p>
+                        {uniqueVars.map((v, idx) => (
+                          <div key={v} className="flex items-center gap-2">
+                            <span className="text-xs font-mono bg-muted px-1.5 py-0.5 rounded">{v}</span>
+                            <Input
+                              placeholder={`Ej: ${['Juan', '12/03/2025', '10:00', 'Santiago'][idx] || 'valor'}`}
+                              value={form.body_examples[idx] || ''}
+                              onChange={(e) => {
+                                const updated = [...form.body_examples];
+                                updated[idx] = e.target.value;
+                                set('body_examples', updated);
+                              }}
+                              className="h-8 text-sm"
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    </>
                   )}
                 </div>
               );
