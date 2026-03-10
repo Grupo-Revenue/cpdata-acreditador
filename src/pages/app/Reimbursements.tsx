@@ -621,6 +621,35 @@ export default function ReimbursementsPage() {
         onConfirm={handleConfirm}
         isLoading={processing}
       />
+
+      <Dialog open={showBulkConfirm} onOpenChange={setShowBulkConfirm}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Confirmar envío masivo</DialogTitle>
+            <DialogDescription>
+              Se enviarán {bulkTargets.length} mensaje{bulkTargets.length !== 1 ? 's' : ''} de WhatsApp a los siguientes supervisores:
+            </DialogDescription>
+          </DialogHeader>
+          <div className="max-h-[300px] overflow-y-auto space-y-2">
+            {bulkTargets.map((t) => (
+              <div key={t.eventId} className="flex items-center justify-between rounded-md border p-3 text-sm">
+                <div>
+                  <p className="font-medium">{t.sup.name}</p>
+                  <p className="text-muted-foreground text-xs">{t.eventName}</p>
+                </div>
+                <span className="text-muted-foreground text-xs">{t.sup.phone}</span>
+              </div>
+            ))}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowBulkConfirm(false)}>Cancelar</Button>
+            <Button onClick={executeBulkWhatsapp}>
+              <MessageSquare className="h-4 w-4 mr-1" />
+              Enviar {bulkTargets.length} mensaje{bulkTargets.length !== 1 ? 's' : ''}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </AppShell>
   );
 }
