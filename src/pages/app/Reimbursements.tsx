@@ -330,12 +330,17 @@ export default function ReimbursementsPage() {
 
   // Execute bulk send after confirmation
   const executeBulkWhatsapp = async () => {
+    const toSend = bulkTargets.filter(t => selectedBulkTargets.has(t.eventId));
+    if (toSend.length === 0) {
+      toast({ title: 'No hay supervisores seleccionados', variant: 'destructive' });
+      return;
+    }
     setShowBulkConfirm(false);
     setSendingBulk(true);
     let sent = 0;
     let failed = 0;
 
-    for (const t of bulkTargets) {
+    for (const t of toSend) {
       try {
         const { data, error } = await supabase.functions.invoke('send-whatsapp-message', {
           body: {
