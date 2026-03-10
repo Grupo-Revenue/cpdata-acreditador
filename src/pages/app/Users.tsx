@@ -321,6 +321,7 @@ export default function UsersPage() {
     // Pre-select all users with phone
     const usersWithPhone = allUsers.filter(u => !!u.telefono?.trim());
     setSelectedWhatsappUsers(new Set(usersWithPhone.map(u => u.id)));
+    setBulkWhatsappSearch('');
     setShowBulkWhatsappDialog(true);
   };
 
