@@ -13,8 +13,14 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { Input } from '@/components/ui/input';
-import { Wallet, Lock, Unlock, CheckCircle, XCircle, DollarSign, Plus, Trash2, Upload, Search, Download } from 'lucide-react';
+import { Wallet, Lock, Unlock, CheckCircle, XCircle, DollarSign, Plus, Trash2, Upload, Search, Download, MessageSquare } from 'lucide-react';
 import { downloadFile } from '@/lib/csv-parser';
+
+interface SupervisorInfo {
+  name: string;
+  phone: string | null;
+  userId: string;
+}
 
 export default function ReimbursementsPage() {
   const { activeRole, user } = useAuth();
@@ -32,6 +38,8 @@ export default function ReimbursementsPage() {
   const [newExpenseAmount, setNewExpenseAmount] = useState('');
   const [newExpenseFile, setNewExpenseFile] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [sendingWsp, setSendingWsp] = useState<string | null>(null);
+  const [sendingBulk, setSendingBulk] = useState(false);
 
   // For supervisors: get assigned events; for admins: get all events with expenses
   const { data: events, isLoading: eventsLoading } = useQuery({
@@ -46,7 +54,6 @@ export default function ReimbursementsPage() {
         if (error) throw error;
         return data ?? [];
       } else {
-        // Supervisor: only assigned events
         const { data: assignments, error: aErr } = await supabase
           .from('event_accreditors')
           .select('event_id')
@@ -93,6 +100,59 @@ export default function ReimbursementsPage() {
         .in('id', expenseUserIds);
       if (error) throw error;
       return data ?? [];
+    },
+  });
+
+  // Fetch supervisor info per event (for admin view)
+  const { data: supervisorMap } = useQuery({
+    queryKey: ['reimbursement-supervisors', eventIds],
+    enabled: isAdmin && eventIds.length > 0,
+    queryFn: async () => {
+      // 1. Get all accreditors for these events
+      const { data: accreditors, error: accErr } = await supabase
+        .from('event_accreditors')
+        .select('event_id, user_id')
+        .in('event_id', eventIds);
+      if (accErr) throw accErr;
+      if (!accreditors || accreditors.length === 0) return {} as Record<string, SupervisorInfo>;
+
+      const allUserIds = [...new Set(accreditors.map(a => a.user_id))];
+
+      // 2. Get which of those are supervisors
+      const { data: roles, error: rolesErr } = await supabase
+        .from('user_roles')
+        .select('user_id, role')
+        .in('user_id', allUserIds)
+        .eq('role', 'supervisor');
+      if (rolesErr) throw rolesErr;
+      const supervisorUserIds = new Set((roles ?? []).map(r => r.user_id));
+
+      // 3. Get profiles for supervisors
+      const supIds = [...supervisorUserIds];
+      if (supIds.length === 0) return {} as Record<string, SupervisorInfo>;
+      const { data: supProfiles, error: profErr } = await supabase
+        .from('profiles')
+        .select('id, nombre, apellido, telefono')
+        .in('id', supIds);
+      if (profErr) throw profErr;
+
+      const profileMap = new Map((supProfiles ?? []).map(p => [p.id, p]));
+
+      // 4. Build eventId → supervisor info
+      const result: Record<string, SupervisorInfo> = {};
+      for (const acc of accreditors) {
+        if (supervisorUserIds.has(acc.user_id) && !result[acc.event_id]) {
+          const p = profileMap.get(acc.user_id);
+          if (p) {
+            result[acc.event_id] = {
+              name: `${p.nombre} ${p.apellido}`,
+              phone: p.telefono,
+              userId: p.id,
+            };
+          }
+        }
+      }
+      return result;
     },
   });
 
@@ -218,20 +278,90 @@ export default function ReimbursementsPage() {
     return <Badge variant="secondary">Pendiente</Badge>;
   };
 
+  // Send individual WhatsApp
+  const sendWhatsapp = async (eventId: string) => {
+    const sup = supervisorMap?.[eventId];
+    if (!sup?.phone) {
+      toast({ title: 'El supervisor no tiene teléfono registrado', variant: 'destructive' });
+      return;
+    }
+    setSendingWsp(eventId);
+    try {
+      const { data, error } = await supabase.functions.invoke('send-whatsapp-message', {
+        body: {
+          template_name: 'msg_rendiciones_pendientes',
+          template_language: 'es',
+          to_phone: sup.phone,
+          parameters: [sup.name],
+        },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      toast({ title: 'WhatsApp enviado', description: `Mensaje enviado a ${sup.name}` });
+    } catch (err: any) {
+      toast({ title: 'Error al enviar WhatsApp', description: err.message, variant: 'destructive' });
+    } finally {
+      setSendingWsp(null);
+    }
+  };
+
+  // Bulk WhatsApp to all supervisors with unclosed reimbursements
+  const sendBulkWhatsapp = async () => {
+    if (!supervisorMap) return;
+    const unclosedEvents = filteredEvents.filter(e => !e.reimbursement_closed_at);
+    const targets = unclosedEvents
+      .map(e => ({ eventId: e.id, sup: supervisorMap[e.id] }))
+      .filter(t => t.sup?.phone);
+
+    if (targets.length === 0) {
+      toast({ title: 'No hay supervisores con teléfono para notificar', variant: 'destructive' });
+      return;
+    }
+
+    setSendingBulk(true);
+    let sent = 0;
+    let failed = 0;
+
+    for (const t of targets) {
+      try {
+        const { data, error } = await supabase.functions.invoke('send-whatsapp-message', {
+          body: {
+            template_name: 'msg_rendiciones_pendientes',
+            template_language: 'es',
+            to_phone: t.sup!.phone,
+            parameters: [t.sup!.name],
+          },
+        });
+        if (error || data?.error) { failed++; } else { sent++; }
+      } catch {
+        failed++;
+      }
+    }
+
+    setSendingBulk(false);
+    toast({
+      title: 'Envío masivo completado',
+      description: `Enviados: ${sent} | Fallidos: ${failed}`,
+      variant: failed > 0 ? 'destructive' : 'default',
+    });
+  };
+
   const isLoading = eventsLoading || expensesLoading;
 
   const filteredEvents = (events ?? []).filter(event => event.name.toLowerCase().includes(searchTerm.toLowerCase()));
 
   const downloadExpensesAsCSV = () => {
     const BOM = '\uFEFF';
-    const header = 'Evento;Asignado a;Adicional;Monto;Comprobante;Estado';
+    const header = 'Evento;Supervisor;Asignado a;Adicional;Monto;Comprobante;Estado';
     const rows: string[] = [];
     filteredEvents.forEach(event => {
       const eventExpenses = expenses?.filter(e => e.event_id === event.id) ?? [];
+      const sup = supervisorMap?.[event.id];
       eventExpenses.forEach(exp => {
         const statusMap: Record<string, string> = { pendiente: 'Pendiente', aprobado: 'Aprobado', rechazado: 'Rechazado' };
         rows.push([
           event.name,
+          sup?.name || '',
           getProfileName(exp.user_id),
           exp.name,
           exp.amount,
@@ -265,8 +395,8 @@ export default function ReimbursementsPage() {
         />
       ) : (
         <div className="space-y-6">
-          <div className="flex gap-2 items-center">
-            <div className="relative flex-1">
+          <div className="flex gap-2 items-center flex-wrap">
+            <div className="relative flex-1 min-w-[200px]">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder="Buscar por nombre de evento..."
@@ -276,10 +406,21 @@ export default function ReimbursementsPage() {
               />
             </div>
             {isAdmin && (
-              <Button size="sm" variant="outline" onClick={downloadExpensesAsCSV} disabled={!expenses || expenses.length === 0}>
-                <Download className="h-4 w-4 mr-1" />
-                Descargar Excel
-              </Button>
+              <>
+                <Button size="sm" variant="outline" onClick={downloadExpensesAsCSV} disabled={!expenses || expenses.length === 0}>
+                  <Download className="h-4 w-4 mr-1" />
+                  Descargar Excel
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={sendBulkWhatsapp}
+                  disabled={sendingBulk || !supervisorMap}
+                >
+                  <MessageSquare className="h-4 w-4 mr-1" />
+                  {sendingBulk ? 'Enviando...' : 'Notificar pendientes'}
+                </Button>
+              </>
             )}
           </div>
           {filteredEvents.length === 0 ? (
@@ -293,21 +434,42 @@ export default function ReimbursementsPage() {
             const approvedTotal = eventExpenses
               .filter(e => e.approval_status === 'aprobado')
               .reduce((sum, e) => sum + e.amount, 0);
+            const sup = supervisorMap?.[event.id];
 
             return (
               <Card key={event.id}>
                 <CardHeader>
                   <div className="flex items-center justify-between flex-wrap gap-2">
-                    <CardTitle className="text-base flex items-center gap-2">
-                      <DollarSign className="h-4 w-4" />
-                      {event.name}
-                      {isEventClosed && <Badge variant="outline" className="ml-2"><Lock className="h-3 w-3 mr-1" />Cerrado</Badge>}
-                      {isReimbursementClosed && <Badge variant="outline" className="ml-1"><Lock className="h-3 w-3 mr-1" />Rendición cerrada</Badge>}
-                    </CardTitle>
+                    <div>
+                      <CardTitle className="text-base flex items-center gap-2">
+                        <DollarSign className="h-4 w-4" />
+                        {event.name}
+                        {isEventClosed && <Badge variant="outline" className="ml-2"><Lock className="h-3 w-3 mr-1" />Cerrado</Badge>}
+                        {isReimbursementClosed && <Badge variant="outline" className="ml-1"><Lock className="h-3 w-3 mr-1" />Rendición cerrada</Badge>}
+                      </CardTitle>
+                      {isAdmin && sup && (
+                        <p className="text-sm text-muted-foreground mt-1">Supervisor: {sup.name}</p>
+                      )}
+                      {isAdmin && !sup && (
+                        <p className="text-sm text-muted-foreground mt-1 italic">Sin supervisor asignado</p>
+                      )}
+                    </div>
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="text-sm text-muted-foreground">
                         Total aprobado: <span className="font-semibold text-foreground">${approvedTotal.toLocaleString('es-CL')}</span>
                       </span>
+                      {isAdmin && sup?.phone && !isReimbursementClosed && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => sendWhatsapp(event.id)}
+                          disabled={sendingWsp === event.id}
+                          title={`Enviar WhatsApp a ${sup.name}`}
+                        >
+                          <MessageSquare className="h-3 w-3 mr-1" />
+                          {sendingWsp === event.id ? 'Enviando...' : 'WhatsApp'}
+                        </Button>
+                      )}
                       {isSupervisor && !isReimbursementClosed && eventExpenses.length > 0 && (
                         <Button size="sm" variant="outline" onClick={() => setConfirmAction({ type: 'close_reimbursement', eventId: event.id })}>
                           <Lock className="h-3 w-3 mr-1" />
