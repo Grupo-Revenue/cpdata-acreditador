@@ -757,15 +757,26 @@ export default function UsersPage() {
                   Destinatarios ({selectedWhatsappUsers.size} de {usersWithPhone.length})
                 </label>
                 <Button variant="ghost" size="sm" onClick={toggleAllWhatsappUsers}>
-                  {selectedWhatsappUsers.size === usersWithPhone.length ? 'Deseleccionar todos' : 'Seleccionar todos'}
+                  {filteredUsersWithPhone.every(u => selectedWhatsappUsers.has(u.id)) && filteredUsersWithPhone.length > 0 ? 'Deseleccionar todos' : 'Seleccionar todos'}
                 </Button>
               </div>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Buscar por nombre o teléfono..."
+                  value={bulkWhatsappSearch}
+                  onChange={(e) => setBulkWhatsappSearch(e.target.value)}
+                  className="pl-9"
+                />
+              </div>
               <ScrollArea className="h-[300px] border rounded-md p-2">
-                {usersWithPhone.length === 0 ? (
-                  <p className="text-sm text-muted-foreground text-center py-4">No hay usuarios con teléfono registrado.</p>
+                {filteredUsersWithPhone.length === 0 ? (
+                  <p className="text-sm text-muted-foreground text-center py-4">
+                    {usersWithPhone.length === 0 ? 'No hay usuarios con teléfono registrado.' : 'No se encontraron resultados.'}
+                  </p>
                 ) : (
                   <div className="space-y-1">
-                    {usersWithPhone.map(user => (
+                    {filteredUsersWithPhone.map(user => (
                       <label
                         key={user.id}
                         className="flex items-center gap-3 p-2 rounded hover:bg-muted/50 cursor-pointer"
