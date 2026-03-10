@@ -424,7 +424,7 @@ export default function ReimbursementsPage() {
                 <Button
                   size="sm"
                   variant="outline"
-                  onClick={sendBulkWhatsapp}
+                  onClick={prepareBulkWhatsapp}
                   disabled={sendingBulk || !supervisorMap}
                 >
                   <MessageSquare className="h-4 w-4 mr-1" />
