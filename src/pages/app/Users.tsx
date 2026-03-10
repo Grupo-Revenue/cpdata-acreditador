@@ -15,7 +15,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth, AppRole } from '@/contexts/AuthContext';
-import { Users, Check, X, RefreshCw, UserPlus, Upload, MessageSquare } from 'lucide-react';
+import { Users, Check, X, RefreshCw, UserPlus, Upload, MessageSquare, Search } from 'lucide-react';
+import { Input } from '@/components/ui/input';
 import { UsersTable } from '@/components/users/UsersTable';
 import { UserEditDialog } from '@/components/users/UserEditDialog';
 import { UserRolesDialog } from '@/components/users/UserRolesDialog';
@@ -70,6 +71,7 @@ export default function UsersPage() {
   const [bulkWhatsappTemplate, setBulkWhatsappTemplate] = useState<string>('');
   const [selectedWhatsappUsers, setSelectedWhatsappUsers] = useState<Set<string>>(new Set());
   const [isSendingBulk, setIsSendingBulk] = useState(false);
+  const [bulkWhatsappSearch, setBulkWhatsappSearch] = useState('');
   
   const { toast } = useToast();
 
@@ -319,10 +321,17 @@ export default function UsersPage() {
     // Pre-select all users with phone
     const usersWithPhone = allUsers.filter(u => !!u.telefono?.trim());
     setSelectedWhatsappUsers(new Set(usersWithPhone.map(u => u.id)));
+    setBulkWhatsappSearch('');
     setShowBulkWhatsappDialog(true);
   };
 
   const usersWithPhone = allUsers.filter(u => !!u.telefono?.trim());
+  const filteredUsersWithPhone = usersWithPhone.filter(u => {
+    if (!bulkWhatsappSearch.trim()) return true;
+    const search = bulkWhatsappSearch.toLowerCase();
+    const fullName = `${u.nombre} ${u.apellido}`.toLowerCase();
+    return fullName.includes(search) || u.telefono?.includes(bulkWhatsappSearch.trim());
+  });
 
   const handleBulkWhatsappSend = async () => {
     if (!bulkWhatsappTemplate || selectedWhatsappUsers.size === 0) return;
@@ -377,11 +386,15 @@ export default function UsersPage() {
   };
 
   const toggleAllWhatsappUsers = () => {
-    if (selectedWhatsappUsers.size === usersWithPhone.length) {
-      setSelectedWhatsappUsers(new Set());
-    } else {
-      setSelectedWhatsappUsers(new Set(usersWithPhone.map(u => u.id)));
-    }
+    const allFilteredSelected = filteredUsersWithPhone.every(u => selectedWhatsappUsers.has(u.id));
+    setSelectedWhatsappUsers(prev => {
+      const next = new Set(prev);
+      filteredUsersWithPhone.forEach(u => {
+        if (allFilteredSelected) next.delete(u.id);
+        else next.add(u.id);
+      });
+      return next;
+    });
   };
 
   const filterByRole = (role: AppRole) => allUsers.filter(u => u.roles.includes(role));
@@ -744,15 +757,26 @@ export default function UsersPage() {
                   Destinatarios ({selectedWhatsappUsers.size} de {usersWithPhone.length})
                 </label>
                 <Button variant="ghost" size="sm" onClick={toggleAllWhatsappUsers}>
-                  {selectedWhatsappUsers.size === usersWithPhone.length ? 'Deseleccionar todos' : 'Seleccionar todos'}
+                  {filteredUsersWithPhone.every(u => selectedWhatsappUsers.has(u.id)) && filteredUsersWithPhone.length > 0 ? 'Deseleccionar todos' : 'Seleccionar todos'}
                 </Button>
               </div>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Buscar por nombre o teléfono..."
+                  value={bulkWhatsappSearch}
+                  onChange={(e) => setBulkWhatsappSearch(e.target.value)}
+                  className="pl-9"
+                />
+              </div>
               <ScrollArea className="h-[300px] border rounded-md p-2">
-                {usersWithPhone.length === 0 ? (
-                  <p className="text-sm text-muted-foreground text-center py-4">No hay usuarios con teléfono registrado.</p>
+                {filteredUsersWithPhone.length === 0 ? (
+                  <p className="text-sm text-muted-foreground text-center py-4">
+                    {usersWithPhone.length === 0 ? 'No hay usuarios con teléfono registrado.' : 'No se encontraron resultados.'}
+                  </p>
                 ) : (
                   <div className="space-y-1">
-                    {usersWithPhone.map(user => (
+                    {filteredUsersWithPhone.map(user => (
                       <label
                         key={user.id}
                         className="flex items-center gap-3 p-2 rounded hover:bg-muted/50 cursor-pointer"
