@@ -386,11 +386,15 @@ export default function UsersPage() {
   };
 
   const toggleAllWhatsappUsers = () => {
-    if (selectedWhatsappUsers.size === usersWithPhone.length) {
-      setSelectedWhatsappUsers(new Set());
-    } else {
-      setSelectedWhatsappUsers(new Set(usersWithPhone.map(u => u.id)));
-    }
+    const allFilteredSelected = filteredUsersWithPhone.every(u => selectedWhatsappUsers.has(u.id));
+    setSelectedWhatsappUsers(prev => {
+      const next = new Set(prev);
+      filteredUsersWithPhone.forEach(u => {
+        if (allFilteredSelected) next.delete(u.id);
+        else next.add(u.id);
+      });
+      return next;
+    });
   };
 
   const filterByRole = (role: AppRole) => allUsers.filter(u => u.roles.includes(role));
