@@ -308,31 +308,38 @@ export default function ReimbursementsPage() {
     }
   };
 
-  // Bulk WhatsApp to all supervisors with unclosed reimbursements
-  const sendBulkWhatsapp = async () => {
+  // Prepare bulk WhatsApp targets and show confirmation
+  const prepareBulkWhatsapp = () => {
     if (!supervisorMap) return;
     const unclosedEvents = filteredEvents.filter(e => !e.reimbursement_closed_at);
     const targets = unclosedEvents
-      .map(e => ({ eventId: e.id, sup: supervisorMap[e.id] }))
-      .filter(t => t.sup?.phone);
+      .map(e => ({ eventId: e.id, eventName: e.name, sup: supervisorMap[e.id] }))
+      .filter((t): t is { eventId: string; eventName: string; sup: SupervisorInfo } => !!t.sup?.phone);
 
     if (targets.length === 0) {
       toast({ title: 'No hay supervisores con teléfono para notificar', variant: 'destructive' });
       return;
     }
 
+    setBulkTargets(targets);
+    setShowBulkConfirm(true);
+  };
+
+  // Execute bulk send after confirmation
+  const executeBulkWhatsapp = async () => {
+    setShowBulkConfirm(false);
     setSendingBulk(true);
     let sent = 0;
     let failed = 0;
 
-    for (const t of targets) {
+    for (const t of bulkTargets) {
       try {
         const { data, error } = await supabase.functions.invoke('send-whatsapp-message', {
           body: {
             template_name: 'msg_rendiciones_pendientes',
             template_language: 'es',
-            to_phone: t.sup!.phone,
-            parameters: [t.sup!.name],
+            to_phone: t.sup.phone,
+            parameters: [t.sup.name],
           },
         });
         if (error || data?.error) { failed++; } else { sent++; }
