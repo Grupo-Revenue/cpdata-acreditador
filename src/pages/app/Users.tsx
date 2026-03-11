@@ -72,6 +72,7 @@ export default function UsersPage() {
   const [selectedWhatsappUsers, setSelectedWhatsappUsers] = useState<Set<string>>(new Set());
   const [isSendingBulk, setIsSendingBulk] = useState(false);
   const [bulkWhatsappSearch, setBulkWhatsappSearch] = useState('');
+  const [bulkWhatsappRoleFilter, setBulkWhatsappRoleFilter] = useState('');
   
   const { toast } = useToast();
 
@@ -322,15 +323,16 @@ export default function UsersPage() {
     const usersWithPhone = allUsers.filter(u => !!u.telefono?.trim());
     setSelectedWhatsappUsers(new Set(usersWithPhone.map(u => u.id)));
     setBulkWhatsappSearch('');
+    setBulkWhatsappRoleFilter('');
     setShowBulkWhatsappDialog(true);
   };
 
   const usersWithPhone = allUsers.filter(u => !!u.telefono?.trim());
   const filteredUsersWithPhone = usersWithPhone.filter(u => {
-    if (!bulkWhatsappSearch.trim()) return true;
-    const search = bulkWhatsappSearch.toLowerCase();
-    const fullName = `${u.nombre} ${u.apellido}`.toLowerCase();
-    return fullName.includes(search) || u.telefono?.includes(bulkWhatsappSearch.trim());
+    const search = bulkWhatsappSearch.trim().toLowerCase();
+    const matchesSearch = !search || `${u.nombre} ${u.apellido}`.toLowerCase().includes(search) || u.telefono?.includes(bulkWhatsappSearch.trim());
+    const matchesRole = !bulkWhatsappRoleFilter || bulkWhatsappRoleFilter === 'all' || u.roles.includes(bulkWhatsappRoleFilter as AppRole);
+    return matchesSearch && matchesRole;
   });
 
   const handleBulkWhatsappSend = async () => {
@@ -760,14 +762,28 @@ export default function UsersPage() {
                   {filteredUsersWithPhone.every(u => selectedWhatsappUsers.has(u.id)) && filteredUsersWithPhone.length > 0 ? 'Deseleccionar todos' : 'Seleccionar todos'}
                 </Button>
               </div>
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Buscar por nombre o teléfono..."
-                  value={bulkWhatsappSearch}
-                  onChange={(e) => setBulkWhatsappSearch(e.target.value)}
-                  className="pl-9"
-                />
+              <div className="flex gap-2">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Buscar por nombre o teléfono..."
+                    value={bulkWhatsappSearch}
+                    onChange={(e) => setBulkWhatsappSearch(e.target.value)}
+                    className="pl-9"
+                  />
+                </div>
+                <Select value={bulkWhatsappRoleFilter} onValueChange={setBulkWhatsappRoleFilter}>
+                  <SelectTrigger className="w-[160px]">
+                    <SelectValue placeholder="Todos los roles" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos los roles</SelectItem>
+                    <SelectItem value="superadmin">Superadmin</SelectItem>
+                    <SelectItem value="administracion">Administración</SelectItem>
+                    <SelectItem value="supervisor">Supervisor</SelectItem>
+                    <SelectItem value="acreditador">Acreditador</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               <ScrollArea className="h-[300px] border rounded-md p-2">
                 {filteredUsersWithPhone.length === 0 ? (
