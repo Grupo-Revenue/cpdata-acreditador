@@ -72,6 +72,7 @@ export default function UsersPage() {
   const [selectedWhatsappUsers, setSelectedWhatsappUsers] = useState<Set<string>>(new Set());
   const [isSendingBulk, setIsSendingBulk] = useState(false);
   const [bulkWhatsappSearch, setBulkWhatsappSearch] = useState('');
+  const [bulkWhatsappRoleFilter, setBulkWhatsappRoleFilter] = useState('');
   
   const { toast } = useToast();
 
