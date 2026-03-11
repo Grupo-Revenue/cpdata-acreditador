@@ -762,14 +762,28 @@ export default function UsersPage() {
                   {filteredUsersWithPhone.every(u => selectedWhatsappUsers.has(u.id)) && filteredUsersWithPhone.length > 0 ? 'Deseleccionar todos' : 'Seleccionar todos'}
                 </Button>
               </div>
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Buscar por nombre o teléfono..."
-                  value={bulkWhatsappSearch}
-                  onChange={(e) => setBulkWhatsappSearch(e.target.value)}
-                  className="pl-9"
-                />
+              <div className="flex gap-2">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Buscar por nombre o teléfono..."
+                    value={bulkWhatsappSearch}
+                    onChange={(e) => setBulkWhatsappSearch(e.target.value)}
+                    className="pl-9"
+                  />
+                </div>
+                <Select value={bulkWhatsappRoleFilter} onValueChange={setBulkWhatsappRoleFilter}>
+                  <SelectTrigger className="w-[160px]">
+                    <SelectValue placeholder="Todos los roles" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos los roles</SelectItem>
+                    <SelectItem value="superadmin">Superadmin</SelectItem>
+                    <SelectItem value="administracion">Administración</SelectItem>
+                    <SelectItem value="supervisor">Supervisor</SelectItem>
+                    <SelectItem value="acreditador">Acreditador</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               <ScrollArea className="h-[300px] border rounded-md p-2">
                 {filteredUsersWithPhone.length === 0 ? (
