@@ -331,7 +331,7 @@ export default function UsersPage() {
   const filteredUsersWithPhone = usersWithPhone.filter(u => {
     const search = bulkWhatsappSearch.trim().toLowerCase();
     const matchesSearch = !search || `${u.nombre} ${u.apellido}`.toLowerCase().includes(search) || u.telefono?.includes(bulkWhatsappSearch.trim());
-    const matchesRole = !bulkWhatsappRoleFilter || u.roles.includes(bulkWhatsappRoleFilter as AppRole);
+    const matchesRole = !bulkWhatsappRoleFilter || bulkWhatsappRoleFilter === 'all' || u.roles.includes(bulkWhatsappRoleFilter as AppRole);
     return matchesSearch && matchesRole;
   });
 
