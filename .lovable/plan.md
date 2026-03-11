@@ -1,13 +1,25 @@
 
 
-## Plan: Scroll y paginacion en dialogo de comentarios
+## Plan: Add role filter to bulk WhatsApp dialog
 
-### Cambios en `src/components/events/AttendanceCommentsDialog.tsx`
+### Change: `src/pages/app/Users.tsx`
 
-1. Agregar estado de paginacion (`page`, `ITEMS_PER_PAGE = 5`)
-2. Resetear pagina a 1 cuando cambia el `userId`
-3. Calcular `paginatedComments` como slice del array total
-4. Envolver la lista de comentarios en un `ScrollArea` con altura maxima fija (~400px)
-5. Mostrar controles de paginacion debajo: contador "Mostrando X-Y de Z" + botones Anterior/Siguiente
-6. Importar `ScrollArea` y `Button`
+**1. Add role filter state**
+
+Add `bulkWhatsappRoleFilter` state (string, default `''` meaning "all roles"). Reset it when opening the dialog.
+
+**2. Update filtering logic**
+
+Extend `filteredUsersWithPhone` to also filter by role when `bulkWhatsappRoleFilter` is set. Check if `user.roles.includes(bulkWhatsappRoleFilter)`.
+
+**3. Add role filter Select in the dialog UI**
+
+Insert a `Select` dropdown between the search input and the recipients list (or next to the search input) with options: "Todos los roles", "Supervisor", "Acreditador", "Administración", "Superadmin". Use the existing `useRoles` hook or hardcode the four known roles matching the `roleConfig` pattern used elsewhere.
+
+**4. Update toggle all**
+
+The existing toggle-all logic already operates on `filteredUsersWithPhone`, so it will automatically respect the role filter.
+
+### Files changed
+- `src/pages/app/Users.tsx`
 
