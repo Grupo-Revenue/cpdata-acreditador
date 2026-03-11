@@ -329,10 +329,10 @@ export default function UsersPage() {
 
   const usersWithPhone = allUsers.filter(u => !!u.telefono?.trim());
   const filteredUsersWithPhone = usersWithPhone.filter(u => {
-    if (!bulkWhatsappSearch.trim()) return true;
-    const search = bulkWhatsappSearch.toLowerCase();
-    const fullName = `${u.nombre} ${u.apellido}`.toLowerCase();
-    return fullName.includes(search) || u.telefono?.includes(bulkWhatsappSearch.trim());
+    const search = bulkWhatsappSearch.trim().toLowerCase();
+    const matchesSearch = !search || `${u.nombre} ${u.apellido}`.toLowerCase().includes(search) || u.telefono?.includes(bulkWhatsappSearch.trim());
+    const matchesRole = !bulkWhatsappRoleFilter || u.roles.includes(bulkWhatsappRoleFilter as AppRole);
+    return matchesSearch && matchesRole;
   });
 
   const handleBulkWhatsappSend = async () => {
