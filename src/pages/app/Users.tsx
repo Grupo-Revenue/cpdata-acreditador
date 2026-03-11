@@ -323,6 +323,7 @@ export default function UsersPage() {
     const usersWithPhone = allUsers.filter(u => !!u.telefono?.trim());
     setSelectedWhatsappUsers(new Set(usersWithPhone.map(u => u.id)));
     setBulkWhatsappSearch('');
+    setBulkWhatsappRoleFilter('');
     setShowBulkWhatsappDialog(true);
   };
 
