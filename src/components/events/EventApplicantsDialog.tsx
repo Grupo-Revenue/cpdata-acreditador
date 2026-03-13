@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -28,8 +28,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Check, X, ChevronLeft, ChevronRight, Eye } from 'lucide-react';
+import { Check, X, ChevronLeft, ChevronRight, Eye, MessageSquare } from 'lucide-react';
 import { ApplicantProfileDialog, ProfileData } from './ApplicantProfileDialog';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 
 interface EventApplicantsDialogProps {
   open: boolean;
@@ -82,6 +83,8 @@ export function EventApplicantsDialog({ open, onOpenChange }: EventApplicantsDia
     contractStatus: '__all__',
     ranking: '',
   });
+  const [bulkFirmaPendienteConfirmOpen, setBulkFirmaPendienteConfirmOpen] = useState(false);
+  const [sendingFirmaPendiente, setSendingFirmaPendiente] = useState(false);
 
   const { data: rawData, isLoading } = useQuery({
     queryKey: ['event-applicants'],
@@ -175,6 +178,44 @@ export function EventApplicantsDialog({ open, onOpenChange }: EventApplicantsDia
   }, [rawData, profiles, userRoles, hubspotDealMap]);
 
   const eventNames = useMemo(() => [...new Set(applicants.map((a) => a.event_name))].sort(), [applicants]);
+
+  const pendingContractApplicants = useMemo(() => {
+    return applicants.filter(
+      (a) =>
+        a.application_status === 'aceptado' &&
+        a.contract_status === 'pendiente' &&
+        profiles?.find((p) => p.id === a.user_id)?.telefono
+    );
+  }, [applicants, profiles]);
+
+  const handleBulkFirmaPendiente = useCallback(async () => {
+    setSendingFirmaPendiente(true);
+    let sent = 0;
+    let failed = 0;
+    for (const a of pendingContractApplicants) {
+      const profile = profiles?.find((p) => p.id === a.user_id);
+      if (!profile?.telefono) continue;
+      try {
+        await supabase.functions.invoke('send-whatsapp-message', {
+          body: {
+            template_name: 'msg_firma_pendiente',
+            template_language: 'es',
+            to_phone: profile.telefono,
+            parameters: [a.nombre],
+          },
+        });
+        sent++;
+      } catch {
+        failed++;
+      }
+    }
+    setSendingFirmaPendiente(false);
+    setBulkFirmaPendienteConfirmOpen(false);
+    toast({
+      title: 'Envío completado',
+      description: `${sent} mensaje(s) enviado(s)${failed > 0 ? `, ${failed} fallido(s)` : ''}.`,
+    });
+  }, [pendingContractApplicants, profiles, toast]);
 
   const filtered = useMemo(() => {
     let result = applicants;
@@ -288,8 +329,22 @@ export function EventApplicantsDialog({ open, onOpenChange }: EventApplicantsDia
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Postulantes</DialogTitle>
-          <DialogDescription>Gestión de postulantes asignados a eventos</DialogDescription>
+          <div className="flex items-center justify-between">
+            <div>
+              <DialogTitle>Postulantes</DialogTitle>
+              <DialogDescription>Gestión de postulantes asignados a eventos</DialogDescription>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-2"
+              disabled={pendingContractApplicants.length === 0 || sendingFirmaPendiente}
+              onClick={() => setBulkFirmaPendienteConfirmOpen(true)}
+            >
+              <MessageSquare className="h-4 w-4" />
+              Firma Pendiente ({pendingContractApplicants.length})
+            </Button>
+          </div>
         </DialogHeader>
 
         {/* Filters */}
@@ -497,6 +552,17 @@ export function EventApplicantsDialog({ open, onOpenChange }: EventApplicantsDia
           </div>
         </DialogContent>
       </Dialog>
+
+      <ConfirmDialog
+        open={bulkFirmaPendienteConfirmOpen}
+        onOpenChange={setBulkFirmaPendienteConfirmOpen}
+        title="Envío masivo de WhatsApp"
+        description={`Se enviará la plantilla msg_firma_pendiente a ${pendingContractApplicants.length} persona(s) con contrato pendiente. ¿Deseas continuar?`}
+        confirmLabel="Enviar"
+        icon={MessageSquare}
+        onConfirm={handleBulkFirmaPendiente}
+        isLoading={sendingFirmaPendiente}
+      />
     </Dialog>
   );
 }
