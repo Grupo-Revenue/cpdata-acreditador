@@ -28,8 +28,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Check, X, ChevronLeft, ChevronRight, Eye } from 'lucide-react';
+import { Check, X, ChevronLeft, ChevronRight, Eye, MessageSquare } from 'lucide-react';
 import { ApplicantProfileDialog, ProfileData } from './ApplicantProfileDialog';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 
 interface EventApplicantsDialogProps {
   open: boolean;
