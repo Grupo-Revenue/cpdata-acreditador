@@ -21,6 +21,7 @@ export default function InvoicesPage() {
   const [editInvoice, setEditInvoice] = useState<InvoiceRow | null>(null);
   const [uploadInvoice, setUploadInvoice] = useState<InvoiceRow | null>(null);
   const [whatsappInvoice, setWhatsappInvoice] = useState<InvoiceRow | null>(null);
+  const [bulkWhatsappOpen, setBulkWhatsappOpen] = useState(false);
 
   const { data: paymentDays = [5, 15, 25] } = useQuery({
     queryKey: ['payment_days'],
