@@ -58,6 +58,7 @@ export function EventsAdminTable({ deals }: EventsAdminTableProps) {
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [teamDeal, setTeamDeal] = useState<HubSpotDeal | null>(null);
   const [teamDialogOpen, setTeamDialogOpen] = useState(false);
+  const [whatsappDialogOpen, setWhatsappDialogOpen] = useState(false);
 
   const totalPages = Math.ceil(deals.length / PAGE_SIZE);
   const paginatedDeals = deals.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
