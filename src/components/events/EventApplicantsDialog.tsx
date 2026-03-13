@@ -552,6 +552,17 @@ export function EventApplicantsDialog({ open, onOpenChange }: EventApplicantsDia
           </div>
         </DialogContent>
       </Dialog>
+
+      <ConfirmDialog
+        open={bulkFirmaPendienteConfirmOpen}
+        onOpenChange={setBulkFirmaPendienteConfirmOpen}
+        title="Envío masivo de WhatsApp"
+        description={`Se enviará la plantilla msg_firma_pendiente a ${pendingContractApplicants.length} persona(s) con contrato pendiente. ¿Deseas continuar?`}
+        confirmLabel="Enviar"
+        icon={MessageSquare}
+        onConfirm={handleBulkFirmaPendiente}
+        isLoading={sendingFirmaPendiente}
+      />
     </Dialog>
   );
 }
