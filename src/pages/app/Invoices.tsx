@@ -6,13 +6,14 @@ import { PageHeader } from '@/components/ui/PageHeader';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { LoadingState } from '@/components/ui/LoadingState';
 import { Button } from '@/components/ui/button';
-import { FileText, Plus } from 'lucide-react';
+import { FileText, Plus, MessageSquare } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { InvoicesTable, type InvoiceRow } from '@/components/invoices/InvoicesTable';
 import { InvoiceCreateDialog } from '@/components/invoices/InvoiceCreateDialog';
 import { InvoiceEditDialog } from '@/components/invoices/InvoiceEditDialog';
 import { InvoiceUploadDialog } from '@/components/invoices/InvoiceUploadDialog';
 import { InvoiceWhatsappDialog } from '@/components/invoices/InvoiceWhatsappDialog';
+import { BulkWhatsappInvoicesDialog } from '@/components/invoices/BulkWhatsappInvoicesDialog';
 
 export default function InvoicesPage() {
   const { isAdmin, user } = useAuth();
@@ -20,6 +21,7 @@ export default function InvoicesPage() {
   const [editInvoice, setEditInvoice] = useState<InvoiceRow | null>(null);
   const [uploadInvoice, setUploadInvoice] = useState<InvoiceRow | null>(null);
   const [whatsappInvoice, setWhatsappInvoice] = useState<InvoiceRow | null>(null);
+  const [bulkWhatsappOpen, setBulkWhatsappOpen] = useState(false);
 
   const { data: paymentDays = [5, 15, 25] } = useQuery({
     queryKey: ['payment_days'],
@@ -106,9 +108,14 @@ export default function InvoicesPage() {
           { label: 'Boletas' },
         ]}
         actions={isAdmin ? (
-          <Button onClick={() => setCreateOpen(true)}>
-            <Plus className="h-4 w-4 mr-2" /> Crear Boleta
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" onClick={() => setBulkWhatsappOpen(true)}>
+              <MessageSquare className="h-4 w-4 mr-2" /> WhatsApp Masivo
+            </Button>
+            <Button onClick={() => setCreateOpen(true)}>
+              <Plus className="h-4 w-4 mr-2" /> Crear Boleta
+            </Button>
+          </div>
         ) : undefined}
       />
 
@@ -138,6 +145,7 @@ export default function InvoicesPage() {
       <InvoiceEditDialog open={!!editInvoice} onOpenChange={(o) => !o && setEditInvoice(null)} invoice={editInvoice} />
       <InvoiceUploadDialog open={!!uploadInvoice} onOpenChange={(o) => !o && setUploadInvoice(null)} invoice={uploadInvoice} />
       <InvoiceWhatsappDialog open={!!whatsappInvoice} onOpenChange={(o) => !o && setWhatsappInvoice(null)} invoice={whatsappInvoice} />
+      <BulkWhatsappInvoicesDialog open={bulkWhatsappOpen} onOpenChange={setBulkWhatsappOpen} invoices={invoices} />
     </AppShell>
   );
 }
