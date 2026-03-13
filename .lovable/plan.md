@@ -1,13 +1,28 @@
 
 
-## Plan: Scroll y paginacion en dialogo de comentarios
+## Plan: Bulk WhatsApp button in Invoices page
 
-### Cambios en `src/components/events/AttendanceCommentsDialog.tsx`
+### New file: `src/components/invoices/BulkWhatsappInvoicesDialog.tsx`
 
-1. Agregar estado de paginacion (`page`, `ITEMS_PER_PAGE = 5`)
-2. Resetear pagina a 1 cuando cambia el `userId`
-3. Calcular `paginatedComments` como slice del array total
-4. Envolver la lista de comentarios en un `ScrollArea` con altura maxima fija (~400px)
-5. Mostrar controles de paginacion debajo: contador "Mostrando X-Y de Z" + botones Anterior/Siguiente
-6. Importar `ScrollArea` y `Button`
+A dialog component that:
+
+1. **Template selection** — Two radio/select options: `msg_pendiente_boleta` and `msg_boleta_pagada`
+2. **Auto-filter recipients based on template**:
+   - `msg_pendiente_boleta`: shows only invoices where `file_url` is null (haven't uploaded their invoice)
+   - `msg_boleta_pagada`: shows only invoices where `file_url` is not null (have uploaded)
+3. **User list with checkboxes** — Each row shows: name, phone, invoice status badge, and whether they've uploaded (Sí/No indicator). Includes search filter by name/phone and select all toggle.
+4. **Confirmation** — Uses `ConfirmDialog` before sending
+5. **Send logic** — Loops through selected, calls `send-whatsapp-message` with the chosen template name and `parameters: [nombre]` for `{{1}}`
+
+Props: receives `invoices: InvoiceRow[]` from the parent (already filtered to admin view), plus `open`/`onOpenChange`.
+
+### Change: `src/pages/app/Invoices.tsx`
+
+- Add state `bulkWhatsappOpen`
+- Add a second button next to "Crear Boleta" in `PageHeader.actions`: "WhatsApp Masivo" with `MessageSquare` icon
+- Render `BulkWhatsappInvoicesDialog` passing the current `invoices` array
+
+### Files changed
+- `src/components/invoices/BulkWhatsappInvoicesDialog.tsx` (new)
+- `src/pages/app/Invoices.tsx`
 
