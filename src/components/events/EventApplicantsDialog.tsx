@@ -250,6 +250,19 @@ export function EventApplicantsDialog({ open, onOpenChange }: EventApplicantsDia
       .eq('user_id', applicant.user_id)
       .eq('event_id', applicant.event_id);
 
+    // Send WhatsApp notification (fire-and-forget)
+    const profile = profiles?.find(p => p.id === applicant.user_id);
+    if (profile?.telefono) {
+      supabase.functions.invoke('send-whatsapp-message', {
+        body: {
+          template_name: 'msg_seleccionado',
+          template_language: 'es',
+          to_phone: profile.telefono,
+          parameters: [applicant.nombre],
+        },
+      }).catch(() => {});
+    }
+
     toast({ title: 'Aceptado', description: `${applicant.nombre} ${applicant.apellido} fue aceptado con monto $${amount.toLocaleString()}.` });
     queryClient.invalidateQueries({ queryKey: ['event-applicants'] });
     queryClient.invalidateQueries({ queryKey: ['invoices'] });

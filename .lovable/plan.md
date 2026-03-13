@@ -1,36 +1,13 @@
 
 
-## Plan: Send WhatsApp on applicant acceptance
+## Plan: Scroll y paginacion en dialogo de comentarios
 
-### Change: `src/components/events/EventApplicantsDialog.tsx`
+### Cambios en `src/components/events/AttendanceCommentsDialog.tsx`
 
-In the `handleConfirmAccept` function, after the successful update of `event_accreditors` and invoice sync (line 252), add a call to send the WhatsApp message using the `msg_seleccionado` template. The applicant's phone number needs to be retrieved from the already-fetched `profiles` data.
-
-**1. Retrieve phone from profiles**
-
-After the successful acceptance update, look up the applicant's phone from the `profiles` array (already queried and includes `telefono`). If a valid phone exists, invoke the edge function.
-
-**2. Send WhatsApp after acceptance**
-
-Insert after line 252 (invoice sync), before the success toast:
-
-```typescript
-// Send WhatsApp notification
-const profile = profiles?.find(p => p.id === applicant.user_id);
-if (profile?.telefono) {
-  supabase.functions.invoke('send-whatsapp-message', {
-    body: {
-      template_name: 'msg_seleccionado',
-      template_language: 'es',
-      to_phone: profile.telefono,
-      parameters: [applicant.nombre],
-    },
-  }).catch(() => {}); // fire-and-forget, don't block acceptance
-}
-```
-
-This is fire-and-forget so a WhatsApp failure won't block the acceptance flow. The success toast will still show.
-
-### Files changed
-- `src/components/events/EventApplicantsDialog.tsx`
+1. Agregar estado de paginacion (`page`, `ITEMS_PER_PAGE = 5`)
+2. Resetear pagina a 1 cuando cambia el `userId`
+3. Calcular `paginatedComments` como slice del array total
+4. Envolver la lista de comentarios en un `ScrollArea` con altura maxima fija (~400px)
+5. Mostrar controles de paginacion debajo: contador "Mostrando X-Y de Z" + botones Anterior/Siguiente
+6. Importar `ScrollArea` y `Button`
 
