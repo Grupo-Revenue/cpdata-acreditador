@@ -4,7 +4,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious, PaginationEllipsis } from '@/components/ui/pagination';
-import { Pencil, Users, Download, FileDown } from 'lucide-react';
+import { Pencil, Users, Download, FileDown, MessageSquare } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { jsPDF } from 'jspdf';
@@ -12,6 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 import { generateProfessionalPDF } from '@/lib/contract-utils';
 import { EventEditDialog } from '@/components/events/EventEditDialog';
 import { EventTeamDialog } from '@/components/events/EventTeamDialog';
+import { BulkWhatsappEventsDialog } from '@/components/events/BulkWhatsappEventsDialog';
 
 function getStageBadgeClass(stage: string): string {
   const s = stage.toLowerCase();
