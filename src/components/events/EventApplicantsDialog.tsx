@@ -83,6 +83,8 @@ export function EventApplicantsDialog({ open, onOpenChange }: EventApplicantsDia
     contractStatus: '__all__',
     ranking: '',
   });
+  const [bulkFirmaPendienteConfirmOpen, setBulkFirmaPendienteConfirmOpen] = useState(false);
+  const [sendingFirmaPendiente, setSendingFirmaPendiente] = useState(false);
 
   const { data: rawData, isLoading } = useQuery({
     queryKey: ['event-applicants'],
