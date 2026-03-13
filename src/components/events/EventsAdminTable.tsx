@@ -4,7 +4,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious, PaginationEllipsis } from '@/components/ui/pagination';
-import { Pencil, Users, Download, FileDown } from 'lucide-react';
+import { Pencil, Users, Download, FileDown, MessageSquare } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { jsPDF } from 'jspdf';
@@ -12,6 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 import { generateProfessionalPDF } from '@/lib/contract-utils';
 import { EventEditDialog } from '@/components/events/EventEditDialog';
 import { EventTeamDialog } from '@/components/events/EventTeamDialog';
+import { BulkWhatsappEventsDialog } from '@/components/events/BulkWhatsappEventsDialog';
 
 function getStageBadgeClass(stage: string): string {
   const s = stage.toLowerCase();
@@ -57,6 +58,7 @@ export function EventsAdminTable({ deals }: EventsAdminTableProps) {
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [teamDeal, setTeamDeal] = useState<HubSpotDeal | null>(null);
   const [teamDialogOpen, setTeamDialogOpen] = useState(false);
+  const [whatsappDialogOpen, setWhatsappDialogOpen] = useState(false);
 
   const totalPages = Math.ceil(deals.length / PAGE_SIZE);
   const paginatedDeals = deals.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
@@ -136,7 +138,11 @@ export function EventsAdminTable({ deals }: EventsAdminTableProps) {
 
   return (
     <>
-      <div className="flex justify-end mb-2">
+      <div className="flex justify-end gap-2 mb-2">
+        <Button variant="outline" size="sm" onClick={() => setWhatsappDialogOpen(true)}>
+          <MessageSquare className="h-4 w-4 mr-2" />
+          Enviar WhatsApp Masivo
+        </Button>
         <Button variant="outline" size="sm" onClick={downloadAllContracts}>
           <FileDown className="h-4 w-4 mr-2" />
           Descargar Todos los Contratos
@@ -239,6 +245,7 @@ export function EventsAdminTable({ deals }: EventsAdminTableProps) {
         open={teamDialogOpen}
         onOpenChange={setTeamDialogOpen}
       />
+      <BulkWhatsappEventsDialog open={whatsappDialogOpen} onOpenChange={setWhatsappDialogOpen} />
     </>
   );
 }
