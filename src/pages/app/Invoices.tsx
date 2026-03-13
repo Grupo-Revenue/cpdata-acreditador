@@ -6,13 +6,14 @@ import { PageHeader } from '@/components/ui/PageHeader';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { LoadingState } from '@/components/ui/LoadingState';
 import { Button } from '@/components/ui/button';
-import { FileText, Plus } from 'lucide-react';
+import { FileText, Plus, MessageSquare } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { InvoicesTable, type InvoiceRow } from '@/components/invoices/InvoicesTable';
 import { InvoiceCreateDialog } from '@/components/invoices/InvoiceCreateDialog';
 import { InvoiceEditDialog } from '@/components/invoices/InvoiceEditDialog';
 import { InvoiceUploadDialog } from '@/components/invoices/InvoiceUploadDialog';
 import { InvoiceWhatsappDialog } from '@/components/invoices/InvoiceWhatsappDialog';
+import { BulkWhatsappInvoicesDialog } from '@/components/invoices/BulkWhatsappInvoicesDialog';
 
 export default function InvoicesPage() {
   const { isAdmin, user } = useAuth();
