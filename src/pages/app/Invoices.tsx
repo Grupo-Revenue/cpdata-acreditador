@@ -108,9 +108,14 @@ export default function InvoicesPage() {
           { label: 'Boletas' },
         ]}
         actions={isAdmin ? (
-          <Button onClick={() => setCreateOpen(true)}>
-            <Plus className="h-4 w-4 mr-2" /> Crear Boleta
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" onClick={() => setBulkWhatsappOpen(true)}>
+              <MessageSquare className="h-4 w-4 mr-2" /> WhatsApp Masivo
+            </Button>
+            <Button onClick={() => setCreateOpen(true)}>
+              <Plus className="h-4 w-4 mr-2" /> Crear Boleta
+            </Button>
+          </div>
         ) : undefined}
       />
 
