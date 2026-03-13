@@ -245,6 +245,7 @@ export function EventsAdminTable({ deals }: EventsAdminTableProps) {
         open={teamDialogOpen}
         onOpenChange={setTeamDialogOpen}
       />
+      <BulkWhatsappEventsDialog open={whatsappDialogOpen} onOpenChange={setWhatsappDialogOpen} />
     </>
   );
 }
