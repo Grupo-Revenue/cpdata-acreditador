@@ -145,6 +145,7 @@ export default function InvoicesPage() {
       <InvoiceEditDialog open={!!editInvoice} onOpenChange={(o) => !o && setEditInvoice(null)} invoice={editInvoice} />
       <InvoiceUploadDialog open={!!uploadInvoice} onOpenChange={(o) => !o && setUploadInvoice(null)} invoice={uploadInvoice} />
       <InvoiceWhatsappDialog open={!!whatsappInvoice} onOpenChange={(o) => !o && setWhatsappInvoice(null)} invoice={whatsappInvoice} />
+      <BulkWhatsappInvoicesDialog open={bulkWhatsappOpen} onOpenChange={setBulkWhatsappOpen} invoices={invoices} />
     </AppShell>
   );
 }
