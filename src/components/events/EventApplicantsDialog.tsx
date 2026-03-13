@@ -179,6 +179,44 @@ export function EventApplicantsDialog({ open, onOpenChange }: EventApplicantsDia
 
   const eventNames = useMemo(() => [...new Set(applicants.map((a) => a.event_name))].sort(), [applicants]);
 
+  const pendingContractApplicants = useMemo(() => {
+    return applicants.filter(
+      (a) =>
+        a.application_status === 'aceptado' &&
+        a.contract_status === 'pendiente' &&
+        profiles?.find((p) => p.id === a.user_id)?.telefono
+    );
+  }, [applicants, profiles]);
+
+  const handleBulkFirmaPendiente = useCallback(async () => {
+    setSendingFirmaPendiente(true);
+    let sent = 0;
+    let failed = 0;
+    for (const a of pendingContractApplicants) {
+      const profile = profiles?.find((p) => p.id === a.user_id);
+      if (!profile?.telefono) continue;
+      try {
+        await supabase.functions.invoke('send-whatsapp-message', {
+          body: {
+            template_name: 'msg_firma_pendiente',
+            template_language: 'es',
+            to_phone: profile.telefono,
+            parameters: [a.nombre],
+          },
+        });
+        sent++;
+      } catch {
+        failed++;
+      }
+    }
+    setSendingFirmaPendiente(false);
+    setBulkFirmaPendienteConfirmOpen(false);
+    toast({
+      title: 'Envío completado',
+      description: `${sent} mensaje(s) enviado(s)${failed > 0 ? `, ${failed} fallido(s)` : ''}.`,
+    });
+  }, [pendingContractApplicants, profiles, toast]);
+
   const filtered = useMemo(() => {
     let result = applicants;
     if (filters.nombre) {
