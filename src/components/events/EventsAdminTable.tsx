@@ -138,7 +138,11 @@ export function EventsAdminTable({ deals }: EventsAdminTableProps) {
 
   return (
     <>
-      <div className="flex justify-end mb-2">
+      <div className="flex justify-end gap-2 mb-2">
+        <Button variant="outline" size="sm" onClick={() => setWhatsappDialogOpen(true)}>
+          <MessageSquare className="h-4 w-4 mr-2" />
+          Enviar WhatsApp Masivo
+        </Button>
         <Button variant="outline" size="sm" onClick={downloadAllContracts}>
           <FileDown className="h-4 w-4 mr-2" />
           Descargar Todos los Contratos
