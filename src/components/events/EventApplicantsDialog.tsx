@@ -329,8 +329,22 @@ export function EventApplicantsDialog({ open, onOpenChange }: EventApplicantsDia
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Postulantes</DialogTitle>
-          <DialogDescription>Gestión de postulantes asignados a eventos</DialogDescription>
+          <div className="flex items-center justify-between">
+            <div>
+              <DialogTitle>Postulantes</DialogTitle>
+              <DialogDescription>Gestión de postulantes asignados a eventos</DialogDescription>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-2"
+              disabled={pendingContractApplicants.length === 0 || sendingFirmaPendiente}
+              onClick={() => setBulkFirmaPendienteConfirmOpen(true)}
+            >
+              <MessageSquare className="h-4 w-4" />
+              Firma Pendiente ({pendingContractApplicants.length})
+            </Button>
+          </div>
         </DialogHeader>
 
         {/* Filters */}
