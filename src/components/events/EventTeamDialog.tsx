@@ -373,161 +373,175 @@ export function EventTeamDialog({ dealId, dealName, open, onOpenChange }: EventT
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Users className="h-5 w-5" />
-            Asignar Equipo
-          </DialogTitle>
-          <DialogDescription>
-            {dealName ? `Evento: ${dealName}` : 'Selecciona supervisores y acreditadores para este evento.'}
-          </DialogDescription>
-        </DialogHeader>
+      <DialogContent className="w-[95vw] max-w-5xl h-[85vh] flex flex-col p-0">
+        <div className="px-6 pt-6 pb-2 shrink-0">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Users className="h-5 w-5" />
+              Asignar Equipo
+            </DialogTitle>
+            <DialogDescription>
+              {dealName ? `Evento: ${dealName}` : 'Selecciona supervisores y acreditadores para este evento.'}
+            </DialogDescription>
+          </DialogHeader>
+        </div>
 
-        <Tabs defaultValue="supervisores" className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="supervisores">Supervisores ({selectedSupervisors.size})</TabsTrigger>
-            <TabsTrigger value="acreditadores">Acreditadores ({selectedAccreditors.size})</TabsTrigger>
-          </TabsList>
+        <div className="flex-1 min-h-0 flex flex-col overflow-hidden px-6">
+          <Tabs defaultValue="supervisores" className="flex-1 min-h-0 flex flex-col">
+            <TabsList className="grid w-full grid-cols-2 shrink-0">
+              <TabsTrigger value="supervisores">Supervisores ({selectedSupervisors.size})</TabsTrigger>
+              <TabsTrigger value="acreditadores">Acreditadores ({selectedAccreditors.size})</TabsTrigger>
+            </TabsList>
 
-          <TabsContent value="supervisores">
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mb-3">
-              <div className="relative">
-                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input placeholder="Nombre" value={supFilterNombre} onChange={e => setSupFilterNombre(e.target.value)} className="pl-8" />
+            <TabsContent value="supervisores" className="flex-1 min-h-0 flex flex-col overflow-hidden mt-2">
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mb-3 shrink-0">
+                <div className="relative">
+                  <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                  <Input placeholder="Nombre" value={supFilterNombre} onChange={e => setSupFilterNombre(e.target.value)} className="pl-8" />
+                </div>
+                <Input placeholder="RUT" value={supFilterRut} onChange={e => setSupFilterRut(e.target.value)} />
+                <Input placeholder="Email" value={supFilterEmail} onChange={e => setSupFilterEmail(e.target.value)} />
+                <Input placeholder="Teléfono" value={supFilterTelefono} onChange={e => setSupFilterTelefono(e.target.value)} />
+                <Input placeholder="Ranking (1-7)" value={supFilterRanking} onChange={e => setSupFilterRanking(e.target.value)} />
               </div>
-              <Input placeholder="RUT" value={supFilterRut} onChange={e => setSupFilterRut(e.target.value)} />
-              <Input placeholder="Email" value={supFilterEmail} onChange={e => setSupFilterEmail(e.target.value)} />
-              <Input placeholder="Teléfono" value={supFilterTelefono} onChange={e => setSupFilterTelefono(e.target.value)} />
-              <Input placeholder="Ranking (1-7)" value={supFilterRanking} onChange={e => setSupFilterRanking(e.target.value)} />
-            </div>
 
-            {loadingSupervisors ? (
-              <LoadingState text="Cargando supervisores..." className="py-8" />
-            ) : filteredSupervisors.length === 0 ? (
-              <p className="text-sm text-muted-foreground py-4 text-center">
-                {supervisors.length === 0 ? 'No hay supervisores aprobados.' : 'Sin resultados para los filtros aplicados.'}
-              </p>
-            ) : (
-              <>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="w-[50px]" />
-                      <TableHead>Nombre</TableHead>
-                      <TableHead>RUT</TableHead>
-                      <TableHead>Email</TableHead>
-                      <TableHead>Teléfono</TableHead>
-                      <TableHead>Ranking</TableHead>
-                      <TableHead>Turno</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {paginatedSupervisors.map(s => {
-                      const isSelected = selectedSupervisors.has(s.id);
-                      return (
-                        <TableRow key={s.id} className="cursor-pointer" onClick={() => toggleSupervisor(s.id)}>
-                          <TableCell>
-                            <Checkbox checked={isSelected} onCheckedChange={() => toggleSupervisor(s.id)} />
-                          </TableCell>
-                          <TableCell>{s.nombre} {s.apellido}</TableCell>
-                          <TableCell>{s.rut}</TableCell>
-                          <TableCell>{s.email}</TableCell>
-                          <TableCell>{s.telefono ?? '—'}</TableCell>
-                          <TableCell>{s.ranking ?? '—'}</TableCell>
-                          <TableCell onClick={e => e.stopPropagation()}>
-                            {isSelected && (
-                              <ShiftSelect
-                                value={selectedSupervisors.get(s.id) ?? null}
-                                onChange={v => setSupervisorShift(s.id, v)}
-                              />
-                            )}
-                          </TableCell>
+              {loadingSupervisors ? (
+                <LoadingState text="Cargando supervisores..." className="py-8" />
+              ) : filteredSupervisors.length === 0 ? (
+                <p className="text-sm text-muted-foreground py-4 text-center">
+                  {supervisors.length === 0 ? 'No hay supervisores aprobados.' : 'Sin resultados para los filtros aplicados.'}
+                </p>
+              ) : (
+                <>
+                  <div className="flex-1 min-h-0 overflow-auto border rounded-md">
+                    <Table className="min-w-[700px]">
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="w-[50px]" />
+                          <TableHead>Nombre</TableHead>
+                          <TableHead>RUT</TableHead>
+                          <TableHead>Email</TableHead>
+                          <TableHead>Teléfono</TableHead>
+                          <TableHead>Ranking</TableHead>
+                          <TableHead>Turno</TableHead>
                         </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
-                <PaginationControls page={supPage} totalPages={supTotalPages} onPageChange={setSupPage} />
-              </>
-            )}
-          </TabsContent>
+                      </TableHeader>
+                      <TableBody>
+                        {paginatedSupervisors.map(s => {
+                          const isSelected = selectedSupervisors.has(s.id);
+                          return (
+                            <TableRow key={s.id} className="cursor-pointer" onClick={() => toggleSupervisor(s.id)}>
+                              <TableCell>
+                                <Checkbox checked={isSelected} onCheckedChange={() => toggleSupervisor(s.id)} />
+                              </TableCell>
+                              <TableCell>{s.nombre} {s.apellido}</TableCell>
+                              <TableCell>{s.rut}</TableCell>
+                              <TableCell>{s.email}</TableCell>
+                              <TableCell>{s.telefono ?? '—'}</TableCell>
+                              <TableCell>{s.ranking ?? '—'}</TableCell>
+                              <TableCell onClick={e => e.stopPropagation()}>
+                                {isSelected && (
+                                  <ShiftSelect
+                                    value={selectedSupervisors.get(s.id) ?? null}
+                                    onChange={v => setSupervisorShift(s.id, v)}
+                                  />
+                                )}
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  </div>
+                  <div className="shrink-0">
+                    <PaginationControls page={supPage} totalPages={supTotalPages} onPageChange={setSupPage} />
+                  </div>
+                </>
+              )}
+            </TabsContent>
 
-          <TabsContent value="acreditadores">
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mb-3">
-              <div className="relative">
-                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input placeholder="Nombre" value={filterNombre} onChange={e => setFilterNombre(e.target.value)} className="pl-8" />
+            <TabsContent value="acreditadores" className="flex-1 min-h-0 flex flex-col overflow-hidden mt-2">
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mb-3 shrink-0">
+                <div className="relative">
+                  <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                  <Input placeholder="Nombre" value={filterNombre} onChange={e => setFilterNombre(e.target.value)} className="pl-8" />
+                </div>
+                <Input placeholder="RUT" value={filterRut} onChange={e => setFilterRut(e.target.value)} />
+                <Input placeholder="Email" value={filterEmail} onChange={e => setFilterEmail(e.target.value)} />
+                <Input placeholder="Idioma" value={filterIdioma} onChange={e => setFilterIdioma(e.target.value)} />
+                <Input placeholder="Ranking (1-7)" value={filterRanking} onChange={e => setFilterRanking(e.target.value)} />
+                <Input placeholder="Teléfono" value={filterTelefono} onChange={e => setFilterTelefono(e.target.value)} />
               </div>
-              <Input placeholder="RUT" value={filterRut} onChange={e => setFilterRut(e.target.value)} />
-              <Input placeholder="Email" value={filterEmail} onChange={e => setFilterEmail(e.target.value)} />
-              <Input placeholder="Idioma" value={filterIdioma} onChange={e => setFilterIdioma(e.target.value)} />
-              <Input placeholder="Ranking (1-7)" value={filterRanking} onChange={e => setFilterRanking(e.target.value)} />
-              <Input placeholder="Teléfono" value={filterTelefono} onChange={e => setFilterTelefono(e.target.value)} />
-            </div>
 
-            {loadingAccreditors ? (
-              <LoadingState text="Cargando acreditadores..." className="py-8" />
-            ) : filteredAccreditors.length === 0 ? (
-              <p className="text-sm text-muted-foreground py-4 text-center">
-                {accreditors.length === 0 ? 'No hay acreditadores aprobados.' : 'Sin resultados para los filtros aplicados.'}
-              </p>
-            ) : (
-              <>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="w-[50px]" />
-                      <TableHead>Nombre</TableHead>
-                      <TableHead>RUT</TableHead>
-                      <TableHead>Email</TableHead>
-                      <TableHead>Idioma</TableHead>
-                      <TableHead>Estatura</TableHead>
-                      <TableHead>Ranking</TableHead>
-                      <TableHead>Teléfono</TableHead>
-                      <TableHead>Turno</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {paginatedAccreditors.map(a => {
-                      const isSelected = selectedAccreditors.has(a.id);
-                      return (
-                        <TableRow key={a.id} className="cursor-pointer" onClick={() => toggleAccreditor(a.id)}>
-                          <TableCell>
-                            <Checkbox checked={isSelected} onCheckedChange={() => toggleAccreditor(a.id)} />
-                          </TableCell>
-                          <TableCell>{a.nombre} {a.apellido}</TableCell>
-                          <TableCell>{a.rut}</TableCell>
-                          <TableCell>{a.email}</TableCell>
-                          <TableCell>{a.idioma ?? '—'}</TableCell>
-                          <TableCell>{a.altura ?? '—'}</TableCell>
-                          <TableCell>{a.ranking ?? '—'}</TableCell>
-                          <TableCell>{a.telefono ?? '—'}</TableCell>
-                          <TableCell onClick={e => e.stopPropagation()}>
-                            {isSelected && (
-                              <ShiftSelect
-                                value={selectedAccreditors.get(a.id) ?? null}
-                                onChange={v => setAccreditorShift(a.id, v)}
-                              />
-                            )}
-                          </TableCell>
+              {loadingAccreditors ? (
+                <LoadingState text="Cargando acreditadores..." className="py-8" />
+              ) : filteredAccreditors.length === 0 ? (
+                <p className="text-sm text-muted-foreground py-4 text-center">
+                  {accreditors.length === 0 ? 'No hay acreditadores aprobados.' : 'Sin resultados para los filtros aplicados.'}
+                </p>
+              ) : (
+                <>
+                  <div className="flex-1 min-h-0 overflow-auto border rounded-md">
+                    <Table className="min-w-[850px]">
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="w-[50px]" />
+                          <TableHead>Nombre</TableHead>
+                          <TableHead>RUT</TableHead>
+                          <TableHead>Email</TableHead>
+                          <TableHead>Idioma</TableHead>
+                          <TableHead>Estatura</TableHead>
+                          <TableHead>Ranking</TableHead>
+                          <TableHead>Teléfono</TableHead>
+                          <TableHead>Turno</TableHead>
                         </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
-                <PaginationControls page={accPage} totalPages={accTotalPages} onPageChange={setAccPage} />
-              </>
-            )}
-          </TabsContent>
-        </Tabs>
+                      </TableHeader>
+                      <TableBody>
+                        {paginatedAccreditors.map(a => {
+                          const isSelected = selectedAccreditors.has(a.id);
+                          return (
+                            <TableRow key={a.id} className="cursor-pointer" onClick={() => toggleAccreditor(a.id)}>
+                              <TableCell>
+                                <Checkbox checked={isSelected} onCheckedChange={() => toggleAccreditor(a.id)} />
+                              </TableCell>
+                              <TableCell>{a.nombre} {a.apellido}</TableCell>
+                              <TableCell>{a.rut}</TableCell>
+                              <TableCell>{a.email}</TableCell>
+                              <TableCell>{a.idioma ?? '—'}</TableCell>
+                              <TableCell>{a.altura ?? '—'}</TableCell>
+                              <TableCell>{a.ranking ?? '—'}</TableCell>
+                              <TableCell>{a.telefono ?? '—'}</TableCell>
+                              <TableCell onClick={e => e.stopPropagation()}>
+                                {isSelected && (
+                                  <ShiftSelect
+                                    value={selectedAccreditors.get(a.id) ?? null}
+                                    onChange={v => setAccreditorShift(a.id, v)}
+                                  />
+                                )}
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  </div>
+                  <div className="shrink-0">
+                    <PaginationControls page={accPage} totalPages={accTotalPages} onPageChange={setAccPage} />
+                  </div>
+                </>
+              )}
+            </TabsContent>
+          </Tabs>
+        </div>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
-          <Button onClick={handleSave} disabled={saving}>
-            {saving ? 'Guardando...' : 'Guardar Asignación'}
-          </Button>
-        </DialogFooter>
+        <div className="px-6 pb-6 pt-3 shrink-0 border-t">
+          <DialogFooter>
+            <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
+            <Button onClick={handleSave} disabled={saving}>
+              {saving ? 'Guardando...' : 'Guardar Asignación'}
+            </Button>
+          </DialogFooter>
+        </div>
       </DialogContent>
     </Dialog>
   );
