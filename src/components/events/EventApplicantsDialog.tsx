@@ -135,13 +135,8 @@ export function EventApplicantsDialog({ open, onOpenChange }: EventApplicantsDia
   }, [hubspotDeals]);
 
   const applicants: Applicant[] = useMemo(() => {
-    if (!rawData || !profiles || !userRoles) return [];
+    if (!rawData || !profiles) return [];
     const profileMap = new Map(profiles.map((p) => [p.id, p]));
-    const roleMap = new Map<string, string>();
-    for (const ur of userRoles) {
-      if (ur.role === 'supervisor') roleMap.set(ur.user_id, 'Supervisor');
-      else if (ur.role === 'acreditador' && !roleMap.has(ur.user_id)) roleMap.set(ur.user_id, 'Acreditador');
-    }
     return rawData.map((r: any) => {
       const profile = profileMap.get(r.user_id);
       const hubspotDeal = r.events?.hubspot_deal_id ? hubspotDealMap.get(r.events.hubspot_deal_id) : null;
@@ -160,10 +155,10 @@ export function EventApplicantsDialog({ open, onOpenChange }: EventApplicantsDia
           || hubspotDeal?.dealname
           || 'Sin nombre',
         event_date: r.events?.event_date ?? '',
-        role: roleMap.get(r.user_id) ?? 'Acreditador',
+        role: r.assigned_role === 'supervisor' ? 'Supervisor' : 'Acreditador',
       };
     });
-  }, [rawData, profiles, userRoles, hubspotDealMap]);
+  }, [rawData, profiles, hubspotDealMap]);
 
   const eventNames = useMemo(() => [...new Set(applicants.map((a) => a.event_name))].sort(), [applicants]);
 
