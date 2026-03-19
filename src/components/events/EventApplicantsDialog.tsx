@@ -94,7 +94,7 @@ export function EventApplicantsDialog({ open, onOpenChange }: EventApplicantsDia
     queryFn: async () => {
       const { data, error } = await supabase
         .from('event_accreditors')
-        .select('id, user_id, event_id, application_status, contract_status, payment_amount, events(name, event_date, hubspot_deal_id)');
+        .select('id, user_id, event_id, application_status, contract_status, payment_amount, assigned_role, events(name, event_date, hubspot_deal_id)');
       if (error) throw error;
       return data as any[];
     },
