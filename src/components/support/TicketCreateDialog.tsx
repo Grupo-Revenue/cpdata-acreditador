@@ -65,13 +65,9 @@ export function TicketCreateDialog({ open, onOpenChange, onCreated }: TicketCrea
 
         if (uploadError) throw uploadError;
 
-        const { data: { publicUrl } } = supabase.storage
-          .from('ticket-evidence')
-          .getPublicUrl(filePath);
-
         await supabase
           .from('support_tickets')
-          .update({ evidence_url: publicUrl })
+          .update({ evidence_url: filePath })
           .eq('id', newTicket.id);
       }
 

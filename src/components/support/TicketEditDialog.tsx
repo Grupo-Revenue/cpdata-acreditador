@@ -81,11 +81,7 @@ export function TicketEditDialog({ open, onOpenChange, ticket, onUpdated }: Tick
 
       if (uploadError) throw uploadError;
 
-      const { data: { publicUrl } } = supabase.storage
-        .from('ticket-evidence')
-        .getPublicUrl(filePath);
-
-      setResponseEvidenceUrl(publicUrl);
+      setResponseEvidenceUrl(filePath);
       toast({ title: 'Archivo subido', description: 'La evidencia de respuesta se ha subido correctamente' });
     } catch (error: any) {
       toast({ title: 'Error al subir archivo', description: error.message, variant: 'destructive' });
@@ -127,6 +123,22 @@ export function TicketEditDialog({ open, onOpenChange, ticket, onUpdated }: Tick
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const openEvidence = async (path: string) => {
+    if (!path) return;
+    if (path.startsWith('http')) {
+      window.open(path, '_blank');
+      return;
+    }
+    const { data, error } = await supabase.storage
+      .from('ticket-evidence')
+      .createSignedUrl(path, 3600);
+    if (error) {
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+      return;
+    }
+    window.open(data.signedUrl, '_blank');
   };
 
   if (!ticket) return null;
@@ -214,11 +226,9 @@ export function TicketEditDialog({ open, onOpenChange, ticket, onUpdated }: Tick
             <div className="space-y-2">
               <Label>Evidencia del creador</Label>
               <div>
-                <Button variant="outline" size="sm" asChild>
-                  <a href={ticket.evidence_url} target="_blank" rel="noopener noreferrer">
-                    <ExternalLink className="h-4 w-4 mr-2" />
-                    Ver / Descargar
-                  </a>
+                <Button variant="outline" size="sm" onClick={() => openEvidence(ticket.evidence_url!)}>
+                  <ExternalLink className="h-4 w-4 mr-2" />
+                  Ver / Descargar
                 </Button>
               </div>
             </div>
@@ -236,9 +246,9 @@ export function TicketEditDialog({ open, onOpenChange, ticket, onUpdated }: Tick
                 </label>
               </Button>
               {responseEvidenceUrl && (
-                <a href={responseEvidenceUrl} target="_blank" rel="noopener noreferrer" className="text-sm text-primary underline">
+                <Button variant="link" size="sm" className="text-sm p-0 h-auto" onClick={() => openEvidence(responseEvidenceUrl!)}>
                   Ver evidencia de respuesta
-                </a>
+                </Button>
               )}
             </div>
           </div>
