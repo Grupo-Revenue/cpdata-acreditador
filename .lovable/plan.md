@@ -1,42 +1,66 @@
 
-Problema detectado: el código nuevo ya guarda rutas internas, pero todavía existen tickets antiguos con URLs completas de Supabase en `support_tickets`. En `TicketDetailDialog` y `TicketEditDialog`, si el valor empieza con `http`, el código hace `window.open(...)` directo. Eso sigue enviando al usuario a `wodzysrgdsforiuliejo.supabase.co`, que es justo lo que aparece bloqueado en el preview.
+Problema real detectado
 
-Plan
+La descarga desde Supabase ya está funcionando. Lo confirma la red:
+- se hace `GET /storage/v1/object/ticket-evidence/...`
+- responde `200`
+- devuelve el PDF correctamente
 
-1. Centralizar la lógica de evidencia
-- Crear un helper compartido (por ejemplo `src/lib/ticket-evidence.ts`) para:
-  - detectar si el valor es una ruta simple o una URL legacy del bucket `ticket-evidence`
-  - extraer la ruta real cuando venga como URL de Supabase
-  - conservar fallback solo para URLs externas reales
+Así que el problema ya no es la URL antigua de Supabase ni el bucket. El bloqueo ahora ocurre después, cuando el código hace `window.open(blobUrl, '_blank')`. En el preview/sandbox eso intenta abrir una nueva página/documento y termina mostrando “La página está bloqueada”.
 
-2. Dejar de abrir Supabase directamente
+Plan de implementación
+
+1. Dejar de usar `window.open` para evidencias
+- Cambiar `src/lib/ticket-evidence.ts` para que ya no abra nada por su cuenta
+- En vez de eso, que:
+  - normalice la ruta
+  - descargue el archivo
+  - devuelva `blob`, `objectUrl`, `mimeType` y nombre estimado del archivo
+- Mantener la compatibilidad con rutas simples y URLs legacy
+
+2. Mostrar la evidencia dentro de la app
+- Crear un visor reutilizable, por ejemplo `src/components/support/TicketEvidencePreviewDialog.tsx`
+- Comportamiento:
+  - PDF: mostrar con `<iframe>` o `<object>`
+  - imagen: mostrar con `<img>`
+  - Word/formatos no previsualizables: mostrar mensaje “este archivo no se puede visualizar aquí” + botón de descarga
+- Esto evita navegar a otra página y elimina el bloqueo del preview
+
+3. Actualizar los diálogos de soporte
 - Reemplazar el flujo actual en:
   - `src/components/support/TicketDetailDialog.tsx`
   - `src/components/support/TicketEditDialog.tsx`
-- Nuevo comportamiento:
-  - normalizar el valor a ruta de Storage
-  - obtener el archivo desde Supabase
-  - abrirlo mediante `blob:` URL o descarga controlada
-- Con esto evitamos navegar directamente a `supabase.co`, que es lo que hoy se bloquea
+- Nuevo flujo:
+  - al hacer clic en “Ver / Descargar” o “Ver evidencia de respuesta”
+  - descargar el archivo con el helper
+  - abrir el visor interno
+  - ofrecer también botón “Descargar archivo”
 
-3. Mantener creación y edición consistentes
-- Verificar que:
-  - `TicketCreateDialog.tsx` siga guardando solo `filePath`
-  - `TicketEditDialog.tsx` siga guardando solo `filePath`
-- No hace falta cambiar el esquema de la tabla
+4. Manejar limpieza y UX correctamente
+- Revocar `URL.createObjectURL(...)` al cerrar el visor o cambiar de archivo
+- Mostrar loading mientras se descarga la evidencia
+- Mostrar toast si la descarga falla o si el archivo no existe
 
-4. Normalizar datos antiguos
-- Agregar una migración de datos para convertir valores legacy en `evidence_url` y `response_evidence_url` desde URL pública completa a ruta interna del bucket
-- Así los tickets existentes también quedarán compatibles y no dependerán del fallback viejo
+5. Corregir warning secundario en edición
+- En `TicketEditDialog.tsx`, dejar de usar `Button asChild` con `<label>` porque eso está generando el warning de refs
+- Cambiar ese bloque por un botón normal que dispare `inputRef.current?.click()`
+- Aprovechar de agregar `DialogDescription` en los diálogos para eliminar el warning de accesibilidad
 
 Resultado esperado
-- Los adjuntos antiguos y nuevos se abrirán correctamente
-- Desaparecerá el mensaje “La página ... está bloqueada”
-- El flujo quedará unificado para todo el módulo de soporte
+- Ya no aparecerá “La página está bloqueada”
+- PDFs e imágenes se podrán ver dentro del sistema
+- Archivos no previsualizables se podrán descargar sin romper el preview
+- El módulo de soporte quedará consistente para tickets antiguos y nuevos
 
 Archivos a tocar
+- `src/lib/ticket-evidence.ts`
 - `src/components/support/TicketDetailDialog.tsx`
 - `src/components/support/TicketEditDialog.tsx`
-- `src/components/support/TicketCreateDialog.tsx`
-- `src/lib/ticket-evidence.ts`
-- `supabase/migrations/*`
+- `src/components/support/TicketCreateDialog.tsx` (solo verificación, probablemente sin cambios)
+- `src/components/support/TicketEvidencePreviewDialog.tsx` (nuevo)
+
+Detalles técnicos
+- No hace falta otra migración de base de datos para este bug puntual
+- No hace falta cambiar el bucket
+- El origen del error actual es la apertura de una nueva página desde el preview, no el acceso al archivo
+- Seguiré reutilizando la normalización de rutas ya existente para soportar datos legacy
