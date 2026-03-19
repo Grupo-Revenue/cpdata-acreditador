@@ -226,11 +226,9 @@ export function TicketEditDialog({ open, onOpenChange, ticket, onUpdated }: Tick
             <div className="space-y-2">
               <Label>Evidencia del creador</Label>
               <div>
-                <Button variant="outline" size="sm" asChild>
-                  <a href={ticket.evidence_url} target="_blank" rel="noopener noreferrer">
-                    <ExternalLink className="h-4 w-4 mr-2" />
-                    Ver / Descargar
-                  </a>
+                <Button variant="outline" size="sm" onClick={() => openEvidence(ticket.evidence_url!)}>
+                  <ExternalLink className="h-4 w-4 mr-2" />
+                  Ver / Descargar
                 </Button>
               </div>
             </div>
