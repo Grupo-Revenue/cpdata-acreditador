@@ -4,8 +4,8 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { ExternalLink } from 'lucide-react';
 import { format } from 'date-fns';
-import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { openEvidenceFile } from '@/lib/ticket-evidence';
 
 interface SupportTicket {
   id: string;
