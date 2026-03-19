@@ -94,7 +94,7 @@ export function EventApplicantsDialog({ open, onOpenChange }: EventApplicantsDia
     queryFn: async () => {
       const { data, error } = await supabase
         .from('event_accreditors')
-        .select('id, user_id, event_id, application_status, contract_status, payment_amount, events(name, event_date, hubspot_deal_id)');
+        .select('id, user_id, event_id, application_status, contract_status, payment_amount, assigned_role, events(name, event_date, hubspot_deal_id)');
       if (error) throw error;
       return data as any[];
     },
@@ -125,18 +125,6 @@ export function EventApplicantsDialog({ open, onOpenChange }: EventApplicantsDia
     },
   });
 
-  const { data: userRoles } = useQuery({
-    queryKey: ['applicant-roles', userIds],
-    enabled: userIds.length > 0,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('user_roles')
-        .select('user_id, role')
-        .in('user_id', userIds);
-      if (error) throw error;
-      return data;
-    },
-  });
 
   const hubspotDealMap = useMemo(() => {
     const map = new Map<string, any>();
@@ -147,13 +135,8 @@ export function EventApplicantsDialog({ open, onOpenChange }: EventApplicantsDia
   }, [hubspotDeals]);
 
   const applicants: Applicant[] = useMemo(() => {
-    if (!rawData || !profiles || !userRoles) return [];
+    if (!rawData || !profiles) return [];
     const profileMap = new Map(profiles.map((p) => [p.id, p]));
-    const roleMap = new Map<string, string>();
-    for (const ur of userRoles) {
-      if (ur.role === 'supervisor') roleMap.set(ur.user_id, 'Supervisor');
-      else if (ur.role === 'acreditador' && !roleMap.has(ur.user_id)) roleMap.set(ur.user_id, 'Acreditador');
-    }
     return rawData.map((r: any) => {
       const profile = profileMap.get(r.user_id);
       const hubspotDeal = r.events?.hubspot_deal_id ? hubspotDealMap.get(r.events.hubspot_deal_id) : null;
@@ -172,10 +155,10 @@ export function EventApplicantsDialog({ open, onOpenChange }: EventApplicantsDia
           || hubspotDeal?.dealname
           || 'Sin nombre',
         event_date: r.events?.event_date ?? '',
-        role: roleMap.get(r.user_id) ?? 'Acreditador',
+        role: r.assigned_role === 'supervisor' ? 'Supervisor' : 'Acreditador',
       };
     });
-  }, [rawData, profiles, userRoles, hubspotDealMap]);
+  }, [rawData, profiles, hubspotDealMap]);
 
   const eventNames = useMemo(() => [...new Set(applicants.map((a) => a.event_name))].sort(), [applicants]);
 
