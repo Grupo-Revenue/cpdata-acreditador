@@ -4,6 +4,8 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { ExternalLink } from 'lucide-react';
 import { format } from 'date-fns';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 
 interface SupportTicket {
   id: string;
@@ -72,6 +74,24 @@ function DetailRow({ label, value }: { label: string; value: string | null | und
 }
 
 export function TicketDetailDialog({ open, onOpenChange, ticket }: TicketDetailDialogProps) {
+  const { toast } = useToast();
+
+  const openEvidence = async (path: string) => {
+    if (!path) return;
+    if (path.startsWith('http')) {
+      window.open(path, '_blank');
+      return;
+    }
+    const { data, error } = await supabase.storage
+      .from('ticket-evidence')
+      .createSignedUrl(path, 3600);
+    if (error) {
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+      return;
+    }
+    window.open(data.signedUrl, '_blank');
+  };
+
   if (!ticket) return null;
 
   return (
@@ -149,11 +169,9 @@ export function TicketDetailDialog({ open, onOpenChange, ticket }: TicketDetailD
               <Separator />
               <div>
                 <h4 className="text-sm font-semibold mb-2">Evidencia del creador</h4>
-                <Button variant="outline" size="sm" asChild>
-                  <a href={ticket.evidence_url} target="_blank" rel="noopener noreferrer">
-                    <ExternalLink className="h-4 w-4 mr-2" />
-                    Ver / Descargar
-                  </a>
+                <Button variant="outline" size="sm" onClick={() => openEvidence(ticket.evidence_url!)}>
+                  <ExternalLink className="h-4 w-4 mr-2" />
+                  Ver / Descargar
                 </Button>
               </div>
             </>
@@ -165,11 +183,9 @@ export function TicketDetailDialog({ open, onOpenChange, ticket }: TicketDetailD
               <Separator />
               <div>
                 <h4 className="text-sm font-semibold mb-2">Evidencia de respuesta</h4>
-                <Button variant="outline" size="sm" asChild>
-                  <a href={ticket.response_evidence_url} target="_blank" rel="noopener noreferrer">
-                    <ExternalLink className="h-4 w-4 mr-2" />
-                    Ver / Descargar
-                  </a>
+                <Button variant="outline" size="sm" onClick={() => openEvidence(ticket.response_evidence_url!)}>
+                  <ExternalLink className="h-4 w-4 mr-2" />
+                  Ver / Descargar
                 </Button>
               </div>
             </>

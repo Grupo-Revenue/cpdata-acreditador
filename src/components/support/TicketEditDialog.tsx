@@ -246,9 +246,9 @@ export function TicketEditDialog({ open, onOpenChange, ticket, onUpdated }: Tick
                 </label>
               </Button>
               {responseEvidenceUrl && (
-                <a href={responseEvidenceUrl} target="_blank" rel="noopener noreferrer" className="text-sm text-primary underline">
+                <Button variant="link" size="sm" className="text-sm p-0 h-auto" onClick={() => openEvidence(responseEvidenceUrl!)}>
                   Ver evidencia de respuesta
-                </a>
+                </Button>
               )}
             </div>
           </div>
