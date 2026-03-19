@@ -508,7 +508,7 @@ export function EventTeamDialog({ dealId, dealName, open, onOpenChange }: EventT
             </TabsContent>
 
             {/* Accreditors Tab */}
-            <TabsContent value="acreditadores" className="flex-1 min-h-0 flex flex-col overflow-hidden mt-2">
+            <TabsContent value="acreditadores" className="mt-2 space-y-3">
               <div className="flex items-center gap-3 mb-3 shrink-0">
                 <div className="relative flex-1">
                   <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
