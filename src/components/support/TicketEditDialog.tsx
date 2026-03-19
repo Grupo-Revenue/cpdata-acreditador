@@ -81,11 +81,7 @@ export function TicketEditDialog({ open, onOpenChange, ticket, onUpdated }: Tick
 
       if (uploadError) throw uploadError;
 
-      const { data: { publicUrl } } = supabase.storage
-        .from('ticket-evidence')
-        .getPublicUrl(filePath);
-
-      setResponseEvidenceUrl(publicUrl);
+      setResponseEvidenceUrl(filePath);
       toast({ title: 'Archivo subido', description: 'La evidencia de respuesta se ha subido correctamente' });
     } catch (error: any) {
       toast({ title: 'Error al subir archivo', description: error.message, variant: 'destructive' });
