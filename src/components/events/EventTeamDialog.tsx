@@ -407,8 +407,8 @@ export function EventTeamDialog({ dealId, dealName, open, onOpenChange }: EventT
           </DialogHeader>
         </div>
 
-        <div className="flex-1 min-h-0 flex flex-col overflow-hidden px-6">
-          <Tabs defaultValue="supervisores" className="flex-1 min-h-0 flex flex-col">
+        <div className="flex-1 min-h-0 overflow-y-auto px-6">
+          <Tabs defaultValue="supervisores" className="w-full">
             <TabsList className="grid w-full grid-cols-2 shrink-0">
               <TabsTrigger value="supervisores" className="flex items-center gap-2">
                 Supervisores
@@ -429,8 +429,8 @@ export function EventTeamDialog({ dealId, dealName, open, onOpenChange }: EventT
             </TabsList>
 
             {/* Supervisors Tab */}
-            <TabsContent value="supervisores" className="flex-1 min-h-0 flex flex-col overflow-hidden mt-2">
-              <div className="flex items-center gap-3 mb-3 shrink-0">
+            <TabsContent value="supervisores" className="mt-2 space-y-3">
+              <div className="flex items-center gap-3">
                 <div className="relative flex-1">
                   <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
                   <Input
@@ -453,12 +453,12 @@ export function EventTeamDialog({ dealId, dealName, open, onOpenChange }: EventT
                 </p>
               ) : (
                 <>
-                  <div className="flex justify-end mb-2 shrink-0">
+                  <div className="flex justify-end">
                     <Button variant="ghost" size="sm" className="text-xs h-7" onClick={toggleAllSupervisors}>
                       {allSupFilteredSelected ? 'Deseleccionar todos' : 'Seleccionar todos'}
                     </Button>
                   </div>
-                  <div className="flex-1 min-h-0 overflow-auto border rounded-md">
+                  <div className="overflow-auto border rounded-md max-h-[calc(85vh-320px)]">
                     <Table className="min-w-[600px]">
                       <TableHeader>
                         <TableRow>
@@ -500,7 +500,7 @@ export function EventTeamDialog({ dealId, dealName, open, onOpenChange }: EventT
                       </TableBody>
                     </Table>
                   </div>
-                  <div className="shrink-0">
+                  <div>
                     <PaginationControls page={supPage} totalPages={supTotalPages} onPageChange={setSupPage} />
                   </div>
                 </>
@@ -508,8 +508,8 @@ export function EventTeamDialog({ dealId, dealName, open, onOpenChange }: EventT
             </TabsContent>
 
             {/* Accreditors Tab */}
-            <TabsContent value="acreditadores" className="flex-1 min-h-0 flex flex-col overflow-hidden mt-2">
-              <div className="flex items-center gap-3 mb-3 shrink-0">
+            <TabsContent value="acreditadores" className="mt-2 space-y-3">
+              <div className="flex items-center gap-3">
                 <div className="relative flex-1">
                   <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
                   <Input
@@ -532,12 +532,12 @@ export function EventTeamDialog({ dealId, dealName, open, onOpenChange }: EventT
                 </p>
               ) : (
                 <>
-                  <div className="flex justify-end mb-2 shrink-0">
+                  <div className="flex justify-end">
                     <Button variant="ghost" size="sm" className="text-xs h-7" onClick={toggleAllAccreditors}>
                       {allAccFilteredSelected ? 'Deseleccionar todos' : 'Seleccionar todos'}
                     </Button>
                   </div>
-                  <div className="flex-1 min-h-0 overflow-auto border rounded-md">
+                  <div className="overflow-auto border rounded-md max-h-[calc(85vh-320px)]">
                     <Table className="min-w-[700px]">
                       <TableHeader>
                         <TableRow>
@@ -581,7 +581,7 @@ export function EventTeamDialog({ dealId, dealName, open, onOpenChange }: EventT
                       </TableBody>
                     </Table>
                   </div>
-                  <div className="shrink-0">
+                  <div>
                     <PaginationControls page={accPage} totalPages={accTotalPages} onPageChange={setAccPage} />
                   </div>
                 </>
