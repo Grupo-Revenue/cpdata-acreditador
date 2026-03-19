@@ -126,20 +126,12 @@ export function TicketEditDialog({ open, onOpenChange, ticket, onUpdated }: Tick
     }
   };
 
-  const openEvidence = async (path: string) => {
-    if (!path) return;
-    if (path.startsWith('http')) {
-      window.open(path, '_blank');
-      return;
-    }
-    const { data, error } = await supabase.storage
-      .from('ticket-evidence')
-      .createSignedUrl(path, 3600);
+  const openEvidence = async (value: string) => {
+    if (!value) return;
+    const { error } = await openEvidenceFile(value);
     if (error) {
-      toast({ title: 'Error', description: error.message, variant: 'destructive' });
-      return;
+      toast({ title: 'Error', description: error, variant: 'destructive' });
     }
-    window.open(data.signedUrl, '_blank');
   };
 
   if (!ticket) return null;
