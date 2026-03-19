@@ -1,24 +1,18 @@
 
 
-## Plan: Fix event team role assignment
+## Plan: Mostrar rol asignado en tabla de postulantes
 
-### Problem
-The `event_accreditors` table stores no information about which role (supervisor or acreditador) a person was assigned as. When reopening the dialog, the code guesses by checking if the user_id appears in the supervisor or accreditor role lists. If a user has both roles, or if another user is only an acreditador, the pre-selection logic can misplace them.
+### Problema
+`EventApplicantsDialog.tsx` obtiene el rol desde `user_roles` (roles del sistema) en lugar de usar `assigned_role` de `event_accreditors`. Si un usuario tiene rol "supervisor" en el sistema pero fue asignado como "acreditador" al evento, aparece como "Supervisor".
 
-### Solution
-Add a `role` column to the `event_accreditors` table to persist the assignment role.
+### Cambios en `src/components/events/EventApplicantsDialog.tsx`
 
-### Changes
+1. **Query**: Agregar `assigned_role` al select de `event_accreditors` (línea 97)
+2. **Mapeo**: Usar `r.assigned_role` directamente en lugar de inferir desde `user_roles` (líneas 152-175)
+   - `r.assigned_role === 'supervisor'` → mostrar "Supervisor"
+   - default → "Acreditador"
+3. **Eliminar** la query de `user_roles` y el `roleMap`, ya que no se necesitan para determinar el tipo
 
-**1. Database migration**
-- Add column `assigned_role text` to `event_accreditors` with default `'acreditador'`
-- Update existing rows: set `assigned_role = 'supervisor'` where `user_id` is in the `user_roles` table with role `supervisor`
-
-**2. `src/components/events/EventTeamDialog.tsx`**
-- **Save**: include `assigned_role: 'supervisor'` or `assigned_role: 'acreditador'` in each inserted row based on which map the user came from
-- **Load**: fetch `assigned_role` alongside `user_id` and `shift` in existing assignments query, and use it to populate the correct map (`supMap` vs `accMap`) instead of guessing from the user's roles
-
-### Result
-- Each assignment remembers whether the person was added as supervisor or acreditador
-- Re-opening the dialog will show each person in the correct tab
+### Resultado
+Cada persona aparecerá con el rol que fue asignado al evento, no con su rol del sistema.
 
