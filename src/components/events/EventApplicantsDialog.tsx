@@ -125,18 +125,6 @@ export function EventApplicantsDialog({ open, onOpenChange }: EventApplicantsDia
     },
   });
 
-  const { data: userRoles } = useQuery({
-    queryKey: ['applicant-roles', userIds],
-    enabled: userIds.length > 0,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('user_roles')
-        .select('user_id, role')
-        .in('user_id', userIds);
-      if (error) throw error;
-      return data;
-    },
-  });
 
   const hubspotDealMap = useMemo(() => {
     const map = new Map<string, any>();
