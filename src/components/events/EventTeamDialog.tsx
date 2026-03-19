@@ -5,12 +5,13 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Badge } from '@/components/ui/badge';
 import { LoadingState } from '@/components/ui/LoadingState';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Users, Search, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Users, Search, ChevronLeft, ChevronRight, Sun, Moon, Clock } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 const PAGE_SIZE = 10;
 
@@ -50,44 +51,78 @@ function PaginationControls({ page, totalPages, onPageChange }: { page: number; 
   );
 }
 
-function ShiftSelect({ value, onChange }: { value: string | null; onChange: (v: string | null) => void }) {
+function ShiftToggle({ value, onChange }: { value: string | null; onChange: (v: string | null) => void }) {
   return (
-    <Select value={value ?? 'full'} onValueChange={v => onChange(v === 'full' ? null : v)}>
-      <SelectTrigger className="w-[130px] h-8 text-xs">
-        <SelectValue />
-      </SelectTrigger>
-      <SelectContent>
-        <SelectItem value="full">Día Completo</SelectItem>
-        <SelectItem value="AM">AM</SelectItem>
-        <SelectItem value="PM">PM</SelectItem>
-      </SelectContent>
-    </Select>
+    <div className="flex gap-0.5 bg-muted rounded-md p-0.5">
+      <button
+        type="button"
+        className={cn(
+          "flex items-center gap-1 px-2 py-1 rounded text-xs font-medium transition-colors",
+          value === null ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+        )}
+        onClick={() => onChange(null)}
+        title="Día Completo"
+      >
+        <Clock className="h-3 w-3" />
+        Full
+      </button>
+      <button
+        type="button"
+        className={cn(
+          "flex items-center gap-1 px-2 py-1 rounded text-xs font-medium transition-colors",
+          value === 'AM' ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+        )}
+        onClick={() => onChange('AM')}
+        title="AM"
+      >
+        <Sun className="h-3 w-3" />
+        AM
+      </button>
+      <button
+        type="button"
+        className={cn(
+          "flex items-center gap-1 px-2 py-1 rounded text-xs font-medium transition-colors",
+          value === 'PM' ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+        )}
+        onClick={() => onChange('PM')}
+        title="PM"
+      >
+        <Moon className="h-3 w-3" />
+        PM
+      </button>
+    </div>
+  );
+}
+
+function RankingBadge({ ranking }: { ranking: number | null }) {
+  if (ranking === null || ranking === undefined) return <span className="text-muted-foreground">—</span>;
+  const variant = ranking >= 5 ? 'default' : ranking >= 3 ? 'secondary' : 'destructive';
+  return <Badge variant={variant} className="text-xs font-mono">{ranking}</Badge>;
+}
+
+function matchesSearch(user: UserWithProfile, query: string): boolean {
+  if (!query) return true;
+  const q = query.toLowerCase();
+  const fullName = `${user.nombre} ${user.apellido}`.toLowerCase();
+  return (
+    fullName.includes(q) ||
+    user.rut.toLowerCase().includes(q) ||
+    user.email.toLowerCase().includes(q) ||
+    (user.telefono || '').includes(q)
   );
 }
 
 export function EventTeamDialog({ dealId, dealName, open, onOpenChange }: EventTeamDialogProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  // Map<user_id, shift> where shift is null (full day), 'AM', or 'PM'
   const [selectedSupervisors, setSelectedSupervisors] = useState<Map<string, string | null>>(new Map());
   const [selectedAccreditors, setSelectedAccreditors] = useState<Map<string, string | null>>(new Map());
   const [saving, setSaving] = useState(false);
 
-  // Supervisor filters
-  const [supFilterNombre, setSupFilterNombre] = useState('');
-  const [supFilterRut, setSupFilterRut] = useState('');
-  const [supFilterEmail, setSupFilterEmail] = useState('');
-  const [supFilterTelefono, setSupFilterTelefono] = useState('');
-  const [supFilterRanking, setSupFilterRanking] = useState('');
+  const [supSearch, setSupSearch] = useState('');
   const [supPage, setSupPage] = useState(1);
 
-  // Accreditor filters
-  const [filterNombre, setFilterNombre] = useState('');
-  const [filterRut, setFilterRut] = useState('');
-  const [filterEmail, setFilterEmail] = useState('');
-  const [filterIdioma, setFilterIdioma] = useState('');
-  const [filterRanking, setFilterRanking] = useState('');
-  const [filterTelefono, setFilterTelefono] = useState('');
+  const [accSearch, setAccSearch] = useState('');
   const [accPage, setAccPage] = useState(1);
 
   // Fetch supervisors
@@ -136,7 +171,7 @@ export function EventTeamDialog({ dealId, dealName, open, onOpenChange }: EventT
     enabled: open,
   });
 
-  // Fetch existing assignments with shift
+  // Fetch existing assignments
   const { data: existingAssignments = [] } = useQuery({
     queryKey: ['event-assignments', dealId],
     queryFn: async () => {
@@ -158,7 +193,7 @@ export function EventTeamDialog({ dealId, dealName, open, onOpenChange }: EventT
     refetchOnMount: 'always',
   });
 
-  // Pre-select existing assignments with their shifts
+  // Pre-select existing assignments
   useEffect(() => {
     if (!open) return;
     const supIds = new Set(supervisors.map(s => s.id));
@@ -178,95 +213,81 @@ export function EventTeamDialog({ dealId, dealName, open, onOpenChange }: EventT
     if (!open) {
       setSelectedSupervisors(new Map());
       setSelectedAccreditors(new Map());
-      setSupFilterNombre('');
-      setSupFilterRut('');
-      setSupFilterEmail('');
-      setSupFilterTelefono('');
-      setSupFilterRanking('');
+      setSupSearch('');
       setSupPage(1);
-      setFilterNombre('');
-      setFilterRut('');
-      setFilterEmail('');
-      setFilterIdioma('');
-      setFilterRanking('');
-      setFilterTelefono('');
+      setAccSearch('');
       setAccPage(1);
     }
   }, [open]);
 
   // Filtered & paginated supervisors
   const filteredSupervisors = useMemo(() => {
-    return supervisors.filter(s => {
-      const fullName = `${s.nombre} ${s.apellido}`.toLowerCase();
-      if (supFilterNombre && !fullName.includes(supFilterNombre.toLowerCase())) return false;
-      if (supFilterRut && !s.rut.toLowerCase().includes(supFilterRut.toLowerCase())) return false;
-      if (supFilterEmail && !s.email.toLowerCase().includes(supFilterEmail.toLowerCase())) return false;
-      if (supFilterTelefono && !(s.telefono || '').includes(supFilterTelefono)) return false;
-      if (supFilterRanking && s.ranking?.toString() !== supFilterRanking) return false;
-      return true;
-    });
-  }, [supervisors, supFilterNombre, supFilterRut, supFilterEmail, supFilterTelefono, supFilterRanking]);
+    return supervisors.filter(s => matchesSearch(s, supSearch));
+  }, [supervisors, supSearch]);
 
   const supTotalPages = Math.ceil(filteredSupervisors.length / PAGE_SIZE);
   const paginatedSupervisors = filteredSupervisors.slice((supPage - 1) * PAGE_SIZE, supPage * PAGE_SIZE);
-
-  useEffect(() => { setSupPage(1); }, [supFilterNombre, supFilterRut, supFilterEmail, supFilterTelefono, supFilterRanking]);
+  useEffect(() => { setSupPage(1); }, [supSearch]);
 
   // Filtered & paginated accreditors
   const filteredAccreditors = useMemo(() => {
-    return accreditors.filter(a => {
-      const fullName = `${a.nombre} ${a.apellido}`.toLowerCase();
-      if (filterNombre && !fullName.includes(filterNombre.toLowerCase())) return false;
-      if (filterRut && !a.rut.toLowerCase().includes(filterRut.toLowerCase())) return false;
-      if (filterEmail && !a.email.toLowerCase().includes(filterEmail.toLowerCase())) return false;
-      if (filterIdioma && !(a.idioma || '').toLowerCase().includes(filterIdioma.toLowerCase())) return false;
-      if (filterRanking && a.ranking?.toString() !== filterRanking) return false;
-      if (filterTelefono && !(a.telefono || '').includes(filterTelefono)) return false;
-      return true;
-    });
-  }, [accreditors, filterNombre, filterRut, filterEmail, filterIdioma, filterRanking, filterTelefono]);
+    return accreditors.filter(a => matchesSearch(a, accSearch));
+  }, [accreditors, accSearch]);
 
   const accTotalPages = Math.ceil(filteredAccreditors.length / PAGE_SIZE);
   const paginatedAccreditors = filteredAccreditors.slice((accPage - 1) * PAGE_SIZE, accPage * PAGE_SIZE);
-
-  useEffect(() => { setAccPage(1); }, [filterNombre, filterRut, filterEmail, filterIdioma, filterRanking, filterTelefono]);
+  useEffect(() => { setAccPage(1); }, [accSearch]);
 
   const toggleSupervisor = (id: string) => {
     setSelectedSupervisors(prev => {
       const next = new Map(prev);
-      if (next.has(id)) {
-        next.delete(id);
-      } else {
-        next.set(id, null);
-      }
+      if (next.has(id)) next.delete(id);
+      else next.set(id, null);
       return next;
     });
   };
 
   const setSupervisorShift = (id: string, shift: string | null) => {
-    setSelectedSupervisors(prev => {
-      const next = new Map(prev);
-      next.set(id, shift);
-      return next;
-    });
+    setSelectedSupervisors(prev => { const next = new Map(prev); next.set(id, shift); return next; });
   };
 
   const toggleAccreditor = (id: string) => {
     setSelectedAccreditors(prev => {
       const next = new Map(prev);
-      if (next.has(id)) {
-        next.delete(id);
-      } else {
-        next.set(id, null);
-      }
+      if (next.has(id)) next.delete(id);
+      else next.set(id, null);
       return next;
     });
   };
 
   const setAccreditorShift = (id: string, shift: string | null) => {
+    setSelectedAccreditors(prev => { const next = new Map(prev); next.set(id, shift); return next; });
+  };
+
+  const toggleAllSupervisors = () => {
+    const allFilteredIds = filteredSupervisors.map(s => s.id);
+    const allSelected = allFilteredIds.every(id => selectedSupervisors.has(id));
+    setSelectedSupervisors(prev => {
+      const next = new Map(prev);
+      if (allSelected) {
+        allFilteredIds.forEach(id => next.delete(id));
+      } else {
+        allFilteredIds.forEach(id => { if (!next.has(id)) next.set(id, null); });
+      }
+      return next;
+    });
+  };
+
+  const toggleAllAccreditors = () => {
+    const allFilteredIds = filteredAccreditors.map(a => a.id);
+    const allSelected = allFilteredIds.every(id => selectedAccreditors.has(id));
     setSelectedAccreditors(prev => {
       const next = new Map(prev);
-      next.set(id, shift);
+      if (allSelected) {
+        allFilteredIds.forEach(id => next.delete(id));
+      } else {
+        allFilteredIds.forEach(id => { if (!next.has(id)) next.set(id, null); });
+      }
       return next;
     });
   };
@@ -317,7 +338,6 @@ export function EventTeamDialog({ dealId, dealName, open, onOpenChange }: EventT
 
       const allSelectedIds = allSelected.map(([id]) => id);
 
-      // Delete invoices for removed users
       const removedUserIds = previousAssignmentIds.filter(id => !allSelectedIds.includes(id));
       if (removedUserIds.length > 0) {
         const { error: delInvErr } = await supabase
@@ -328,7 +348,6 @@ export function EventTeamDialog({ dealId, dealName, open, onOpenChange }: EventT
         if (delInvErr) throw delInvErr;
       }
 
-      // Create invoices for newly assigned users
       const newUserIds = allSelectedIds.filter(id => !previousAssignmentIds.includes(id));
       if (newUserIds.length > 0) {
         const { data: existingInvoices } = await supabase
@@ -341,7 +360,6 @@ export function EventTeamDialog({ dealId, dealName, open, onOpenChange }: EventT
         const usersNeedingInvoice = newUserIds.filter(id => !usersWithInvoice.has(id));
 
         if (usersNeedingInvoice.length > 0) {
-          // Fetch payment_amount from event_accreditors for each user
           const { data: accreditorData } = await supabase
             .from('event_accreditors')
             .select('user_id, payment_amount')
@@ -371,6 +389,9 @@ export function EventTeamDialog({ dealId, dealName, open, onOpenChange }: EventT
     }
   };
 
+  const allSupFilteredSelected = filteredSupervisors.length > 0 && filteredSupervisors.every(s => selectedSupervisors.has(s.id));
+  const allAccFilteredSelected = filteredAccreditors.length > 0 && filteredAccreditors.every(a => selectedAccreditors.has(a.id));
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="w-[95vw] max-w-5xl h-[85vh] flex flex-col p-0">
@@ -389,38 +410,61 @@ export function EventTeamDialog({ dealId, dealName, open, onOpenChange }: EventT
         <div className="flex-1 min-h-0 flex flex-col overflow-hidden px-6">
           <Tabs defaultValue="supervisores" className="flex-1 min-h-0 flex flex-col">
             <TabsList className="grid w-full grid-cols-2 shrink-0">
-              <TabsTrigger value="supervisores">Supervisores ({selectedSupervisors.size})</TabsTrigger>
-              <TabsTrigger value="acreditadores">Acreditadores ({selectedAccreditors.size})</TabsTrigger>
+              <TabsTrigger value="supervisores" className="flex items-center gap-2">
+                Supervisores
+                {selectedSupervisors.size > 0 && (
+                  <Badge variant="secondary" className="text-xs px-1.5 py-0 h-5 min-w-5 flex items-center justify-center">
+                    {selectedSupervisors.size}
+                  </Badge>
+                )}
+              </TabsTrigger>
+              <TabsTrigger value="acreditadores" className="flex items-center gap-2">
+                Acreditadores
+                {selectedAccreditors.size > 0 && (
+                  <Badge variant="secondary" className="text-xs px-1.5 py-0 h-5 min-w-5 flex items-center justify-center">
+                    {selectedAccreditors.size}
+                  </Badge>
+                )}
+              </TabsTrigger>
             </TabsList>
 
+            {/* Supervisors Tab */}
             <TabsContent value="supervisores" className="flex-1 min-h-0 flex flex-col overflow-hidden mt-2">
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mb-3 shrink-0">
-                <div className="relative">
-                  <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                  <Input placeholder="Nombre" value={supFilterNombre} onChange={e => setSupFilterNombre(e.target.value)} className="pl-8" />
+              <div className="flex items-center gap-3 mb-3 shrink-0">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Buscar por nombre, RUT, email o teléfono..."
+                    value={supSearch}
+                    onChange={e => setSupSearch(e.target.value)}
+                    className="pl-9"
+                  />
                 </div>
-                <Input placeholder="RUT" value={supFilterRut} onChange={e => setSupFilterRut(e.target.value)} />
-                <Input placeholder="Email" value={supFilterEmail} onChange={e => setSupFilterEmail(e.target.value)} />
-                <Input placeholder="Teléfono" value={supFilterTelefono} onChange={e => setSupFilterTelefono(e.target.value)} />
-                <Input placeholder="Ranking (1-7)" value={supFilterRanking} onChange={e => setSupFilterRanking(e.target.value)} />
+                <span className="text-sm text-muted-foreground whitespace-nowrap">
+                  {selectedSupervisors.size} de {supervisors.length}
+                </span>
               </div>
 
               {loadingSupervisors ? (
                 <LoadingState text="Cargando supervisores..." className="py-8" />
               ) : filteredSupervisors.length === 0 ? (
                 <p className="text-sm text-muted-foreground py-4 text-center">
-                  {supervisors.length === 0 ? 'No hay supervisores aprobados.' : 'Sin resultados para los filtros aplicados.'}
+                  {supervisors.length === 0 ? 'No hay supervisores aprobados.' : 'Sin resultados para la búsqueda.'}
                 </p>
               ) : (
                 <>
+                  <div className="flex justify-end mb-2 shrink-0">
+                    <Button variant="ghost" size="sm" className="text-xs h-7" onClick={toggleAllSupervisors}>
+                      {allSupFilteredSelected ? 'Deseleccionar todos' : 'Seleccionar todos'}
+                    </Button>
+                  </div>
                   <div className="flex-1 min-h-0 overflow-auto border rounded-md">
-                    <Table className="min-w-[700px]">
+                    <Table className="min-w-[600px]">
                       <TableHeader>
                         <TableRow>
-                          <TableHead className="w-[50px]" />
+                          <TableHead className="w-10" />
                           <TableHead>Nombre</TableHead>
                           <TableHead>RUT</TableHead>
-                          <TableHead>Email</TableHead>
                           <TableHead>Teléfono</TableHead>
                           <TableHead>Ranking</TableHead>
                           <TableHead>Turno</TableHead>
@@ -430,18 +474,21 @@ export function EventTeamDialog({ dealId, dealName, open, onOpenChange }: EventT
                         {paginatedSupervisors.map(s => {
                           const isSelected = selectedSupervisors.has(s.id);
                           return (
-                            <TableRow key={s.id} className="cursor-pointer" onClick={() => toggleSupervisor(s.id)}>
-                              <TableCell>
+                            <TableRow
+                              key={s.id}
+                              className={cn("cursor-pointer transition-colors", isSelected && "bg-primary/5")}
+                              onClick={() => toggleSupervisor(s.id)}
+                            >
+                              <TableCell className="w-10">
                                 <Checkbox checked={isSelected} onCheckedChange={() => toggleSupervisor(s.id)} />
                               </TableCell>
-                              <TableCell>{s.nombre} {s.apellido}</TableCell>
-                              <TableCell>{s.rut}</TableCell>
-                              <TableCell>{s.email}</TableCell>
-                              <TableCell>{s.telefono ?? '—'}</TableCell>
-                              <TableCell>{s.ranking ?? '—'}</TableCell>
+                              <TableCell className="font-medium">{s.nombre} {s.apellido}</TableCell>
+                              <TableCell className="text-xs text-muted-foreground">{s.rut}</TableCell>
+                              <TableCell className="text-xs text-muted-foreground">{s.telefono ?? '—'}</TableCell>
+                              <TableCell><RankingBadge ranking={s.ranking} /></TableCell>
                               <TableCell onClick={e => e.stopPropagation()}>
                                 {isSelected && (
-                                  <ShiftSelect
+                                  <ShiftToggle
                                     value={selectedSupervisors.get(s.id) ?? null}
                                     onChange={v => setSupervisorShift(s.id, v)}
                                   />
@@ -460,39 +507,46 @@ export function EventTeamDialog({ dealId, dealName, open, onOpenChange }: EventT
               )}
             </TabsContent>
 
+            {/* Accreditors Tab */}
             <TabsContent value="acreditadores" className="flex-1 min-h-0 flex flex-col overflow-hidden mt-2">
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mb-3 shrink-0">
-                <div className="relative">
-                  <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                  <Input placeholder="Nombre" value={filterNombre} onChange={e => setFilterNombre(e.target.value)} className="pl-8" />
+              <div className="flex items-center gap-3 mb-3 shrink-0">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Buscar por nombre, RUT, email o teléfono..."
+                    value={accSearch}
+                    onChange={e => setAccSearch(e.target.value)}
+                    className="pl-9"
+                  />
                 </div>
-                <Input placeholder="RUT" value={filterRut} onChange={e => setFilterRut(e.target.value)} />
-                <Input placeholder="Email" value={filterEmail} onChange={e => setFilterEmail(e.target.value)} />
-                <Input placeholder="Idioma" value={filterIdioma} onChange={e => setFilterIdioma(e.target.value)} />
-                <Input placeholder="Ranking (1-7)" value={filterRanking} onChange={e => setFilterRanking(e.target.value)} />
-                <Input placeholder="Teléfono" value={filterTelefono} onChange={e => setFilterTelefono(e.target.value)} />
+                <span className="text-sm text-muted-foreground whitespace-nowrap">
+                  {selectedAccreditors.size} de {accreditors.length}
+                </span>
               </div>
 
               {loadingAccreditors ? (
                 <LoadingState text="Cargando acreditadores..." className="py-8" />
               ) : filteredAccreditors.length === 0 ? (
                 <p className="text-sm text-muted-foreground py-4 text-center">
-                  {accreditors.length === 0 ? 'No hay acreditadores aprobados.' : 'Sin resultados para los filtros aplicados.'}
+                  {accreditors.length === 0 ? 'No hay acreditadores aprobados.' : 'Sin resultados para la búsqueda.'}
                 </p>
               ) : (
                 <>
+                  <div className="flex justify-end mb-2 shrink-0">
+                    <Button variant="ghost" size="sm" className="text-xs h-7" onClick={toggleAllAccreditors}>
+                      {allAccFilteredSelected ? 'Deseleccionar todos' : 'Seleccionar todos'}
+                    </Button>
+                  </div>
                   <div className="flex-1 min-h-0 overflow-auto border rounded-md">
-                    <Table className="min-w-[850px]">
+                    <Table className="min-w-[700px]">
                       <TableHeader>
                         <TableRow>
-                          <TableHead className="w-[50px]" />
+                          <TableHead className="w-10" />
                           <TableHead>Nombre</TableHead>
                           <TableHead>RUT</TableHead>
-                          <TableHead>Email</TableHead>
-                          <TableHead>Idioma</TableHead>
-                          <TableHead>Estatura</TableHead>
-                          <TableHead>Ranking</TableHead>
                           <TableHead>Teléfono</TableHead>
+                          <TableHead>Idioma</TableHead>
+                          <TableHead>Ranking</TableHead>
                           <TableHead>Turno</TableHead>
                         </TableRow>
                       </TableHeader>
@@ -500,20 +554,22 @@ export function EventTeamDialog({ dealId, dealName, open, onOpenChange }: EventT
                         {paginatedAccreditors.map(a => {
                           const isSelected = selectedAccreditors.has(a.id);
                           return (
-                            <TableRow key={a.id} className="cursor-pointer" onClick={() => toggleAccreditor(a.id)}>
-                              <TableCell>
+                            <TableRow
+                              key={a.id}
+                              className={cn("cursor-pointer transition-colors", isSelected && "bg-primary/5")}
+                              onClick={() => toggleAccreditor(a.id)}
+                            >
+                              <TableCell className="w-10">
                                 <Checkbox checked={isSelected} onCheckedChange={() => toggleAccreditor(a.id)} />
                               </TableCell>
-                              <TableCell>{a.nombre} {a.apellido}</TableCell>
-                              <TableCell>{a.rut}</TableCell>
-                              <TableCell>{a.email}</TableCell>
+                              <TableCell className="font-medium">{a.nombre} {a.apellido}</TableCell>
+                              <TableCell className="text-xs text-muted-foreground">{a.rut}</TableCell>
+                              <TableCell className="text-xs text-muted-foreground">{a.telefono ?? '—'}</TableCell>
                               <TableCell>{a.idioma ?? '—'}</TableCell>
-                              <TableCell>{a.altura ?? '—'}</TableCell>
-                              <TableCell>{a.ranking ?? '—'}</TableCell>
-                              <TableCell>{a.telefono ?? '—'}</TableCell>
+                              <TableCell><RankingBadge ranking={a.ranking} /></TableCell>
                               <TableCell onClick={e => e.stopPropagation()}>
                                 {isSelected && (
-                                  <ShiftSelect
+                                  <ShiftToggle
                                     value={selectedAccreditors.get(a.id) ?? null}
                                     onChange={v => setAccreditorShift(a.id, v)}
                                   />
@@ -535,11 +591,16 @@ export function EventTeamDialog({ dealId, dealName, open, onOpenChange }: EventT
         </div>
 
         <div className="px-6 pb-6 pt-3 shrink-0 border-t">
-          <DialogFooter>
-            <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
-            <Button onClick={handleSave} disabled={saving}>
-              {saving ? 'Guardando...' : 'Guardar Asignación'}
-            </Button>
+          <DialogFooter className="flex items-center justify-between sm:justify-between">
+            <p className="text-sm text-muted-foreground">
+              Total: {selectedSupervisors.size} supervisores, {selectedAccreditors.size} acreditadores
+            </p>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
+              <Button onClick={handleSave} disabled={saving}>
+                {saving ? 'Guardando...' : 'Guardar Asignación'}
+              </Button>
+            </div>
           </DialogFooter>
         </div>
       </DialogContent>
