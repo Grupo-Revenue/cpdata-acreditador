@@ -184,10 +184,10 @@ export function EventTeamDialog({ dealId, dealName, open, onOpenChange }: EventT
       if (!evt) return [];
       const { data, error } = await (supabase
         .from('event_accreditors')
-        .select('user_id, shift') as any)
+        .select('user_id, shift, assigned_role') as any)
         .eq('event_id', evt.id);
       if (error) throw error;
-      return (data || []) as { user_id: string; shift: string | null }[];
+      return (data || []) as { user_id: string; shift: string | null; assigned_role: string | null }[];
     },
     enabled: open && !!dealId,
     refetchOnMount: 'always',
