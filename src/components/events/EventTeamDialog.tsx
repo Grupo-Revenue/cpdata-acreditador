@@ -196,17 +196,18 @@ export function EventTeamDialog({ dealId, dealName, open, onOpenChange }: EventT
   // Pre-select existing assignments
   useEffect(() => {
     if (!open) return;
-    const supIds = new Set(supervisors.map(s => s.id));
-    const accIds = new Set(accreditors.map(a => a.id));
     const supMap = new Map<string, string | null>();
     const accMap = new Map<string, string | null>();
     for (const a of existingAssignments) {
-      if (supIds.has(a.user_id)) supMap.set(a.user_id, a.shift ?? null);
-      if (accIds.has(a.user_id)) accMap.set(a.user_id, a.shift ?? null);
+      if (a.assigned_role === 'supervisor') {
+        supMap.set(a.user_id, a.shift ?? null);
+      } else {
+        accMap.set(a.user_id, a.shift ?? null);
+      }
     }
     setSelectedSupervisors(supMap);
     setSelectedAccreditors(accMap);
-  }, [open, existingAssignments, supervisors, accreditors]);
+  }, [open, existingAssignments]);
 
   // Reset on close
   useEffect(() => {
