@@ -537,7 +537,7 @@ export function EventTeamDialog({ dealId, dealName, open, onOpenChange }: EventT
                       {allAccFilteredSelected ? 'Deseleccionar todos' : 'Seleccionar todos'}
                     </Button>
                   </div>
-                  <div className="flex-1 min-h-0 overflow-auto border rounded-md">
+                  <div className="overflow-auto border rounded-md max-h-[calc(85vh-320px)]">
                     <Table className="min-w-[700px]">
                       <TableHeader>
                         <TableRow>
