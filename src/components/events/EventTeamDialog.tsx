@@ -500,7 +500,7 @@ export function EventTeamDialog({ dealId, dealName, open, onOpenChange }: EventT
                       </TableBody>
                     </Table>
                   </div>
-                  <div className="shrink-0">
+                  <div>
                     <PaginationControls page={supPage} totalPages={supTotalPages} onPageChange={setSupPage} />
                   </div>
                 </>
