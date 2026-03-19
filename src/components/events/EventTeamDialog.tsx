@@ -581,7 +581,7 @@ export function EventTeamDialog({ dealId, dealName, open, onOpenChange }: EventT
                       </TableBody>
                     </Table>
                   </div>
-                  <div className="shrink-0">
+                  <div>
                     <PaginationControls page={accPage} totalPages={accTotalPages} onPageChange={setAccPage} />
                   </div>
                 </>
