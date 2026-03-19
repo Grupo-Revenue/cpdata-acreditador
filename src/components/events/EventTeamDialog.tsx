@@ -341,7 +341,7 @@ export function EventTeamDialog({ dealId, dealName, open, onOpenChange }: EventT
         if (insertErr) throw insertErr;
       }
 
-      const allSelectedIds = allSelected.map(([id]) => id);
+      const allSelectedIds = allSelected.map(({ userId }) => userId);
 
       const removedUserIds = previousAssignmentIds.filter(id => !allSelectedIds.includes(id));
       if (removedUserIds.length > 0) {
