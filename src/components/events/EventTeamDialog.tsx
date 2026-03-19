@@ -184,10 +184,10 @@ export function EventTeamDialog({ dealId, dealName, open, onOpenChange }: EventT
       if (!evt) return [];
       const { data, error } = await (supabase
         .from('event_accreditors')
-        .select('user_id, shift') as any)
+        .select('user_id, shift, assigned_role') as any)
         .eq('event_id', evt.id);
       if (error) throw error;
-      return (data || []) as { user_id: string; shift: string | null }[];
+      return (data || []) as { user_id: string; shift: string | null; assigned_role: string | null }[];
     },
     enabled: open && !!dealId,
     refetchOnMount: 'always',
@@ -196,17 +196,18 @@ export function EventTeamDialog({ dealId, dealName, open, onOpenChange }: EventT
   // Pre-select existing assignments
   useEffect(() => {
     if (!open) return;
-    const supIds = new Set(supervisors.map(s => s.id));
-    const accIds = new Set(accreditors.map(a => a.id));
     const supMap = new Map<string, string | null>();
     const accMap = new Map<string, string | null>();
     for (const a of existingAssignments) {
-      if (supIds.has(a.user_id)) supMap.set(a.user_id, a.shift ?? null);
-      if (accIds.has(a.user_id)) accMap.set(a.user_id, a.shift ?? null);
+      if (a.assigned_role === 'supervisor') {
+        supMap.set(a.user_id, a.shift ?? null);
+      } else {
+        accMap.set(a.user_id, a.shift ?? null);
+      }
     }
     setSelectedSupervisors(supMap);
     setSelectedAccreditors(accMap);
-  }, [open, existingAssignments, supervisors, accreditors]);
+  }, [open, existingAssignments]);
 
   // Reset on close
   useEffect(() => {
@@ -325,18 +326,22 @@ export function EventTeamDialog({ dealId, dealName, open, onOpenChange }: EventT
 
       await supabase.from('event_accreditors').delete().eq('event_id', eventId);
 
-      const allSelected = [...selectedSupervisors.entries(), ...selectedAccreditors.entries()];
+      const allSelected = [
+        ...Array.from(selectedSupervisors.entries()).map(([userId, shift]) => ({ userId, shift, assigned_role: 'supervisor' })),
+        ...Array.from(selectedAccreditors.entries()).map(([userId, shift]) => ({ userId, shift, assigned_role: 'acreditador' })),
+      ];
       if (allSelected.length > 0) {
-        const rows = allSelected.map(([userId, shift]) => ({
+        const rows = allSelected.map(({ userId, shift, assigned_role }) => ({
           event_id: eventId,
           user_id: userId,
           shift: shift,
+          assigned_role,
         }));
         const { error: insertErr } = await supabase.from('event_accreditors').insert(rows as any);
         if (insertErr) throw insertErr;
       }
 
-      const allSelectedIds = allSelected.map(([id]) => id);
+      const allSelectedIds = allSelected.map(({ userId }) => userId);
 
       const removedUserIds = previousAssignmentIds.filter(id => !allSelectedIds.includes(id));
       if (removedUserIds.length > 0) {

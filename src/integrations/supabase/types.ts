@@ -137,6 +137,7 @@ export type Database = {
       event_accreditors: {
         Row: {
           application_status: Database["public"]["Enums"]["application_status"]
+          assigned_role: string
           contract_status: Database["public"]["Enums"]["contract_status"]
           created_at: string
           event_id: string
@@ -148,6 +149,7 @@ export type Database = {
         }
         Insert: {
           application_status?: Database["public"]["Enums"]["application_status"]
+          assigned_role?: string
           contract_status?: Database["public"]["Enums"]["contract_status"]
           created_at?: string
           event_id: string
@@ -159,6 +161,7 @@ export type Database = {
         }
         Update: {
           application_status?: Database["public"]["Enums"]["application_status"]
+          assigned_role?: string
           contract_status?: Database["public"]["Enums"]["contract_status"]
           created_at?: string
           event_id?: string
