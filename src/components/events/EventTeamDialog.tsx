@@ -407,8 +407,8 @@ export function EventTeamDialog({ dealId, dealName, open, onOpenChange }: EventT
           </DialogHeader>
         </div>
 
-        <div className="flex-1 min-h-0 flex flex-col overflow-hidden px-6">
-          <Tabs defaultValue="supervisores" className="flex-1 min-h-0 flex flex-col">
+        <div className="flex-1 min-h-0 overflow-y-auto px-6">
+          <Tabs defaultValue="supervisores" className="w-full">
             <TabsList className="grid w-full grid-cols-2 shrink-0">
               <TabsTrigger value="supervisores" className="flex items-center gap-2">
                 Supervisores
