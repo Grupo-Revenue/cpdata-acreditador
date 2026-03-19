@@ -326,12 +326,16 @@ export function EventTeamDialog({ dealId, dealName, open, onOpenChange }: EventT
 
       await supabase.from('event_accreditors').delete().eq('event_id', eventId);
 
-      const allSelected = [...selectedSupervisors.entries(), ...selectedAccreditors.entries()];
+      const allSelected = [
+        ...Array.from(selectedSupervisors.entries()).map(([userId, shift]) => ({ userId, shift, assigned_role: 'supervisor' })),
+        ...Array.from(selectedAccreditors.entries()).map(([userId, shift]) => ({ userId, shift, assigned_role: 'acreditador' })),
+      ];
       if (allSelected.length > 0) {
-        const rows = allSelected.map(([userId, shift]) => ({
+        const rows = allSelected.map(({ userId, shift, assigned_role }) => ({
           event_id: eventId,
           user_id: userId,
           shift: shift,
+          assigned_role,
         }));
         const { error: insertErr } = await supabase.from('event_accreditors').insert(rows as any);
         if (insertErr) throw insertErr;
