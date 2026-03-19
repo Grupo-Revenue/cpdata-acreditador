@@ -453,7 +453,7 @@ export function EventTeamDialog({ dealId, dealName, open, onOpenChange }: EventT
                 </p>
               ) : (
                 <>
-                  <div className="flex justify-end mb-2 shrink-0">
+                  <div className="flex justify-end">
                     <Button variant="ghost" size="sm" className="text-xs h-7" onClick={toggleAllSupervisors}>
                       {allSupFilteredSelected ? 'Deseleccionar todos' : 'Seleccionar todos'}
                     </Button>
