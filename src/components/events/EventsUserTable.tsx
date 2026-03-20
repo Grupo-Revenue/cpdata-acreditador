@@ -338,6 +338,21 @@ export function EventsUserTable({ deals, isSupervisor, userId }: EventsUserTable
           onSigned={() => queryClient.invalidateQueries({ queryKey: ['user-signatures', userId] })}
         />
       )}
+
+      <ConfirmDialog
+        open={!!applyDeal}
+        onOpenChange={(open) => { if (!open) setApplyDeal(null); }}
+        title="Confirmar postulación"
+        description={`¿Está seguro que desea postular al evento "${applyDeal?.nombre_del_evento ?? applyDeal?.dealname ?? ''}"?`}
+        confirmLabel="Postular"
+        cancelLabel="Cancelar"
+        onConfirm={() => {
+          if (applyDeal) {
+            handleApply(applyDeal);
+            setApplyDeal(null);
+          }
+        }}
+      />
     </>
   );
 }
