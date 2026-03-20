@@ -205,6 +205,16 @@ export function EventsUserTable({ deals, isSupervisor, userId }: EventsUserTable
                       <TableCell>{deal.fecha_inicio_del_evento ?? '—'}</TableCell>
                       <TableCell>{deal.hora_de_inicio_y_fin_del_evento ?? '—'}</TableCell>
                       <TableCell>
+                        {(() => {
+                          const evStatus = getEventStatusBadge(deal.id);
+                          return (
+                            <Badge variant="outline" className={evStatus.className}>
+                              {evStatus.label}
+                            </Badge>
+                          );
+                        })()}
+                      </TableCell>
+                      <TableCell>
                         <Badge variant="outline" className={status.color}>
                           {status.label}
                         </Badge>
