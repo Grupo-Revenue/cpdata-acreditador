@@ -158,7 +158,7 @@ export function EventsUserTable({ deals, isSupervisor, userId }: EventsUserTable
 
   return (
     <>
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-7 gap-2 mb-4">
+      <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-8 gap-2 mb-4">
         <Input placeholder="Filtrar Id..." value={filters.dealname} onChange={(e) => updateFilter('dealname', e.target.value)} className="h-8 text-xs" />
         <Input placeholder="Filtrar Nombre..." value={filters.nombre_del_evento} onChange={(e) => updateFilter('nombre_del_evento', e.target.value)} className="h-8 text-xs" />
         <Input placeholder="Filtrar Tipo..." value={filters.tipo_de_evento} onChange={(e) => updateFilter('tipo_de_evento', e.target.value)} className="h-8 text-xs" />
