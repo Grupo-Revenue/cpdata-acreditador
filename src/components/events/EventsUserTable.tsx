@@ -101,6 +101,7 @@ export function EventsUserTable({ deals, isSupervisor, userId }: EventsUserTable
     const info = statusMap?.[dealId];
     if (!info) return { label: '—', color: '' };
     if (info.eventStatus === 'completed') return { label: 'Evento Finalizado', color: 'bg-muted text-muted-foreground border-muted' };
+    if (info.applicationStatus === 'asignado') return { label: 'Asignado', color: 'bg-blue-500/10 text-blue-600 border-blue-500/20' };
     if (info.applicationStatus === 'aceptado') return { label: 'Aceptado', color: 'bg-success/10 text-success border-success/20' };
     if (info.applicationStatus === 'rechazado') return { label: 'Rechazado', color: 'bg-destructive/10 text-destructive border-destructive/20' };
     return { label: 'Pendiente', color: 'bg-warning/10 text-warning border-warning/20' };
