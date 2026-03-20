@@ -120,6 +120,35 @@ export function EventsUserTable({ deals, isSupervisor, userId }: EventsUserTable
     return info?.applicationStatus === 'aceptado' && info?.eventStatus !== 'completed';
   };
 
+  const canApply = (dealId: string) => {
+    const info = statusMap?.[dealId];
+    return info?.applicationStatus === 'asignado' && info?.eventStatus !== 'completed' && info?.eventStatus !== 'cancelled';
+  };
+
+  const handleApply = async (deal: HubSpotDeal) => {
+    const { data: events } = await supabase
+      .from('events')
+      .select('id')
+      .eq('hubspot_deal_id', deal.id)
+      .limit(1);
+    
+    const eventId = events?.[0]?.id;
+    if (!eventId || !userId) return;
+
+    const { error } = await supabase
+      .from('event_accreditors')
+      .update({ application_status: 'pendiente' } as any)
+      .eq('event_id', eventId)
+      .eq('user_id', userId);
+
+    if (error) {
+      toast({ title: 'Error', description: 'No se pudo postular al evento.', variant: 'destructive' });
+    } else {
+      toast({ title: 'Postulación enviada', description: 'Tu postulación fue enviada correctamente.' });
+      queryClient.invalidateQueries({ queryKey: ['event-accreditor-status', userId] });
+    }
+  };
+
   const hasSigned = (dealId: string) => !!signatureMap?.[dealId];
 
   const filteredDeals = useMemo(() => {
