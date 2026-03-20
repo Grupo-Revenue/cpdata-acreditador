@@ -471,7 +471,7 @@ export function EventApplicantsDialog({ open, onOpenChange }: EventApplicantsDia
                             setAcceptingApplicant(a);
                             setPaymentAmount(a.payment_amount ? String(a.payment_amount) : '');
                           }}
-                          disabled={a.application_status === 'aceptado'}
+                          disabled={a.application_status !== 'pendiente'}
                         >
                           <Check className="h-4 w-4" />
                         </Button>
