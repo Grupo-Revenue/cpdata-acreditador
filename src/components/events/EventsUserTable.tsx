@@ -7,7 +7,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious, PaginationEllipsis } from '@/components/ui/pagination';
-import { PenTool, ClipboardList, Download } from 'lucide-react';
+import { PenTool, ClipboardList, Download, Send } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 import { EventManagementDialog } from './EventManagementDialog';
 import { DigitalSignatureDialog } from './DigitalSignatureDialog';
 
