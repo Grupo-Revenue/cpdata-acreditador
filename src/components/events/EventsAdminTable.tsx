@@ -211,8 +211,17 @@ export function EventsAdminTable({ deals }: EventsAdminTableProps) {
                       </Badge>
                     ) : '—'}
                   </TableCell>
+                  <TableCell>
+                    {(() => {
+                      const evStatus = getEventStatusBadge(deal.id);
+                      return (
+                        <Badge variant="outline" className={evStatus.className}>
+                          {evStatus.label}
+                        </Badge>
+                      );
+                    })()}
+                  </TableCell>
                   <TableCell className="flex gap-1">
-                    {canEdit && (
                       <Button variant="ghost" size="icon" onClick={() => { setEditingDeal(deal); setEditDialogOpen(true); }}>
                         <Pencil className="h-4 w-4" />
                       </Button>
