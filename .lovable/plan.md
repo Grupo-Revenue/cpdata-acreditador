@@ -1,18 +1,23 @@
 
 
-## Plan: Mostrar rol asignado en tabla de postulantes
+## Plan: Agregar columna "Estado" (Abierto/Cerrado) en ambas tablas de eventos
 
-### Problema
-`EventApplicantsDialog.tsx` obtiene el rol desde `user_roles` (roles del sistema) en lugar de usar `assigned_role` de `event_accreditors`. Si un usuario tiene rol "supervisor" en el sistema pero fue asignado como "acreditador" al evento, aparece como "Supervisor".
+### Contexto
+El estado abierto/cerrado es del sistema interno (tabla `events.status`), no de HubSpot. Cuando un supervisor cierra un evento, todos los roles deben poder ver ese estado.
 
-### Cambios en `src/components/events/EventApplicantsDialog.tsx`
+### Cambios
 
-1. **Query**: Agregar `assigned_role` al select de `event_accreditors` (línea 97)
-2. **Mapeo**: Usar `r.assigned_role` directamente en lugar de inferir desde `user_roles` (líneas 152-175)
-   - `r.assigned_role === 'supervisor'` → mostrar "Supervisor"
-   - default → "Acreditador"
-3. **Eliminar** la query de `user_roles` y el `roleMap`, ya que no se necesitan para determinar el tipo
+**1. `src/components/events/EventsAdminTable.tsx`**
+- Agregar query a la tabla `events` para obtener `status` por `hubspot_deal_id` de todos los deals visibles
+- Agregar columna "Estado" con badge:
+  - `pending` / `in_progress` → Badge verde "Abierto"
+  - `completed` / `cancelled` → Badge gris "Cerrado"
 
-### Resultado
-Cada persona aparecerá con el rol que fue asignado al evento, no con su rol del sistema.
+**2. `src/components/events/EventsUserTable.tsx`**
+- Ya tiene `eventStatus` en el `statusMap` existente (línea 68)
+- Agregar columna "Estado Evento" separada de la columna "Estado" actual (que muestra estado de postulación)
+- Usar `eventStatus` para mostrar "Abierto" o "Cerrado" con el mismo esquema de badges
+
+### Sin cambios de base de datos
+La columna `events.status` ya existe con los valores necesarios.
 
