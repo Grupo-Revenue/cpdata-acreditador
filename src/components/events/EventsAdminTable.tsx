@@ -222,6 +222,7 @@ export function EventsAdminTable({ deals }: EventsAdminTableProps) {
                     })()}
                   </TableCell>
                   <TableCell className="flex gap-1">
+                    {canEdit && (
                       <Button variant="ghost" size="icon" onClick={() => { setEditingDeal(deal); setEditDialogOpen(true); }}>
                         <Pencil className="h-4 w-4" />
                       </Button>
