@@ -47,7 +47,7 @@ export function EventsUserTable({ deals, isSupervisor, userId }: EventsUserTable
     fecha_inicio_del_evento: '',
     hora_de_inicio_y_fin_del_evento: '',
     estado: '',
-  });
+    estadoEvento: '',
 
   // Fetch user's application statuses and event statuses
   const { data: statusMap } = useQuery({
