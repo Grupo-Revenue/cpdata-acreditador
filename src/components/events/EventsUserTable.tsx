@@ -42,6 +42,7 @@ export function EventsUserTable({ deals, isSupervisor, userId }: EventsUserTable
   const [selectedDeal, setSelectedDeal] = useState<HubSpotDeal | null>(null);
   const [signatureDeal, setSignatureDeal] = useState<HubSpotDeal | null>(null);
   const [signatureOpen, setSignatureOpen] = useState(false);
+  const [applyDeal, setApplyDeal] = useState<HubSpotDeal | null>(null);
   const [filters, setFilters] = useState({
     dealname: '',
     nombre_del_evento: '',
