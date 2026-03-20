@@ -1,0 +1,1 @@
+ALTER TABLE event_accreditors ALTER COLUMN application_status SET DEFAULT 'asignado'::application_status;
