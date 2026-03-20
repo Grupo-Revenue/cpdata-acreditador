@@ -189,6 +189,7 @@ export function EventsAdminTable({ deals }: EventsAdminTableProps) {
                 <TableHead>Fecha Inicio</TableHead>
                 <TableHead>Fecha Fin</TableHead>
                 <TableHead>Etapa</TableHead>
+                <TableHead>Estado</TableHead>
                 <TableHead className="w-[100px]">Acciones</TableHead>
               </TableRow>
             </TableHeader>
