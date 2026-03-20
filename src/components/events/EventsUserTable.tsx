@@ -103,6 +103,14 @@ export function EventsUserTable({ deals, isSupervisor, userId }: EventsUserTable
     return { label: 'Pendiente', color: 'bg-warning/10 text-warning border-warning/20' };
   };
 
+  const getEventStatusBadge = (dealId: string) => {
+    const info = statusMap?.[dealId];
+    if (info?.eventStatus === 'completed' || info?.eventStatus === 'cancelled') {
+      return { label: 'Cerrado', className: 'bg-muted text-muted-foreground border-muted' };
+    }
+    return { label: 'Abierto', className: 'bg-success/10 text-success border-success/20' };
+  };
+
   const isSignEnabled = (dealId: string) => {
     const info = statusMap?.[dealId];
     return info?.applicationStatus === 'aceptado' && info?.eventStatus !== 'completed';
