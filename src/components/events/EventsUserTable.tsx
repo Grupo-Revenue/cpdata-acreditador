@@ -11,6 +11,7 @@ import { PenTool, ClipboardList, Download, Send } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { EventManagementDialog } from './EventManagementDialog';
 import { DigitalSignatureDialog } from './DigitalSignatureDialog';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 
 interface HubSpotDeal {
   id: string;
@@ -41,6 +42,7 @@ export function EventsUserTable({ deals, isSupervisor, userId }: EventsUserTable
   const [selectedDeal, setSelectedDeal] = useState<HubSpotDeal | null>(null);
   const [signatureDeal, setSignatureDeal] = useState<HubSpotDeal | null>(null);
   const [signatureOpen, setSignatureOpen] = useState(false);
+  const [applyDeal, setApplyDeal] = useState<HubSpotDeal | null>(null);
   const [filters, setFilters] = useState({
     dealname: '',
     nombre_del_evento: '',
@@ -256,7 +258,7 @@ export function EventsUserTable({ deals, isSupervisor, userId }: EventsUserTable
                       </TableCell>
                       <TableCell className="flex gap-1">
                         {canApply(deal.id) && (
-                          <Button variant="ghost" size="icon" onClick={() => handleApply(deal)} title="Postular al evento">
+                          <Button variant="ghost" size="icon" onClick={() => setApplyDeal(deal)} title="Postular al evento">
                             <Send className="h-4 w-4" />
                           </Button>
                         )}
@@ -336,6 +338,21 @@ export function EventsUserTable({ deals, isSupervisor, userId }: EventsUserTable
           onSigned={() => queryClient.invalidateQueries({ queryKey: ['user-signatures', userId] })}
         />
       )}
+
+      <ConfirmDialog
+        open={!!applyDeal}
+        onOpenChange={(open) => { if (!open) setApplyDeal(null); }}
+        title="Confirmar postulación"
+        description={`¿Está seguro que desea postular al evento "${applyDeal?.nombre_del_evento ?? applyDeal?.dealname ?? ''}"?`}
+        confirmLabel="Postular"
+        cancelLabel="Cancelar"
+        onConfirm={() => {
+          if (applyDeal) {
+            handleApply(applyDeal);
+            setApplyDeal(null);
+          }
+        }}
+      />
     </>
   );
 }
