@@ -159,6 +159,7 @@ export function EventApplicantsDialog({ open, onOpenChange }: EventApplicantsDia
           || 'Sin nombre',
         event_date: r.events?.event_date ?? '',
         role: r.assigned_role === 'supervisor' ? 'Supervisor' : 'Acreditador',
+        shift: r.shift ?? null,
       };
     });
   }, [rawData, profiles, hubspotDealMap]);
