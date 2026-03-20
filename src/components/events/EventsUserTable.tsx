@@ -123,6 +123,7 @@ export function EventsUserTable({ deals, isSupervisor, userId }: EventsUserTable
       const match = (value: string | null, filter: string) =>
         !filter || (value ?? '').toLowerCase().includes(filter.toLowerCase());
       const status = getDisplayStatus(deal.id);
+      const evStatus = getEventStatusBadge(deal.id);
       return (
         match(deal.dealname, filters.dealname) &&
         match(deal.nombre_del_evento, filters.nombre_del_evento) &&
@@ -130,6 +131,7 @@ export function EventsUserTable({ deals, isSupervisor, userId }: EventsUserTable
         match(deal.locacion_del_evento, filters.locacion_del_evento) &&
         match(deal.fecha_inicio_del_evento, filters.fecha_inicio_del_evento) &&
         match(deal.hora_de_inicio_y_fin_del_evento, filters.hora_de_inicio_y_fin_del_evento) &&
+        match(evStatus.label, filters.estadoEvento) &&
         match(status.label, filters.estado)
       );
     });
