@@ -50,6 +50,7 @@ interface Applicant {
   event_name: string;
   event_date: string;
   role: string;
+  shift: string | null;
 }
 
 const PAGE_SIZE = 10;
@@ -96,7 +97,7 @@ export function EventApplicantsDialog({ open, onOpenChange }: EventApplicantsDia
     queryFn: async () => {
       const { data, error } = await supabase
         .from('event_accreditors')
-        .select('id, user_id, event_id, application_status, contract_status, payment_amount, assigned_role, events(name, event_date, hubspot_deal_id)');
+        .select('id, user_id, event_id, application_status, contract_status, payment_amount, assigned_role, shift, events(name, event_date, hubspot_deal_id)');
       if (error) throw error;
       return data as any[];
     },
@@ -158,6 +159,7 @@ export function EventApplicantsDialog({ open, onOpenChange }: EventApplicantsDia
           || 'Sin nombre',
         event_date: r.events?.event_date ?? '',
         role: r.assigned_role === 'supervisor' ? 'Supervisor' : 'Acreditador',
+        shift: r.shift ?? null,
       };
     });
   }, [rawData, profiles, hubspotDealMap]);
@@ -239,7 +241,7 @@ export function EventApplicantsDialog({ open, onOpenChange }: EventApplicantsDia
 
     const { data: conflicts, error: conflictError } = await supabase
       .from('event_accreditors')
-      .select('id, events(event_date)')
+      .select('id, shift, events(event_date, name)')
       .eq('user_id', applicant.user_id)
       .eq('application_status', 'aceptado')
       .neq('id', applicant.id);
@@ -249,11 +251,21 @@ export function EventApplicantsDialog({ open, onOpenChange }: EventApplicantsDia
       return;
     }
 
-    const hasConflict = (conflicts ?? []).some((c: any) => c.events?.event_date === applicant.event_date);
-    if (hasConflict) {
+    const currentShift = applicant.shift;
+    const conflictingEvent = (conflicts ?? []).find((c: any) => {
+      if (c.events?.event_date !== applicant.event_date) return false;
+      const existingShift = c.shift as string | null;
+      // If either is full day or null, always conflicts
+      if (!currentShift || currentShift === 'Día Completo' || !existingShift || existingShift === 'Día Completo') return true;
+      // Same shift conflicts
+      return currentShift === existingShift;
+    });
+
+    if (conflictingEvent) {
+      const eventName = (conflictingEvent as any).events?.name ?? 'otro evento';
       toast({
         title: 'Conflicto de fecha',
-        description: 'Este postulante ya está asignado a otro evento en la misma fecha.',
+        description: `Este postulante ya está confirmado en "${eventName}" el mismo día.`,
         variant: 'destructive',
       });
       return;
