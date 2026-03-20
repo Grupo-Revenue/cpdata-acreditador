@@ -165,6 +165,7 @@ export function EventsUserTable({ deals, isSupervisor, userId }: EventsUserTable
         <Input placeholder="Filtrar Locación..." value={filters.locacion_del_evento} onChange={(e) => updateFilter('locacion_del_evento', e.target.value)} className="h-8 text-xs" />
         <Input placeholder="Filtrar Fecha..." value={filters.fecha_inicio_del_evento} onChange={(e) => updateFilter('fecha_inicio_del_evento', e.target.value)} className="h-8 text-xs" />
         <Input placeholder="Filtrar Horario..." value={filters.hora_de_inicio_y_fin_del_evento} onChange={(e) => updateFilter('hora_de_inicio_y_fin_del_evento', e.target.value)} className="h-8 text-xs" />
+        <Input placeholder="Filtrar Estado Evento..." value={filters.estadoEvento} onChange={(e) => updateFilter('estadoEvento', e.target.value)} className="h-8 text-xs" />
         <Input placeholder="Filtrar Estado..." value={filters.estado} onChange={(e) => updateFilter('estado', e.target.value)} className="h-8 text-xs" />
       </div>
       <Card>
