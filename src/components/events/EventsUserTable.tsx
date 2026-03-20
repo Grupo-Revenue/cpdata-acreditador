@@ -11,6 +11,7 @@ import { PenTool, ClipboardList, Download, Send } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { EventManagementDialog } from './EventManagementDialog';
 import { DigitalSignatureDialog } from './DigitalSignatureDialog';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 
 interface HubSpotDeal {
   id: string;
