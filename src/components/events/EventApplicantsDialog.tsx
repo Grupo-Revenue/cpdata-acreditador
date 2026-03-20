@@ -50,6 +50,7 @@ interface Applicant {
   event_name: string;
   event_date: string;
   role: string;
+  shift: string | null;
 }
 
 const PAGE_SIZE = 10;
