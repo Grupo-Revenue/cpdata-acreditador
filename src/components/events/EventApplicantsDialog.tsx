@@ -367,6 +367,7 @@ export function EventApplicantsDialog({ open, onOpenChange }: EventApplicantsDia
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="__all__">Todos</SelectItem>
+              <SelectItem value="asignado">Asignado</SelectItem>
               <SelectItem value="pendiente">Pendiente</SelectItem>
               <SelectItem value="aceptado">Aceptado</SelectItem>
               <SelectItem value="rechazado">Rechazado</SelectItem>

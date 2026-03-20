@@ -255,6 +255,11 @@ export function EventsUserTable({ deals, isSupervisor, userId }: EventsUserTable
                         </Badge>
                       </TableCell>
                       <TableCell className="flex gap-1">
+                        {canApply(deal.id) && (
+                          <Button variant="ghost" size="icon" onClick={() => handleApply(deal)} title="Postular al evento">
+                            <Send className="h-4 w-4" />
+                          </Button>
+                        )}
                         {signed ? (
                           <Button variant="ghost" size="icon" onClick={() => handleSignatureClick(deal)} title="Descargar contrato">
                             <Download className="h-4 w-4" />
