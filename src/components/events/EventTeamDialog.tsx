@@ -337,7 +337,7 @@ export function EventTeamDialog({ dealId, dealName, open, onOpenChange }: EventT
           shift: shift,
           assigned_role,
         }));
-        const { error: insertErr } = await supabase.from('event_accreditors').insert(rows as any);
+        const { error: insertErr } = await supabase.from('event_accreditors').upsert(rows as any, { onConflict: 'event_id,user_id' });
         if (insertErr) throw insertErr;
       }
 
