@@ -55,6 +55,7 @@ interface Applicant {
 const PAGE_SIZE = 10;
 
 const statusStyles: Record<string, string> = {
+  asignado: 'bg-blue-500/10 text-blue-600 border-blue-500/20',
   pendiente: 'bg-warning/10 text-warning border-warning/20',
   aceptado: 'bg-success/10 text-success border-success/20',
   rechazado: 'bg-destructive/10 text-destructive border-destructive/20',
@@ -62,6 +63,7 @@ const statusStyles: Record<string, string> = {
 };
 
 const statusLabels: Record<string, string> = {
+  asignado: 'Asignado',
   pendiente: 'Pendiente',
   aceptado: 'Aceptado',
   rechazado: 'Rechazado',
@@ -365,6 +367,7 @@ export function EventApplicantsDialog({ open, onOpenChange }: EventApplicantsDia
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="__all__">Todos</SelectItem>
+              <SelectItem value="asignado">Asignado</SelectItem>
               <SelectItem value="pendiente">Pendiente</SelectItem>
               <SelectItem value="aceptado">Aceptado</SelectItem>
               <SelectItem value="rechazado">Rechazado</SelectItem>

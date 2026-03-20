@@ -734,7 +734,7 @@ export type Database = {
     Enums: {
       accreditor_assignment_status: "assigned" | "completed"
       app_role: "superadmin" | "administracion" | "supervisor" | "acreditador"
-      application_status: "pendiente" | "aceptado" | "rechazado"
+      application_status: "asignado" | "pendiente" | "aceptado" | "rechazado"
       approval_status: "pending" | "rejected" | "approved"
       attendance_status: "presente" | "atrasado" | "ausente"
       contract_status: "pendiente" | "firmado" | "rechazado"
@@ -872,7 +872,7 @@ export const Constants = {
     Enums: {
       accreditor_assignment_status: ["assigned", "completed"],
       app_role: ["superadmin", "administracion", "supervisor", "acreditador"],
-      application_status: ["pendiente", "aceptado", "rechazado"],
+      application_status: ["asignado", "pendiente", "aceptado", "rechazado"],
       approval_status: ["pending", "rejected", "approved"],
       attendance_status: ["presente", "atrasado", "ausente"],
       contract_status: ["pendiente", "firmado", "rechazado"],

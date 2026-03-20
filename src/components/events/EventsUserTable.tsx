@@ -7,7 +7,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious, PaginationEllipsis } from '@/components/ui/pagination';
-import { PenTool, ClipboardList, Download } from 'lucide-react';
+import { PenTool, ClipboardList, Download, Send } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 import { EventManagementDialog } from './EventManagementDialog';
 import { DigitalSignatureDialog } from './DigitalSignatureDialog';
 
@@ -34,6 +35,7 @@ const PAGE_SIZE = 5;
 
 export function EventsUserTable({ deals, isSupervisor, userId }: EventsUserTableProps) {
   const queryClient = useQueryClient();
+  const { toast } = useToast();
   const [currentPage, setCurrentPage] = useState(1);
   const [managementOpen, setManagementOpen] = useState(false);
   const [selectedDeal, setSelectedDeal] = useState<HubSpotDeal | null>(null);
@@ -99,6 +101,7 @@ export function EventsUserTable({ deals, isSupervisor, userId }: EventsUserTable
     const info = statusMap?.[dealId];
     if (!info) return { label: '—', color: '' };
     if (info.eventStatus === 'completed') return { label: 'Evento Finalizado', color: 'bg-muted text-muted-foreground border-muted' };
+    if (info.applicationStatus === 'asignado') return { label: 'Asignado', color: 'bg-blue-500/10 text-blue-600 border-blue-500/20' };
     if (info.applicationStatus === 'aceptado') return { label: 'Aceptado', color: 'bg-success/10 text-success border-success/20' };
     if (info.applicationStatus === 'rechazado') return { label: 'Rechazado', color: 'bg-destructive/10 text-destructive border-destructive/20' };
     return { label: 'Pendiente', color: 'bg-warning/10 text-warning border-warning/20' };
@@ -115,6 +118,35 @@ export function EventsUserTable({ deals, isSupervisor, userId }: EventsUserTable
   const isSignEnabled = (dealId: string) => {
     const info = statusMap?.[dealId];
     return info?.applicationStatus === 'aceptado' && info?.eventStatus !== 'completed';
+  };
+
+  const canApply = (dealId: string) => {
+    const info = statusMap?.[dealId];
+    return info?.applicationStatus === 'asignado' && info?.eventStatus !== 'completed' && info?.eventStatus !== 'cancelled';
+  };
+
+  const handleApply = async (deal: HubSpotDeal) => {
+    const { data: events } = await supabase
+      .from('events')
+      .select('id')
+      .eq('hubspot_deal_id', deal.id)
+      .limit(1);
+    
+    const eventId = events?.[0]?.id;
+    if (!eventId || !userId) return;
+
+    const { error } = await supabase
+      .from('event_accreditors')
+      .update({ application_status: 'pendiente' } as any)
+      .eq('event_id', eventId)
+      .eq('user_id', userId);
+
+    if (error) {
+      toast({ title: 'Error', description: 'No se pudo postular al evento.', variant: 'destructive' });
+    } else {
+      toast({ title: 'Postulación enviada', description: 'Tu postulación fue enviada correctamente.' });
+      queryClient.invalidateQueries({ queryKey: ['event-accreditor-status', userId] });
+    }
   };
 
   const hasSigned = (dealId: string) => !!signatureMap?.[dealId];
@@ -223,6 +255,11 @@ export function EventsUserTable({ deals, isSupervisor, userId }: EventsUserTable
                         </Badge>
                       </TableCell>
                       <TableCell className="flex gap-1">
+                        {canApply(deal.id) && (
+                          <Button variant="ghost" size="icon" onClick={() => handleApply(deal)} title="Postular al evento">
+                            <Send className="h-4 w-4" />
+                          </Button>
+                        )}
                         {signed ? (
                           <Button variant="ghost" size="icon" onClick={() => handleSignatureClick(deal)} title="Descargar contrato">
                             <Download className="h-4 w-4" />
