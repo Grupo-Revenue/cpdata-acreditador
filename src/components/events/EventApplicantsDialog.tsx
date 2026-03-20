@@ -241,7 +241,7 @@ export function EventApplicantsDialog({ open, onOpenChange }: EventApplicantsDia
 
     const { data: conflicts, error: conflictError } = await supabase
       .from('event_accreditors')
-      .select('id, events(event_date)')
+      .select('id, shift, events(event_date, name)')
       .eq('user_id', applicant.user_id)
       .eq('application_status', 'aceptado')
       .neq('id', applicant.id);
@@ -251,11 +251,21 @@ export function EventApplicantsDialog({ open, onOpenChange }: EventApplicantsDia
       return;
     }
 
-    const hasConflict = (conflicts ?? []).some((c: any) => c.events?.event_date === applicant.event_date);
-    if (hasConflict) {
+    const currentShift = applicant.shift;
+    const conflictingEvent = (conflicts ?? []).find((c: any) => {
+      if (c.events?.event_date !== applicant.event_date) return false;
+      const existingShift = c.shift as string | null;
+      // If either is full day or null, always conflicts
+      if (!currentShift || currentShift === 'Día Completo' || !existingShift || existingShift === 'Día Completo') return true;
+      // Same shift conflicts
+      return currentShift === existingShift;
+    });
+
+    if (conflictingEvent) {
+      const eventName = (conflictingEvent as any).events?.name ?? 'otro evento';
       toast({
         title: 'Conflicto de fecha',
-        description: 'Este postulante ya está asignado a otro evento en la misma fecha.',
+        description: `Este postulante ya está confirmado en "${eventName}" el mismo día.`,
         variant: 'destructive',
       });
       return;
