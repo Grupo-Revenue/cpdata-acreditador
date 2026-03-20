@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -52,6 +53,32 @@ export function EventsAdminTable({ deals }: EventsAdminTableProps) {
   const { toast } = useToast();
   const canEdit = hasRole('superadmin') || hasRole('administracion');
   const canAssignTeam = hasRole('superadmin') || hasRole('administracion');
+
+  // Fetch internal event statuses by hubspot_deal_id
+  const dealIds = deals.map((d) => d.id);
+  const { data: eventStatusMap } = useQuery({
+    queryKey: ['event-statuses-admin', dealIds],
+    enabled: dealIds.length > 0,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('events')
+        .select('hubspot_deal_id, status')
+        .in('hubspot_deal_id', dealIds);
+      const map: Record<string, string> = {};
+      for (const ev of data ?? []) {
+        if (ev.hubspot_deal_id) map[ev.hubspot_deal_id] = ev.status;
+      }
+      return map;
+    },
+  });
+
+  const getEventStatusBadge = (dealId: string) => {
+    const status = eventStatusMap?.[dealId];
+    if (status === 'completed' || status === 'cancelled') {
+      return { label: 'Cerrado', className: 'bg-muted text-muted-foreground border-muted' };
+    }
+    return { label: 'Abierto', className: 'bg-success/10 text-success border-success/20' };
+  };
 
   const [currentPage, setCurrentPage] = useState(1);
   const [editingDeal, setEditingDeal] = useState<HubSpotDeal | null>(null);
@@ -162,6 +189,7 @@ export function EventsAdminTable({ deals }: EventsAdminTableProps) {
                 <TableHead>Fecha Inicio</TableHead>
                 <TableHead>Fecha Fin</TableHead>
                 <TableHead>Etapa</TableHead>
+                <TableHead>Estado</TableHead>
                 <TableHead className="w-[100px]">Acciones</TableHead>
               </TableRow>
             </TableHeader>
@@ -182,6 +210,16 @@ export function EventsAdminTable({ deals }: EventsAdminTableProps) {
                         {deal.dealstage}
                       </Badge>
                     ) : '—'}
+                  </TableCell>
+                  <TableCell>
+                    {(() => {
+                      const evStatus = getEventStatusBadge(deal.id);
+                      return (
+                        <Badge variant="outline" className={evStatus.className}>
+                          {evStatus.label}
+                        </Badge>
+                      );
+                    })()}
                   </TableCell>
                   <TableCell className="flex gap-1">
                     {canEdit && (

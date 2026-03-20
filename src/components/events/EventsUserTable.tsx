@@ -47,6 +47,7 @@ export function EventsUserTable({ deals, isSupervisor, userId }: EventsUserTable
     fecha_inicio_del_evento: '',
     hora_de_inicio_y_fin_del_evento: '',
     estado: '',
+    estadoEvento: '',
   });
 
   // Fetch user's application statuses and event statuses
@@ -103,6 +104,14 @@ export function EventsUserTable({ deals, isSupervisor, userId }: EventsUserTable
     return { label: 'Pendiente', color: 'bg-warning/10 text-warning border-warning/20' };
   };
 
+  const getEventStatusBadge = (dealId: string) => {
+    const info = statusMap?.[dealId];
+    if (info?.eventStatus === 'completed' || info?.eventStatus === 'cancelled') {
+      return { label: 'Cerrado', className: 'bg-muted text-muted-foreground border-muted' };
+    }
+    return { label: 'Abierto', className: 'bg-success/10 text-success border-success/20' };
+  };
+
   const isSignEnabled = (dealId: string) => {
     const info = statusMap?.[dealId];
     return info?.applicationStatus === 'aceptado' && info?.eventStatus !== 'completed';
@@ -115,6 +124,7 @@ export function EventsUserTable({ deals, isSupervisor, userId }: EventsUserTable
       const match = (value: string | null, filter: string) =>
         !filter || (value ?? '').toLowerCase().includes(filter.toLowerCase());
       const status = getDisplayStatus(deal.id);
+      const evStatus = getEventStatusBadge(deal.id);
       return (
         match(deal.dealname, filters.dealname) &&
         match(deal.nombre_del_evento, filters.nombre_del_evento) &&
@@ -122,6 +132,7 @@ export function EventsUserTable({ deals, isSupervisor, userId }: EventsUserTable
         match(deal.locacion_del_evento, filters.locacion_del_evento) &&
         match(deal.fecha_inicio_del_evento, filters.fecha_inicio_del_evento) &&
         match(deal.hora_de_inicio_y_fin_del_evento, filters.hora_de_inicio_y_fin_del_evento) &&
+        match(evStatus.label, filters.estadoEvento) &&
         match(status.label, filters.estado)
       );
     });
@@ -150,13 +161,14 @@ export function EventsUserTable({ deals, isSupervisor, userId }: EventsUserTable
 
   return (
     <>
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-7 gap-2 mb-4">
+      <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-8 gap-2 mb-4">
         <Input placeholder="Filtrar Id..." value={filters.dealname} onChange={(e) => updateFilter('dealname', e.target.value)} className="h-8 text-xs" />
         <Input placeholder="Filtrar Nombre..." value={filters.nombre_del_evento} onChange={(e) => updateFilter('nombre_del_evento', e.target.value)} className="h-8 text-xs" />
         <Input placeholder="Filtrar Tipo..." value={filters.tipo_de_evento} onChange={(e) => updateFilter('tipo_de_evento', e.target.value)} className="h-8 text-xs" />
         <Input placeholder="Filtrar Locación..." value={filters.locacion_del_evento} onChange={(e) => updateFilter('locacion_del_evento', e.target.value)} className="h-8 text-xs" />
         <Input placeholder="Filtrar Fecha..." value={filters.fecha_inicio_del_evento} onChange={(e) => updateFilter('fecha_inicio_del_evento', e.target.value)} className="h-8 text-xs" />
         <Input placeholder="Filtrar Horario..." value={filters.hora_de_inicio_y_fin_del_evento} onChange={(e) => updateFilter('hora_de_inicio_y_fin_del_evento', e.target.value)} className="h-8 text-xs" />
+        <Input placeholder="Filtrar Estado Evento..." value={filters.estadoEvento} onChange={(e) => updateFilter('estadoEvento', e.target.value)} className="h-8 text-xs" />
         <Input placeholder="Filtrar Estado..." value={filters.estado} onChange={(e) => updateFilter('estado', e.target.value)} className="h-8 text-xs" />
       </div>
       <Card>
@@ -170,6 +182,7 @@ export function EventsUserTable({ deals, isSupervisor, userId }: EventsUserTable
                 <TableHead>Locación</TableHead>
                 <TableHead>Fecha Inicio</TableHead>
                 <TableHead>Horario</TableHead>
+                <TableHead>Estado Evento</TableHead>
                 <TableHead>Estado</TableHead>
                 <TableHead className="w-[100px]">Acciones</TableHead>
               </TableRow>
@@ -177,7 +190,7 @@ export function EventsUserTable({ deals, isSupervisor, userId }: EventsUserTable
             <TableBody>
               {paginatedDeals.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
+                  <TableCell colSpan={9} className="text-center text-muted-foreground py-8">
                     No se encontraron eventos.
                   </TableCell>
                 </TableRow>
@@ -194,6 +207,16 @@ export function EventsUserTable({ deals, isSupervisor, userId }: EventsUserTable
                       <TableCell>{deal.locacion_del_evento ?? '—'}</TableCell>
                       <TableCell>{deal.fecha_inicio_del_evento ?? '—'}</TableCell>
                       <TableCell>{deal.hora_de_inicio_y_fin_del_evento ?? '—'}</TableCell>
+                      <TableCell>
+                        {(() => {
+                          const evStatus = getEventStatusBadge(deal.id);
+                          return (
+                            <Badge variant="outline" className={evStatus.className}>
+                              {evStatus.label}
+                            </Badge>
+                          );
+                        })()}
+                      </TableCell>
                       <TableCell>
                         <Badge variant="outline" className={status.color}>
                           {status.label}
