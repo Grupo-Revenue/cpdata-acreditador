@@ -1,37 +1,31 @@
 
 
-## Plan: Agregar descripciones a los items del sidebar
+## Plan: Monto por persona al asignar equipo + mostrar en tabla de eventos
 
-### Objetivo
-Hacer que cada item de navegacion del sidebar muestre un subtitulo descriptivo debajo del nombre, para que el usuario entienda rapidamente que funcion cumple cada seccion.
+### Problema actual
+El `payment_amount` solo se puede asignar al aceptar un postulante. Se necesita poder asignarlo al momento de armar el equipo, y que ese monto sea visible en la tabla de eventos de acreditadores/supervisores.
 
-### Cambios en `src/components/layout/Sidebar.tsx`
+### Cambios
 
-1. **Extender la interfaz `NavItem`** con un campo `description: string` para cada item.
+#### 1. `src/components/events/EventTeamDialog.tsx`
+- **Cambiar la estructura de seleccion**: En lugar de `Map<string, string | null>` (userId -> shift), usar `Map<string, { shift: string | null; amount: number | null }>` para almacenar turno y monto por cada usuario seleccionado.
+- **Agregar columna "Monto"** en ambas tablas (supervisores y acreditadores): un `Input` de tipo number que aparece cuando el usuario esta seleccionado, al lado del selector de turno.
+- **Actualizar `handleSave`**: incluir `payment_amount` en el upsert a `event_accreditors` y usar ese monto al crear las boletas en `invoices`.
+- **Cargar montos existentes**: al abrir el dialogo, precargar los montos de asignaciones existentes desde `event_accreditors.payment_amount`.
 
-2. **Agregar descripciones a cada item del array `navItems`**:
-   - Dashboard: "Resumen general y metricas"
-   - Usuarios: "Gestionar acreditadores y roles"
-   - Eventos: "Eventos y asignacion de equipos"
-   - Boletas: "Subir y gestionar boletas"
-   - Rendiciones: "Control de gastos y rendiciones"
-   - Soporte: "Tickets de ayuda y consultas"
-   - Ranking: "Ranking de acreditadores"
-   - Configuracion: "Parametros del sistema"
+#### 2. `src/components/events/EventsUserTable.tsx`
+- **Agregar columna "Monto"** a la tabla.
+- **Extender la query** de `event_accreditors` (linea 62-65) para incluir `payment_amount`.
+- **Mostrar el monto** formateado como moneda chilena (ej: `$50.000`) en cada fila.
+- **Agregar filtro** de monto en la barra de filtros.
 
-3. **Actualizar `NavItemComponent`** para mostrar la descripcion debajo del label cuando el sidebar esta expandido (no collapsed). Usar un `<span>` con `text-xs text-muted-foreground` para el subtitulo.
-
-4. **Mejorar los tooltips en modo collapsed** para que incluyan la descripcion ademas del nombre.
-
-### Diseno visual (sidebar expandido)
+### Diseno visual (tabla de equipo)
 ```text
- [icon]  Dashboard
-         Resumen general y metricas
-
- [icon]  Usuarios
-         Gestionar acreditadores y roles
+ [x] Nombre    RUT       Tel    Estatura  Idioma  Ranking  Turno    Monto
+ [x] Juan P.   12.345..  +56..  175 cm    ES      5        [Full]   [$30000]
 ```
 
-### Archivo a modificar
-- `src/components/layout/Sidebar.tsx` (unico archivo)
+### Archivos a modificar
+- `src/components/events/EventTeamDialog.tsx`
+- `src/components/events/EventsUserTable.tsx`
 
