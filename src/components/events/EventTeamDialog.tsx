@@ -121,9 +121,15 @@ export function EventTeamDialog({ dealId, dealName, open, onOpenChange }: EventT
 
   const [supSearch, setSupSearch] = useState('');
   const [supPage, setSupPage] = useState(1);
+  const [supAlturaMin, setSupAlturaMin] = useState('');
+  const [supIdioma, setSupIdioma] = useState('');
+  const [supRankingMin, setSupRankingMin] = useState('');
 
   const [accSearch, setAccSearch] = useState('');
   const [accPage, setAccPage] = useState(1);
+  const [accAlturaMin, setAccAlturaMin] = useState('');
+  const [accIdioma, setAccIdioma] = useState('');
+  const [accRankingMin, setAccRankingMin] = useState('');
 
   // Fetch supervisors
   const { data: supervisors = [], isLoading: loadingSupervisors } = useQuery({
