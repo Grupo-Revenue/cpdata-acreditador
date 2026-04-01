@@ -538,8 +538,19 @@ export function EventTeamDialog({ dealId, dealName, open, onOpenChange }: EventT
                               <TableCell onClick={e => e.stopPropagation()}>
                                 {isSelected && (
                                   <ShiftToggle
-                                    value={selectedSupervisors.get(s.id) ?? null}
+                                    value={selectedSupervisors.get(s.id)?.shift ?? null}
                                     onChange={v => setSupervisorShift(s.id, v)}
+                                  />
+                                )}
+                              </TableCell>
+                              <TableCell onClick={e => e.stopPropagation()}>
+                                {isSelected && (
+                                  <Input
+                                    type="number"
+                                    placeholder="$0"
+                                    className="h-8 w-24 text-xs"
+                                    value={selectedSupervisors.get(s.id)?.amount ?? ''}
+                                    onChange={e => setSupervisorAmount(s.id, e.target.value ? Number(e.target.value) : null)}
                                   />
                                 )}
                               </TableCell>
