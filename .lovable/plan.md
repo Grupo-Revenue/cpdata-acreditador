@@ -1,19 +1,34 @@
 
 
-## Plan: Manejar error de duplicado en asignación de equipo
+## Plan: Agregar filtros de estatura, idioma y ranking en asignación de equipo
 
-### Problema
-Cuando se intenta asignar el mismo usuario dos veces (ej: como supervisor y acreditador), el `upsert` recibe filas duplicadas con el mismo `(event_id, user_id)`, lo que causa el error de Postgres "ON CONFLICT DO UPDATE command cannot affect row a second time".
+### Resumen
+Agregar filtros adicionales (estatura, idioma, ranking mínimo) en ambas pestañas (supervisores y acreditadores) del diálogo de asignación de equipo, como inputs compactos junto al buscador existente.
 
-### Solución
+### Cambios en `src/components/events/EventTeamDialog.tsx`
 
-**Archivo: `src/components/events/EventTeamDialog.tsx`**
+1. **Agregar estados de filtro** (6 nuevos estados: 3 por pestaña):
+   - `supAlturaMin`, `supIdioma`, `supRankingMin` para supervisores
+   - `accAlturaMin`, `accIdioma`, `accRankingMin` para acreditadores
 
-1. **Deduplicar filas antes del upsert**: Usar un `Map` por `user_id` para quedarse solo con la última asignación, evitando duplicados en el array.
+2. **Incluir `idioma` y `altura` en la query de supervisores** (línea 141): agregar estos campos al select de profiles, igual que ya se hace para acreditadores.
 
-2. **Capturar el error específico**: En el `catch`, si el mensaje contiene "cannot affect row a second time", mostrar el toast: **"Ya existe seleccionado y no puede estar duplicado"** en vez del error técnico.
+3. **Actualizar `filteredSupervisors` y `filteredAccreditors`** para aplicar los filtros adicionales:
+   - **Estatura**: filtrar usuarios cuya `altura` (parseada a número) sea >= al valor ingresado
+   - **Idioma**: filtrar usuarios cuyo campo `idioma` contenga el texto buscado (case-insensitive)
+   - **Ranking**: filtrar usuarios cuyo `ranking` sea >= al valor ingresado
 
-### Cambios concretos
-- Antes de línea 340: deduplicar `rows` por `user_id` usando un Map
-- En el bloque `catch` del save: detectar el mensaje de error y mostrar el toast personalizado
+4. **Agregar fila de filtros** debajo del buscador en ambas pestañas: una grilla compacta con 3 inputs (Estatura mín., Idioma, Ranking mín.) usando el patrón de filtros en grilla del proyecto.
+
+5. **Mostrar columna Estatura** en las tablas de ambas pestañas (acreditadores ya tiene Idioma; supervisores necesita Idioma y Estatura).
+
+6. **Reset de filtros** al cerrar el diálogo (en el useEffect existente de `!open`).
+
+### Diseño visual
+- Fila de filtros: `grid grid-cols-3 gap-2` debajo del buscador
+- Inputs pequeños con placeholder descriptivo: "Estatura mín. (cm)", "Idioma", "Ranking mín."
+- Consistente con el patrón de filtrado existente del proyecto
+
+### Archivos a modificar
+- `src/components/events/EventTeamDialog.tsx` (único archivo)
 
