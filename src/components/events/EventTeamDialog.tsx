@@ -121,9 +121,15 @@ export function EventTeamDialog({ dealId, dealName, open, onOpenChange }: EventT
 
   const [supSearch, setSupSearch] = useState('');
   const [supPage, setSupPage] = useState(1);
+  const [supAlturaMin, setSupAlturaMin] = useState('');
+  const [supIdioma, setSupIdioma] = useState('');
+  const [supRankingMin, setSupRankingMin] = useState('');
 
   const [accSearch, setAccSearch] = useState('');
   const [accPage, setAccPage] = useState(1);
+  const [accAlturaMin, setAccAlturaMin] = useState('');
+  const [accIdioma, setAccIdioma] = useState('');
+  const [accRankingMin, setAccRankingMin] = useState('');
 
   // Fetch supervisors
   const { data: supervisors = [], isLoading: loadingSupervisors } = useQuery({
@@ -138,7 +144,7 @@ export function EventTeamDialog({ dealId, dealName, open, onOpenChange }: EventT
       if (userIds.length === 0) return [];
       const { data: profiles, error: pErr } = await supabase
         .from('profiles')
-        .select('id, nombre, apellido, rut, email, telefono, ranking')
+        .select('id, nombre, apellido, rut, email, telefono, idioma, altura, ranking')
         .in('id', userIds)
         .eq('approval_status', 'approved')
         .eq('is_active', true);
@@ -216,15 +222,27 @@ export function EventTeamDialog({ dealId, dealName, open, onOpenChange }: EventT
       setSelectedAccreditors(new Map());
       setSupSearch('');
       setSupPage(1);
+      setSupAlturaMin('');
+      setSupIdioma('');
+      setSupRankingMin('');
       setAccSearch('');
       setAccPage(1);
+      setAccAlturaMin('');
+      setAccIdioma('');
+      setAccRankingMin('');
     }
   }, [open]);
 
   // Filtered & paginated supervisors
   const filteredSupervisors = useMemo(() => {
-    return supervisors.filter(s => matchesSearch(s, supSearch));
-  }, [supervisors, supSearch]);
+    return supervisors.filter(s => {
+      if (!matchesSearch(s, supSearch)) return false;
+      if (supAlturaMin && (!s.altura || parseFloat(s.altura) < parseFloat(supAlturaMin))) return false;
+      if (supIdioma && (!s.idioma || !s.idioma.toLowerCase().includes(supIdioma.toLowerCase()))) return false;
+      if (supRankingMin && (s.ranking === null || s.ranking < Number(supRankingMin))) return false;
+      return true;
+    });
+  }, [supervisors, supSearch, supAlturaMin, supIdioma, supRankingMin]);
 
   const supTotalPages = Math.ceil(filteredSupervisors.length / PAGE_SIZE);
   const paginatedSupervisors = filteredSupervisors.slice((supPage - 1) * PAGE_SIZE, supPage * PAGE_SIZE);
@@ -232,8 +250,14 @@ export function EventTeamDialog({ dealId, dealName, open, onOpenChange }: EventT
 
   // Filtered & paginated accreditors
   const filteredAccreditors = useMemo(() => {
-    return accreditors.filter(a => matchesSearch(a, accSearch));
-  }, [accreditors, accSearch]);
+    return accreditors.filter(a => {
+      if (!matchesSearch(a, accSearch)) return false;
+      if (accAlturaMin && (!a.altura || parseFloat(a.altura) < parseFloat(accAlturaMin))) return false;
+      if (accIdioma && (!a.idioma || !a.idioma.toLowerCase().includes(accIdioma.toLowerCase()))) return false;
+      if (accRankingMin && (a.ranking === null || a.ranking < Number(accRankingMin))) return false;
+      return true;
+    });
+  }, [accreditors, accSearch, accAlturaMin, accIdioma, accRankingMin]);
 
   const accTotalPages = Math.ceil(filteredAccreditors.length / PAGE_SIZE);
   const paginatedAccreditors = filteredAccreditors.slice((accPage - 1) * PAGE_SIZE, accPage * PAGE_SIZE);
@@ -451,6 +475,11 @@ export function EventTeamDialog({ dealId, dealName, open, onOpenChange }: EventT
                   {selectedSupervisors.size} de {supervisors.length}
                 </span>
               </div>
+              <div className="grid grid-cols-3 gap-2">
+                <Input placeholder="Estatura mín. (cm)" value={supAlturaMin} onChange={e => setSupAlturaMin(e.target.value)} type="number" />
+                <Input placeholder="Idioma" value={supIdioma} onChange={e => setSupIdioma(e.target.value)} />
+                <Input placeholder="Ranking mín." value={supRankingMin} onChange={e => setSupRankingMin(e.target.value)} type="number" />
+              </div>
 
               {loadingSupervisors ? (
                 <LoadingState text="Cargando supervisores..." className="py-8" />
@@ -469,12 +498,14 @@ export function EventTeamDialog({ dealId, dealName, open, onOpenChange }: EventT
                     <Table className="min-w-[600px]">
                       <TableHeader>
                         <TableRow>
-                          <TableHead className="w-10" />
-                          <TableHead>Nombre</TableHead>
-                          <TableHead>RUT</TableHead>
-                          <TableHead>Teléfono</TableHead>
-                          <TableHead>Ranking</TableHead>
-                          <TableHead>Turno</TableHead>
+                           <TableHead className="w-10" />
+                           <TableHead>Nombre</TableHead>
+                           <TableHead>RUT</TableHead>
+                           <TableHead>Teléfono</TableHead>
+                           <TableHead>Estatura</TableHead>
+                           <TableHead>Idioma</TableHead>
+                           <TableHead>Ranking</TableHead>
+                           <TableHead>Turno</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -491,7 +522,9 @@ export function EventTeamDialog({ dealId, dealName, open, onOpenChange }: EventT
                               </TableCell>
                               <TableCell className="font-medium">{s.nombre} {s.apellido}</TableCell>
                               <TableCell className="text-xs text-muted-foreground">{s.rut}</TableCell>
-                              <TableCell className="text-xs text-muted-foreground">{s.telefono ?? '—'}</TableCell>
+                               <TableCell className="text-xs text-muted-foreground">{s.telefono ?? '—'}</TableCell>
+                               <TableCell className="text-xs text-muted-foreground">{s.altura ? `${s.altura} cm` : '—'}</TableCell>
+                               <TableCell className="text-xs">{s.idioma ?? '—'}</TableCell>
                               <TableCell><RankingBadge ranking={s.ranking} /></TableCell>
                               <TableCell onClick={e => e.stopPropagation()}>
                                 {isSelected && (
@@ -530,6 +563,11 @@ export function EventTeamDialog({ dealId, dealName, open, onOpenChange }: EventT
                   {selectedAccreditors.size} de {accreditors.length}
                 </span>
               </div>
+              <div className="grid grid-cols-3 gap-2">
+                <Input placeholder="Estatura mín. (cm)" value={accAlturaMin} onChange={e => setAccAlturaMin(e.target.value)} type="number" />
+                <Input placeholder="Idioma" value={accIdioma} onChange={e => setAccIdioma(e.target.value)} />
+                <Input placeholder="Ranking mín." value={accRankingMin} onChange={e => setAccRankingMin(e.target.value)} type="number" />
+              </div>
 
               {loadingAccreditors ? (
                 <LoadingState text="Cargando acreditadores..." className="py-8" />
@@ -548,13 +586,14 @@ export function EventTeamDialog({ dealId, dealName, open, onOpenChange }: EventT
                     <Table className="min-w-[700px]">
                       <TableHeader>
                         <TableRow>
-                          <TableHead className="w-10" />
-                          <TableHead>Nombre</TableHead>
-                          <TableHead>RUT</TableHead>
-                          <TableHead>Teléfono</TableHead>
-                          <TableHead>Idioma</TableHead>
-                          <TableHead>Ranking</TableHead>
-                          <TableHead>Turno</TableHead>
+                           <TableHead className="w-10" />
+                           <TableHead>Nombre</TableHead>
+                           <TableHead>RUT</TableHead>
+                           <TableHead>Teléfono</TableHead>
+                           <TableHead>Estatura</TableHead>
+                           <TableHead>Idioma</TableHead>
+                           <TableHead>Ranking</TableHead>
+                           <TableHead>Turno</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -571,8 +610,9 @@ export function EventTeamDialog({ dealId, dealName, open, onOpenChange }: EventT
                               </TableCell>
                               <TableCell className="font-medium">{a.nombre} {a.apellido}</TableCell>
                               <TableCell className="text-xs text-muted-foreground">{a.rut}</TableCell>
-                              <TableCell className="text-xs text-muted-foreground">{a.telefono ?? '—'}</TableCell>
-                              <TableCell>{a.idioma ?? '—'}</TableCell>
+                               <TableCell className="text-xs text-muted-foreground">{a.telefono ?? '—'}</TableCell>
+                               <TableCell className="text-xs text-muted-foreground">{a.altura ? `${a.altura} cm` : '—'}</TableCell>
+                               <TableCell className="text-xs">{a.idioma ?? '—'}</TableCell>
                               <TableCell><RankingBadge ranking={a.ranking} /></TableCell>
                               <TableCell onClick={e => e.stopPropagation()}>
                                 {isSelected && (
