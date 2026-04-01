@@ -504,17 +504,18 @@ export function EventTeamDialog({ dealId, dealName, open, onOpenChange }: EventT
                     </Button>
                   </div>
                   <div className="overflow-auto border rounded-md max-h-[calc(85vh-320px)]">
-                    <Table className="min-w-[600px]">
+                    <Table className="min-w-[900px]">
                       <TableHeader>
                         <TableRow>
                            <TableHead className="w-10" />
-                           <TableHead>Nombre</TableHead>
-                           <TableHead>RUT</TableHead>
-                           <TableHead>Teléfono</TableHead>
-                           <TableHead>Estatura</TableHead>
-                           <TableHead>Idioma</TableHead>
-                           <TableHead>Turno</TableHead>
-                           <TableHead>Monto</TableHead>
+                           <TableHead className="w-[140px]">Nombre</TableHead>
+                           <TableHead className="w-[100px]">RUT</TableHead>
+                           <TableHead className="w-[110px]">Teléfono</TableHead>
+                           <TableHead className="w-[80px]">Estatura</TableHead>
+                           <TableHead className="w-[90px]">Idioma</TableHead>
+                           <TableHead className="w-[70px]">Ranking</TableHead>
+                           <TableHead className="w-[160px]">Turno</TableHead>
+                           <TableHead className="w-[100px]">Monto</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
