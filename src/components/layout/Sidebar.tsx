@@ -22,20 +22,21 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 interface NavItem {
   icon: typeof LayoutDashboard;
   label: string;
+  description: string;
   href: string;
   roles?: string[];
   permissionKey?: string;
 }
 
 const navItems: NavItem[] = [
-  { icon: LayoutDashboard, label: 'Dashboard', href: '/app/dashboard', permissionKey: 'nav.dashboard' },
-  { icon: Users, label: 'Usuarios', href: '/app/users', permissionKey: 'nav.users' },
-  { icon: Calendar, label: 'Eventos', href: '/app/events', permissionKey: 'nav.events' },
-  { icon: FileText, label: 'Boletas', href: '/app/invoices', permissionKey: 'nav.invoices' },
-  { icon: Wallet, label: 'Rendiciones', href: '/app/reimbursements', permissionKey: 'nav.reimbursements' },
-  { icon: HeadphonesIcon, label: 'Soporte', href: '/app/support', permissionKey: 'nav.support' },
-  { icon: Trophy, label: 'Ranking', href: '/app/ranking', permissionKey: 'nav.ranking' },
-  { icon: Settings, label: 'Configuración', href: '/app/settings', roles: ['superadmin'] },
+  { icon: LayoutDashboard, label: 'Dashboard', description: 'Resumen general y métricas', href: '/app/dashboard', permissionKey: 'nav.dashboard' },
+  { icon: Users, label: 'Usuarios', description: 'Gestionar acreditadores y roles', href: '/app/users', permissionKey: 'nav.users' },
+  { icon: Calendar, label: 'Eventos', description: 'Eventos y asignación de equipos', href: '/app/events', permissionKey: 'nav.events' },
+  { icon: FileText, label: 'Boletas', description: 'Subir y gestionar boletas', href: '/app/invoices', permissionKey: 'nav.invoices' },
+  { icon: Wallet, label: 'Rendiciones', description: 'Control de gastos y rendiciones', href: '/app/reimbursements', permissionKey: 'nav.reimbursements' },
+  { icon: HeadphonesIcon, label: 'Soporte', description: 'Tickets de ayuda y consultas', href: '/app/support', permissionKey: 'nav.support' },
+  { icon: Trophy, label: 'Ranking', description: 'Ranking de acreditadores', href: '/app/ranking', permissionKey: 'nav.ranking' },
+  { icon: Settings, label: 'Configuración', description: 'Parámetros del sistema', href: '/app/settings', roles: ['superadmin'] },
 ];
 
 interface SidebarProps {
