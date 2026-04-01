@@ -475,6 +475,11 @@ export function EventTeamDialog({ dealId, dealName, open, onOpenChange }: EventT
                   {selectedSupervisors.size} de {supervisors.length}
                 </span>
               </div>
+              <div className="grid grid-cols-3 gap-2">
+                <Input placeholder="Estatura mín. (cm)" value={supAlturaMin} onChange={e => setSupAlturaMin(e.target.value)} type="number" />
+                <Input placeholder="Idioma" value={supIdioma} onChange={e => setSupIdioma(e.target.value)} />
+                <Input placeholder="Ranking mín." value={supRankingMin} onChange={e => setSupRankingMin(e.target.value)} type="number" />
+              </div>
 
               {loadingSupervisors ? (
                 <LoadingState text="Cargando supervisores..." className="py-8" />
