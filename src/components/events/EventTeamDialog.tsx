@@ -637,8 +637,19 @@ export function EventTeamDialog({ dealId, dealName, open, onOpenChange }: EventT
                               <TableCell onClick={e => e.stopPropagation()}>
                                 {isSelected && (
                                   <ShiftToggle
-                                    value={selectedAccreditors.get(a.id) ?? null}
+                                    value={selectedAccreditors.get(a.id)?.shift ?? null}
                                     onChange={v => setAccreditorShift(a.id, v)}
+                                  />
+                                )}
+                              </TableCell>
+                              <TableCell onClick={e => e.stopPropagation()}>
+                                {isSelected && (
+                                  <Input
+                                    type="number"
+                                    placeholder="$0"
+                                    className="h-8 w-24 text-xs"
+                                    value={selectedAccreditors.get(a.id)?.amount ?? ''}
+                                    onChange={e => setAccreditorAmount(a.id, e.target.value ? Number(e.target.value) : null)}
                                   />
                                 )}
                               </TableCell>
