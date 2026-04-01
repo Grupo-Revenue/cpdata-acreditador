@@ -236,7 +236,7 @@ export function EventsUserTable({ deals, isSupervisor, userId }: EventsUserTable
             <TableBody>
               {paginatedDeals.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={9} className="text-center text-muted-foreground py-8">
+                  <TableCell colSpan={10} className="text-center text-muted-foreground py-8">
                     No se encontraron eventos.
                   </TableCell>
                 </TableRow>
