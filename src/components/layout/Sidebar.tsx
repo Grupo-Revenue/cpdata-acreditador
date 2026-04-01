@@ -22,20 +22,21 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 interface NavItem {
   icon: typeof LayoutDashboard;
   label: string;
+  description: string;
   href: string;
   roles?: string[];
   permissionKey?: string;
 }
 
 const navItems: NavItem[] = [
-  { icon: LayoutDashboard, label: 'Dashboard', href: '/app/dashboard', permissionKey: 'nav.dashboard' },
-  { icon: Users, label: 'Usuarios', href: '/app/users', permissionKey: 'nav.users' },
-  { icon: Calendar, label: 'Eventos', href: '/app/events', permissionKey: 'nav.events' },
-  { icon: FileText, label: 'Boletas', href: '/app/invoices', permissionKey: 'nav.invoices' },
-  { icon: Wallet, label: 'Rendiciones', href: '/app/reimbursements', permissionKey: 'nav.reimbursements' },
-  { icon: HeadphonesIcon, label: 'Soporte', href: '/app/support', permissionKey: 'nav.support' },
-  { icon: Trophy, label: 'Ranking', href: '/app/ranking', permissionKey: 'nav.ranking' },
-  { icon: Settings, label: 'Configuración', href: '/app/settings', roles: ['superadmin'] },
+  { icon: LayoutDashboard, label: 'Dashboard', description: 'Resumen general y métricas', href: '/app/dashboard', permissionKey: 'nav.dashboard' },
+  { icon: Users, label: 'Usuarios', description: 'Gestionar acreditadores y roles', href: '/app/users', permissionKey: 'nav.users' },
+  { icon: Calendar, label: 'Eventos', description: 'Eventos y asignación de equipos', href: '/app/events', permissionKey: 'nav.events' },
+  { icon: FileText, label: 'Boletas', description: 'Subir y gestionar boletas', href: '/app/invoices', permissionKey: 'nav.invoices' },
+  { icon: Wallet, label: 'Rendiciones', description: 'Control de gastos y rendiciones', href: '/app/reimbursements', permissionKey: 'nav.reimbursements' },
+  { icon: HeadphonesIcon, label: 'Soporte', description: 'Tickets de ayuda y consultas', href: '/app/support', permissionKey: 'nav.support' },
+  { icon: Trophy, label: 'Ranking', description: 'Ranking de acreditadores', href: '/app/ranking', permissionKey: 'nav.ranking' },
+  { icon: Settings, label: 'Configuración', description: 'Parámetros del sistema', href: '/app/settings', roles: ['superadmin'] },
 ];
 
 interface SidebarProps {
@@ -66,13 +67,24 @@ export function Sidebar({ collapsed, onCollapse }: SidebarProps) {
         to={item.href}
         className={cn(
           'flex items-center gap-3 px-3 py-2 rounded-lg smooth-transition',
+          collapsed ? '' : 'py-2.5',
           isActive
             ? 'bg-sidebar-primary text-sidebar-primary-foreground'
             : 'text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
         )}
       >
         <Icon className="w-5 h-5 shrink-0" />
-        {!collapsed && <span className="font-medium">{item.label}</span>}
+        {!collapsed && (
+          <div className="flex flex-col min-w-0">
+            <span className="font-medium text-sm">{item.label}</span>
+            <span className={cn(
+              'text-xs truncate',
+              isActive ? 'text-sidebar-primary-foreground/70' : 'text-muted-foreground'
+            )}>
+              {item.description}
+            </span>
+          </div>
+        )}
       </Link>
     );
 
@@ -80,8 +92,9 @@ export function Sidebar({ collapsed, onCollapse }: SidebarProps) {
       return (
         <Tooltip delayDuration={0}>
           <TooltipTrigger asChild>{content}</TooltipTrigger>
-          <TooltipContent side="right" className="font-medium">
-            {item.label}
+          <TooltipContent side="right">
+            <p className="font-medium">{item.label}</p>
+            <p className="text-xs text-muted-foreground">{item.description}</p>
           </TooltipContent>
         </Tooltip>
       );
