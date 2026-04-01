@@ -61,16 +61,17 @@ export function EventsUserTable({ deals, isSupervisor, userId }: EventsUserTable
     queryFn: async () => {
       const { data } = await supabase
         .from('event_accreditors')
-        .select('application_status, events(hubspot_deal_id, status)')
+        .select('application_status, payment_amount, events(hubspot_deal_id, status)')
         .eq('user_id', userId!);
 
-      const map: Record<string, { applicationStatus: string; eventStatus: string }> = {};
+      const map: Record<string, { applicationStatus: string; eventStatus: string; paymentAmount: number | null }> = {};
       for (const row of data ?? []) {
         const ev = row.events as any;
         if (ev?.hubspot_deal_id) {
           map[ev.hubspot_deal_id] = {
             applicationStatus: row.application_status,
             eventStatus: ev.status,
+            paymentAmount: (row as any).payment_amount ?? null,
           };
         }
       }
