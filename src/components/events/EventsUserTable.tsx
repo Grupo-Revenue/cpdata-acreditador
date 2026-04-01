@@ -268,6 +268,9 @@ export function EventsUserTable({ deals, isSupervisor, userId }: EventsUserTable
                           {status.label}
                         </Badge>
                       </TableCell>
+                      <TableCell className="font-medium">
+                        {getPaymentAmount(deal.id) !== null ? formatCurrency(getPaymentAmount(deal.id)!) : '—'}
+                      </TableCell>
                       <TableCell className="flex gap-1">
                         {canApply(deal.id) && (
                           <Button variant="ghost" size="icon" onClick={() => setApplyDeal(deal)} title="Postular al evento">
