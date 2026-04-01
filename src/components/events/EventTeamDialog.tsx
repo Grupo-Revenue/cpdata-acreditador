@@ -387,7 +387,10 @@ export function EventTeamDialog({ dealId, dealName, open, onOpenChange }: EventT
       queryClient.invalidateQueries({ queryKey: ['invoices'] });
       onOpenChange(false);
     } catch (err: any) {
-      toast({ title: 'Error', description: err.message || 'No se pudo asignar el equipo.', variant: 'destructive' });
+      const msg = err.message?.includes('cannot affect row a second time')
+        ? 'Ya existe seleccionado y no puede estar duplicado'
+        : err.message || 'No se pudo asignar el equipo.';
+      toast({ title: 'Error', description: msg, variant: 'destructive' });
     } finally {
       setSaving(false);
     }
