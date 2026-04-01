@@ -67,13 +67,24 @@ export function Sidebar({ collapsed, onCollapse }: SidebarProps) {
         to={item.href}
         className={cn(
           'flex items-center gap-3 px-3 py-2 rounded-lg smooth-transition',
+          collapsed ? '' : 'py-2.5',
           isActive
             ? 'bg-sidebar-primary text-sidebar-primary-foreground'
             : 'text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
         )}
       >
         <Icon className="w-5 h-5 shrink-0" />
-        {!collapsed && <span className="font-medium">{item.label}</span>}
+        {!collapsed && (
+          <div className="flex flex-col min-w-0">
+            <span className="font-medium text-sm">{item.label}</span>
+            <span className={cn(
+              'text-xs truncate',
+              isActive ? 'text-sidebar-primary-foreground/70' : 'text-muted-foreground'
+            )}>
+              {item.description}
+            </span>
+          </div>
+        )}
       </Link>
     );
 
@@ -81,8 +92,9 @@ export function Sidebar({ collapsed, onCollapse }: SidebarProps) {
       return (
         <Tooltip delayDuration={0}>
           <TooltipTrigger asChild>{content}</TooltipTrigger>
-          <TooltipContent side="right" className="font-medium">
-            {item.label}
+          <TooltipContent side="right">
+            <p className="font-medium">{item.label}</p>
+            <p className="text-xs text-muted-foreground">{item.description}</p>
           </TooltipContent>
         </Tooltip>
       );
