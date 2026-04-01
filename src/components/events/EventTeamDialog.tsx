@@ -235,8 +235,14 @@ export function EventTeamDialog({ dealId, dealName, open, onOpenChange }: EventT
 
   // Filtered & paginated supervisors
   const filteredSupervisors = useMemo(() => {
-    return supervisors.filter(s => matchesSearch(s, supSearch));
-  }, [supervisors, supSearch]);
+    return supervisors.filter(s => {
+      if (!matchesSearch(s, supSearch)) return false;
+      if (supAlturaMin && (!s.altura || parseFloat(s.altura) < parseFloat(supAlturaMin))) return false;
+      if (supIdioma && (!s.idioma || !s.idioma.toLowerCase().includes(supIdioma.toLowerCase()))) return false;
+      if (supRankingMin && (s.ranking === null || s.ranking < Number(supRankingMin))) return false;
+      return true;
+    });
+  }, [supervisors, supSearch, supAlturaMin, supIdioma, supRankingMin]);
 
   const supTotalPages = Math.ceil(filteredSupervisors.length / PAGE_SIZE);
   const paginatedSupervisors = filteredSupervisors.slice((supPage - 1) * PAGE_SIZE, supPage * PAGE_SIZE);
