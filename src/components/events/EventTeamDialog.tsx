@@ -331,13 +331,12 @@ export function EventTeamDialog({ dealId, dealName, open, onOpenChange }: EventT
         ...Array.from(selectedAccreditors.entries()).map(([userId, shift]) => ({ userId, shift, assigned_role: 'acreditador' })),
       ];
       if (allSelected.length > 0) {
-        const rows = allSelected.map(({ userId, shift, assigned_role }) => ({
-          event_id: eventId,
-          user_id: userId,
-          shift: shift,
-          assigned_role,
-        }));
-        const { error: insertErr } = await supabase.from('event_accreditors').upsert(rows as any, { onConflict: 'event_id,user_id' });
+        const rowsMap = new Map<string, { event_id: string; user_id: string; shift: string; assigned_role: string }>();
+        allSelected.forEach(({ userId, shift, assigned_role }) => {
+          rowsMap.set(userId, { event_id: eventId, user_id: userId, shift, assigned_role });
+        });
+        const uniqueRows = Array.from(rowsMap.values());
+        const { error: insertErr } = await supabase.from('event_accreditors').upsert(uniqueRows as any, { onConflict: 'event_id,user_id' });
         if (insertErr) throw insertErr;
       }
 
@@ -388,7 +387,10 @@ export function EventTeamDialog({ dealId, dealName, open, onOpenChange }: EventT
       queryClient.invalidateQueries({ queryKey: ['invoices'] });
       onOpenChange(false);
     } catch (err: any) {
-      toast({ title: 'Error', description: err.message || 'No se pudo asignar el equipo.', variant: 'destructive' });
+      const msg = err.message?.includes('cannot affect row a second time')
+        ? 'Ya existe seleccionado y no puede estar duplicado'
+        : err.message || 'No se pudo asignar el equipo.';
+      toast({ title: 'Error', description: msg, variant: 'destructive' });
     } finally {
       setSaving(false);
     }
