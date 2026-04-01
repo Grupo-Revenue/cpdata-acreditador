@@ -222,8 +222,14 @@ export function EventTeamDialog({ dealId, dealName, open, onOpenChange }: EventT
       setSelectedAccreditors(new Map());
       setSupSearch('');
       setSupPage(1);
+      setSupAlturaMin('');
+      setSupIdioma('');
+      setSupRankingMin('');
       setAccSearch('');
       setAccPage(1);
+      setAccAlturaMin('');
+      setAccIdioma('');
+      setAccRankingMin('');
     }
   }, [open]);
 
