@@ -563,6 +563,11 @@ export function EventTeamDialog({ dealId, dealName, open, onOpenChange }: EventT
                   {selectedAccreditors.size} de {accreditors.length}
                 </span>
               </div>
+              <div className="grid grid-cols-3 gap-2">
+                <Input placeholder="Estatura mín. (cm)" value={accAlturaMin} onChange={e => setAccAlturaMin(e.target.value)} type="number" />
+                <Input placeholder="Idioma" value={accIdioma} onChange={e => setAccIdioma(e.target.value)} />
+                <Input placeholder="Ranking mín." value={accRankingMin} onChange={e => setAccRankingMin(e.target.value)} type="number" />
+              </div>
 
               {loadingAccreditors ? (
                 <LoadingState text="Cargando acreditadores..." className="py-8" />
