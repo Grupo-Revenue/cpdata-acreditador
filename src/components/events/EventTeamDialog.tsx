@@ -513,8 +513,8 @@ export function EventTeamDialog({ dealId, dealName, open, onOpenChange }: EventT
                            <TableHead>Teléfono</TableHead>
                            <TableHead>Estatura</TableHead>
                            <TableHead>Idioma</TableHead>
-                           <TableHead>Ranking</TableHead>
                            <TableHead>Turno</TableHead>
+                           <TableHead>Monto</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
