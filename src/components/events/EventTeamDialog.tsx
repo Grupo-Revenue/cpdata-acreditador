@@ -268,26 +268,34 @@ export function EventTeamDialog({ dealId, dealName, open, onOpenChange }: EventT
     setSelectedSupervisors(prev => {
       const next = new Map(prev);
       if (next.has(id)) next.delete(id);
-      else next.set(id, null);
+      else next.set(id, { shift: null, amount: null });
       return next;
     });
   };
 
   const setSupervisorShift = (id: string, shift: string | null) => {
-    setSelectedSupervisors(prev => { const next = new Map(prev); next.set(id, shift); return next; });
+    setSelectedSupervisors(prev => { const next = new Map(prev); const cur = next.get(id) ?? { shift: null, amount: null }; next.set(id, { ...cur, shift }); return next; });
+  };
+
+  const setSupervisorAmount = (id: string, amount: number | null) => {
+    setSelectedSupervisors(prev => { const next = new Map(prev); const cur = next.get(id) ?? { shift: null, amount: null }; next.set(id, { ...cur, amount }); return next; });
   };
 
   const toggleAccreditor = (id: string) => {
     setSelectedAccreditors(prev => {
       const next = new Map(prev);
       if (next.has(id)) next.delete(id);
-      else next.set(id, null);
+      else next.set(id, { shift: null, amount: null });
       return next;
     });
   };
 
   const setAccreditorShift = (id: string, shift: string | null) => {
-    setSelectedAccreditors(prev => { const next = new Map(prev); next.set(id, shift); return next; });
+    setSelectedAccreditors(prev => { const next = new Map(prev); const cur = next.get(id) ?? { shift: null, amount: null }; next.set(id, { ...cur, shift }); return next; });
+  };
+
+  const setAccreditorAmount = (id: string, amount: number | null) => {
+    setSelectedAccreditors(prev => { const next = new Map(prev); const cur = next.get(id) ?? { shift: null, amount: null }; next.set(id, { ...cur, amount }); return next; });
   };
 
   const toggleAllSupervisors = () => {
