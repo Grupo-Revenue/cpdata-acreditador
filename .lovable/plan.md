@@ -1,34 +1,37 @@
 
 
-## Plan: Agregar filtros de estatura, idioma y ranking en asignación de equipo
+## Plan: Agregar descripciones a los items del sidebar
 
-### Resumen
-Agregar filtros adicionales (estatura, idioma, ranking mínimo) en ambas pestañas (supervisores y acreditadores) del diálogo de asignación de equipo, como inputs compactos junto al buscador existente.
+### Objetivo
+Hacer que cada item de navegacion del sidebar muestre un subtitulo descriptivo debajo del nombre, para que el usuario entienda rapidamente que funcion cumple cada seccion.
 
-### Cambios en `src/components/events/EventTeamDialog.tsx`
+### Cambios en `src/components/layout/Sidebar.tsx`
 
-1. **Agregar estados de filtro** (6 nuevos estados: 3 por pestaña):
-   - `supAlturaMin`, `supIdioma`, `supRankingMin` para supervisores
-   - `accAlturaMin`, `accIdioma`, `accRankingMin` para acreditadores
+1. **Extender la interfaz `NavItem`** con un campo `description: string` para cada item.
 
-2. **Incluir `idioma` y `altura` en la query de supervisores** (línea 141): agregar estos campos al select de profiles, igual que ya se hace para acreditadores.
+2. **Agregar descripciones a cada item del array `navItems`**:
+   - Dashboard: "Resumen general y metricas"
+   - Usuarios: "Gestionar acreditadores y roles"
+   - Eventos: "Eventos y asignacion de equipos"
+   - Boletas: "Subir y gestionar boletas"
+   - Rendiciones: "Control de gastos y rendiciones"
+   - Soporte: "Tickets de ayuda y consultas"
+   - Ranking: "Ranking de acreditadores"
+   - Configuracion: "Parametros del sistema"
 
-3. **Actualizar `filteredSupervisors` y `filteredAccreditors`** para aplicar los filtros adicionales:
-   - **Estatura**: filtrar usuarios cuya `altura` (parseada a número) sea >= al valor ingresado
-   - **Idioma**: filtrar usuarios cuyo campo `idioma` contenga el texto buscado (case-insensitive)
-   - **Ranking**: filtrar usuarios cuyo `ranking` sea >= al valor ingresado
+3. **Actualizar `NavItemComponent`** para mostrar la descripcion debajo del label cuando el sidebar esta expandido (no collapsed). Usar un `<span>` con `text-xs text-muted-foreground` para el subtitulo.
 
-4. **Agregar fila de filtros** debajo del buscador en ambas pestañas: una grilla compacta con 3 inputs (Estatura mín., Idioma, Ranking mín.) usando el patrón de filtros en grilla del proyecto.
+4. **Mejorar los tooltips en modo collapsed** para que incluyan la descripcion ademas del nombre.
 
-5. **Mostrar columna Estatura** en las tablas de ambas pestañas (acreditadores ya tiene Idioma; supervisores necesita Idioma y Estatura).
+### Diseno visual (sidebar expandido)
+```text
+ [icon]  Dashboard
+         Resumen general y metricas
 
-6. **Reset de filtros** al cerrar el diálogo (en el useEffect existente de `!open`).
+ [icon]  Usuarios
+         Gestionar acreditadores y roles
+```
 
-### Diseño visual
-- Fila de filtros: `grid grid-cols-3 gap-2` debajo del buscador
-- Inputs pequeños con placeholder descriptivo: "Estatura mín. (cm)", "Idioma", "Ranking mín."
-- Consistente con el patrón de filtrado existente del proyecto
-
-### Archivos a modificar
-- `src/components/events/EventTeamDialog.tsx` (único archivo)
+### Archivo a modificar
+- `src/components/layout/Sidebar.tsx` (unico archivo)
 
