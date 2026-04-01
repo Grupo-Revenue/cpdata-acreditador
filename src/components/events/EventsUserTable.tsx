@@ -61,16 +61,17 @@ export function EventsUserTable({ deals, isSupervisor, userId }: EventsUserTable
     queryFn: async () => {
       const { data } = await supabase
         .from('event_accreditors')
-        .select('application_status, events(hubspot_deal_id, status)')
+        .select('application_status, payment_amount, events(hubspot_deal_id, status)')
         .eq('user_id', userId!);
 
-      const map: Record<string, { applicationStatus: string; eventStatus: string }> = {};
+      const map: Record<string, { applicationStatus: string; eventStatus: string; paymentAmount: number | null }> = {};
       for (const row of data ?? []) {
         const ev = row.events as any;
         if (ev?.hubspot_deal_id) {
           map[ev.hubspot_deal_id] = {
             applicationStatus: row.application_status,
             eventStatus: ev.status,
+            paymentAmount: (row as any).payment_amount ?? null,
           };
         }
       }
@@ -153,6 +154,16 @@ export function EventsUserTable({ deals, isSupervisor, userId }: EventsUserTable
 
   const hasSigned = (dealId: string) => !!signatureMap?.[dealId];
 
+  const getPaymentAmount = (dealId: string) => {
+    const info = statusMap?.[dealId];
+    if (!info?.paymentAmount) return null;
+    return info.paymentAmount;
+  };
+
+  const formatCurrency = (amount: number) => {
+    return `$${amount.toLocaleString('es-CL')}`;
+  };
+
   const filteredDeals = useMemo(() => {
     return deals.filter((deal) => {
       const match = (value: string | null, filter: string) =>
@@ -218,13 +229,14 @@ export function EventsUserTable({ deals, isSupervisor, userId }: EventsUserTable
                 <TableHead>Horario</TableHead>
                 <TableHead>Estado Evento</TableHead>
                 <TableHead>Estado</TableHead>
+                <TableHead>Monto</TableHead>
                 <TableHead className="w-[100px]">Acciones</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {paginatedDeals.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={9} className="text-center text-muted-foreground py-8">
+                  <TableCell colSpan={10} className="text-center text-muted-foreground py-8">
                     No se encontraron eventos.
                   </TableCell>
                 </TableRow>
@@ -255,6 +267,9 @@ export function EventsUserTable({ deals, isSupervisor, userId }: EventsUserTable
                         <Badge variant="outline" className={status.color}>
                           {status.label}
                         </Badge>
+                      </TableCell>
+                      <TableCell className="font-medium">
+                        {getPaymentAmount(deal.id) !== null ? formatCurrency(getPaymentAmount(deal.id)!) : '—'}
                       </TableCell>
                       <TableCell className="flex gap-1">
                         {canApply(deal.id) && (

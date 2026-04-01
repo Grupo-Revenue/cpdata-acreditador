@@ -115,8 +115,8 @@ function matchesSearch(user: UserWithProfile, query: string): boolean {
 export function EventTeamDialog({ dealId, dealName, open, onOpenChange }: EventTeamDialogProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [selectedSupervisors, setSelectedSupervisors] = useState<Map<string, string | null>>(new Map());
-  const [selectedAccreditors, setSelectedAccreditors] = useState<Map<string, string | null>>(new Map());
+  const [selectedSupervisors, setSelectedSupervisors] = useState<Map<string, { shift: string | null; amount: number | null }>>(new Map());
+  const [selectedAccreditors, setSelectedAccreditors] = useState<Map<string, { shift: string | null; amount: number | null }>>(new Map());
   const [saving, setSaving] = useState(false);
 
   const [supSearch, setSupSearch] = useState('');
@@ -190,10 +190,10 @@ export function EventTeamDialog({ dealId, dealName, open, onOpenChange }: EventT
       if (!evt) return [];
       const { data, error } = await (supabase
         .from('event_accreditors')
-        .select('user_id, shift, assigned_role') as any)
+        .select('user_id, shift, assigned_role, payment_amount') as any)
         .eq('event_id', evt.id);
       if (error) throw error;
-      return (data || []) as { user_id: string; shift: string | null; assigned_role: string | null }[];
+      return (data || []) as { user_id: string; shift: string | null; assigned_role: string | null; payment_amount: number | null }[];
     },
     enabled: open && !!dealId,
     refetchOnMount: 'always',
@@ -202,13 +202,14 @@ export function EventTeamDialog({ dealId, dealName, open, onOpenChange }: EventT
   // Pre-select existing assignments
   useEffect(() => {
     if (!open) return;
-    const supMap = new Map<string, string | null>();
-    const accMap = new Map<string, string | null>();
+    const supMap = new Map<string, { shift: string | null; amount: number | null }>();
+    const accMap = new Map<string, { shift: string | null; amount: number | null }>();
     for (const a of existingAssignments) {
+      const val = { shift: a.shift ?? null, amount: a.payment_amount ?? null };
       if (a.assigned_role === 'supervisor') {
-        supMap.set(a.user_id, a.shift ?? null);
+        supMap.set(a.user_id, val);
       } else {
-        accMap.set(a.user_id, a.shift ?? null);
+        accMap.set(a.user_id, val);
       }
     }
     setSelectedSupervisors(supMap);
@@ -267,26 +268,34 @@ export function EventTeamDialog({ dealId, dealName, open, onOpenChange }: EventT
     setSelectedSupervisors(prev => {
       const next = new Map(prev);
       if (next.has(id)) next.delete(id);
-      else next.set(id, null);
+      else next.set(id, { shift: null, amount: null });
       return next;
     });
   };
 
   const setSupervisorShift = (id: string, shift: string | null) => {
-    setSelectedSupervisors(prev => { const next = new Map(prev); next.set(id, shift); return next; });
+    setSelectedSupervisors(prev => { const next = new Map(prev); const cur = next.get(id) ?? { shift: null, amount: null }; next.set(id, { ...cur, shift }); return next; });
+  };
+
+  const setSupervisorAmount = (id: string, amount: number | null) => {
+    setSelectedSupervisors(prev => { const next = new Map(prev); const cur = next.get(id) ?? { shift: null, amount: null }; next.set(id, { ...cur, amount }); return next; });
   };
 
   const toggleAccreditor = (id: string) => {
     setSelectedAccreditors(prev => {
       const next = new Map(prev);
       if (next.has(id)) next.delete(id);
-      else next.set(id, null);
+      else next.set(id, { shift: null, amount: null });
       return next;
     });
   };
 
   const setAccreditorShift = (id: string, shift: string | null) => {
-    setSelectedAccreditors(prev => { const next = new Map(prev); next.set(id, shift); return next; });
+    setSelectedAccreditors(prev => { const next = new Map(prev); const cur = next.get(id) ?? { shift: null, amount: null }; next.set(id, { ...cur, shift }); return next; });
+  };
+
+  const setAccreditorAmount = (id: string, amount: number | null) => {
+    setSelectedAccreditors(prev => { const next = new Map(prev); const cur = next.get(id) ?? { shift: null, amount: null }; next.set(id, { ...cur, amount }); return next; });
   };
 
   const toggleAllSupervisors = () => {
@@ -297,7 +306,7 @@ export function EventTeamDialog({ dealId, dealName, open, onOpenChange }: EventT
       if (allSelected) {
         allFilteredIds.forEach(id => next.delete(id));
       } else {
-        allFilteredIds.forEach(id => { if (!next.has(id)) next.set(id, null); });
+        allFilteredIds.forEach(id => { if (!next.has(id)) next.set(id, { shift: null, amount: null }); });
       }
       return next;
     });
@@ -311,7 +320,7 @@ export function EventTeamDialog({ dealId, dealName, open, onOpenChange }: EventT
       if (allSelected) {
         allFilteredIds.forEach(id => next.delete(id));
       } else {
-        allFilteredIds.forEach(id => { if (!next.has(id)) next.set(id, null); });
+        allFilteredIds.forEach(id => { if (!next.has(id)) next.set(id, { shift: null, amount: null }); });
       }
       return next;
     });
@@ -351,13 +360,13 @@ export function EventTeamDialog({ dealId, dealName, open, onOpenChange }: EventT
       await supabase.from('event_accreditors').delete().eq('event_id', eventId);
 
       const allSelected = [
-        ...Array.from(selectedSupervisors.entries()).map(([userId, shift]) => ({ userId, shift, assigned_role: 'supervisor' })),
-        ...Array.from(selectedAccreditors.entries()).map(([userId, shift]) => ({ userId, shift, assigned_role: 'acreditador' })),
+        ...Array.from(selectedSupervisors.entries()).map(([userId, val]) => ({ userId, shift: val.shift, amount: val.amount, assigned_role: 'supervisor' })),
+        ...Array.from(selectedAccreditors.entries()).map(([userId, val]) => ({ userId, shift: val.shift, amount: val.amount, assigned_role: 'acreditador' })),
       ];
       if (allSelected.length > 0) {
-        const rowsMap = new Map<string, { event_id: string; user_id: string; shift: string; assigned_role: string }>();
-        allSelected.forEach(({ userId, shift, assigned_role }) => {
-          rowsMap.set(userId, { event_id: eventId, user_id: userId, shift, assigned_role });
+        const rowsMap = new Map<string, { event_id: string; user_id: string; shift: string | null; assigned_role: string; payment_amount: number | null }>();
+        allSelected.forEach(({ userId, shift, amount, assigned_role }) => {
+          rowsMap.set(userId, { event_id: eventId, user_id: userId, shift, assigned_role, payment_amount: amount });
         });
         const uniqueRows = Array.from(rowsMap.values());
         const { error: insertErr } = await supabase.from('event_accreditors').upsert(uniqueRows as any, { onConflict: 'event_id,user_id' });
@@ -504,8 +513,8 @@ export function EventTeamDialog({ dealId, dealName, open, onOpenChange }: EventT
                            <TableHead>Teléfono</TableHead>
                            <TableHead>Estatura</TableHead>
                            <TableHead>Idioma</TableHead>
-                           <TableHead>Ranking</TableHead>
                            <TableHead>Turno</TableHead>
+                           <TableHead>Monto</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -529,8 +538,19 @@ export function EventTeamDialog({ dealId, dealName, open, onOpenChange }: EventT
                               <TableCell onClick={e => e.stopPropagation()}>
                                 {isSelected && (
                                   <ShiftToggle
-                                    value={selectedSupervisors.get(s.id) ?? null}
+                                    value={selectedSupervisors.get(s.id)?.shift ?? null}
                                     onChange={v => setSupervisorShift(s.id, v)}
+                                  />
+                                )}
+                              </TableCell>
+                              <TableCell onClick={e => e.stopPropagation()}>
+                                {isSelected && (
+                                  <Input
+                                    type="number"
+                                    placeholder="$0"
+                                    className="h-8 w-24 text-xs"
+                                    value={selectedSupervisors.get(s.id)?.amount ?? ''}
+                                    onChange={e => setSupervisorAmount(s.id, e.target.value ? Number(e.target.value) : null)}
                                   />
                                 )}
                               </TableCell>
@@ -592,8 +612,8 @@ export function EventTeamDialog({ dealId, dealName, open, onOpenChange }: EventT
                            <TableHead>Teléfono</TableHead>
                            <TableHead>Estatura</TableHead>
                            <TableHead>Idioma</TableHead>
-                           <TableHead>Ranking</TableHead>
                            <TableHead>Turno</TableHead>
+                           <TableHead>Monto</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -617,8 +637,19 @@ export function EventTeamDialog({ dealId, dealName, open, onOpenChange }: EventT
                               <TableCell onClick={e => e.stopPropagation()}>
                                 {isSelected && (
                                   <ShiftToggle
-                                    value={selectedAccreditors.get(a.id) ?? null}
+                                    value={selectedAccreditors.get(a.id)?.shift ?? null}
                                     onChange={v => setAccreditorShift(a.id, v)}
+                                  />
+                                )}
+                              </TableCell>
+                              <TableCell onClick={e => e.stopPropagation()}>
+                                {isSelected && (
+                                  <Input
+                                    type="number"
+                                    placeholder="$0"
+                                    className="h-8 w-24 text-xs"
+                                    value={selectedAccreditors.get(a.id)?.amount ?? ''}
+                                    onChange={e => setAccreditorAmount(a.id, e.target.value ? Number(e.target.value) : null)}
                                   />
                                 )}
                               </TableCell>
