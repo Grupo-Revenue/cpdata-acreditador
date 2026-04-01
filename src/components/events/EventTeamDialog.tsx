@@ -360,13 +360,13 @@ export function EventTeamDialog({ dealId, dealName, open, onOpenChange }: EventT
       await supabase.from('event_accreditors').delete().eq('event_id', eventId);
 
       const allSelected = [
-        ...Array.from(selectedSupervisors.entries()).map(([userId, shift]) => ({ userId, shift, assigned_role: 'supervisor' })),
-        ...Array.from(selectedAccreditors.entries()).map(([userId, shift]) => ({ userId, shift, assigned_role: 'acreditador' })),
+        ...Array.from(selectedSupervisors.entries()).map(([userId, val]) => ({ userId, shift: val.shift, amount: val.amount, assigned_role: 'supervisor' })),
+        ...Array.from(selectedAccreditors.entries()).map(([userId, val]) => ({ userId, shift: val.shift, amount: val.amount, assigned_role: 'acreditador' })),
       ];
       if (allSelected.length > 0) {
-        const rowsMap = new Map<string, { event_id: string; user_id: string; shift: string; assigned_role: string }>();
-        allSelected.forEach(({ userId, shift, assigned_role }) => {
-          rowsMap.set(userId, { event_id: eventId, user_id: userId, shift, assigned_role });
+        const rowsMap = new Map<string, { event_id: string; user_id: string; shift: string | null; assigned_role: string; payment_amount: number | null }>();
+        allSelected.forEach(({ userId, shift, amount, assigned_role }) => {
+          rowsMap.set(userId, { event_id: eventId, user_id: userId, shift, assigned_role, payment_amount: amount });
         });
         const uniqueRows = Array.from(rowsMap.values());
         const { error: insertErr } = await supabase.from('event_accreditors').upsert(uniqueRows as any, { onConflict: 'event_id,user_id' });
