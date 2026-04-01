@@ -115,8 +115,8 @@ function matchesSearch(user: UserWithProfile, query: string): boolean {
 export function EventTeamDialog({ dealId, dealName, open, onOpenChange }: EventTeamDialogProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [selectedSupervisors, setSelectedSupervisors] = useState<Map<string, string | null>>(new Map());
-  const [selectedAccreditors, setSelectedAccreditors] = useState<Map<string, string | null>>(new Map());
+  const [selectedSupervisors, setSelectedSupervisors] = useState<Map<string, { shift: string | null; amount: number | null }>>(new Map());
+  const [selectedAccreditors, setSelectedAccreditors] = useState<Map<string, { shift: string | null; amount: number | null }>>(new Map());
   const [saving, setSaving] = useState(false);
 
   const [supSearch, setSupSearch] = useState('');
