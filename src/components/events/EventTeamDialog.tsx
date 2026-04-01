@@ -144,7 +144,7 @@ export function EventTeamDialog({ dealId, dealName, open, onOpenChange }: EventT
       if (userIds.length === 0) return [];
       const { data: profiles, error: pErr } = await supabase
         .from('profiles')
-        .select('id, nombre, apellido, rut, email, telefono, ranking')
+        .select('id, nombre, apellido, rut, email, telefono, idioma, altura, ranking')
         .in('id', userIds)
         .eq('approval_status', 'approved')
         .eq('is_active', true);
