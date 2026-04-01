@@ -154,6 +154,16 @@ export function EventsUserTable({ deals, isSupervisor, userId }: EventsUserTable
 
   const hasSigned = (dealId: string) => !!signatureMap?.[dealId];
 
+  const getPaymentAmount = (dealId: string) => {
+    const info = statusMap?.[dealId];
+    if (!info?.paymentAmount) return null;
+    return info.paymentAmount;
+  };
+
+  const formatCurrency = (amount: number) => {
+    return `$${amount.toLocaleString('es-CL')}`;
+  };
+
   const filteredDeals = useMemo(() => {
     return deals.filter((deal) => {
       const match = (value: string | null, filter: string) =>
