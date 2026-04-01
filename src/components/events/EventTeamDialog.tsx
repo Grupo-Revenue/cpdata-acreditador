@@ -498,12 +498,14 @@ export function EventTeamDialog({ dealId, dealName, open, onOpenChange }: EventT
                     <Table className="min-w-[600px]">
                       <TableHeader>
                         <TableRow>
-                          <TableHead className="w-10" />
-                          <TableHead>Nombre</TableHead>
-                          <TableHead>RUT</TableHead>
-                          <TableHead>Teléfono</TableHead>
-                          <TableHead>Ranking</TableHead>
-                          <TableHead>Turno</TableHead>
+                           <TableHead className="w-10" />
+                           <TableHead>Nombre</TableHead>
+                           <TableHead>RUT</TableHead>
+                           <TableHead>Teléfono</TableHead>
+                           <TableHead>Estatura</TableHead>
+                           <TableHead>Idioma</TableHead>
+                           <TableHead>Ranking</TableHead>
+                           <TableHead>Turno</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
