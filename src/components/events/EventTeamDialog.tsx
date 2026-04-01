@@ -306,7 +306,7 @@ export function EventTeamDialog({ dealId, dealName, open, onOpenChange }: EventT
       if (allSelected) {
         allFilteredIds.forEach(id => next.delete(id));
       } else {
-        allFilteredIds.forEach(id => { if (!next.has(id)) next.set(id, null); });
+        allFilteredIds.forEach(id => { if (!next.has(id)) next.set(id, { shift: null, amount: null }); });
       }
       return next;
     });
