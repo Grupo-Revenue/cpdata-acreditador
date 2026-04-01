@@ -202,13 +202,14 @@ export function EventTeamDialog({ dealId, dealName, open, onOpenChange }: EventT
   // Pre-select existing assignments
   useEffect(() => {
     if (!open) return;
-    const supMap = new Map<string, string | null>();
-    const accMap = new Map<string, string | null>();
+    const supMap = new Map<string, { shift: string | null; amount: number | null }>();
+    const accMap = new Map<string, { shift: string | null; amount: number | null }>();
     for (const a of existingAssignments) {
+      const val = { shift: a.shift ?? null, amount: a.payment_amount ?? null };
       if (a.assigned_role === 'supervisor') {
-        supMap.set(a.user_id, a.shift ?? null);
+        supMap.set(a.user_id, val);
       } else {
-        accMap.set(a.user_id, a.shift ?? null);
+        accMap.set(a.user_id, val);
       }
     }
     setSelectedSupervisors(supMap);
