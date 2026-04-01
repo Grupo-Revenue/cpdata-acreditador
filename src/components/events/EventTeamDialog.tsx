@@ -250,8 +250,14 @@ export function EventTeamDialog({ dealId, dealName, open, onOpenChange }: EventT
 
   // Filtered & paginated accreditors
   const filteredAccreditors = useMemo(() => {
-    return accreditors.filter(a => matchesSearch(a, accSearch));
-  }, [accreditors, accSearch]);
+    return accreditors.filter(a => {
+      if (!matchesSearch(a, accSearch)) return false;
+      if (accAlturaMin && (!a.altura || parseFloat(a.altura) < parseFloat(accAlturaMin))) return false;
+      if (accIdioma && (!a.idioma || !a.idioma.toLowerCase().includes(accIdioma.toLowerCase()))) return false;
+      if (accRankingMin && (a.ranking === null || a.ranking < Number(accRankingMin))) return false;
+      return true;
+    });
+  }, [accreditors, accSearch, accAlturaMin, accIdioma, accRankingMin]);
 
   const accTotalPages = Math.ceil(filteredAccreditors.length / PAGE_SIZE);
   const paginatedAccreditors = filteredAccreditors.slice((accPage - 1) * PAGE_SIZE, accPage * PAGE_SIZE);
