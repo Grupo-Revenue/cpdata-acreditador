@@ -229,6 +229,7 @@ export function EventsUserTable({ deals, isSupervisor, userId }: EventsUserTable
                 <TableHead>Horario</TableHead>
                 <TableHead>Estado Evento</TableHead>
                 <TableHead>Estado</TableHead>
+                <TableHead>Monto</TableHead>
                 <TableHead className="w-[100px]">Acciones</TableHead>
               </TableRow>
             </TableHeader>
