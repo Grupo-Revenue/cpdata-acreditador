@@ -522,7 +522,9 @@ export function EventTeamDialog({ dealId, dealName, open, onOpenChange }: EventT
                               </TableCell>
                               <TableCell className="font-medium">{s.nombre} {s.apellido}</TableCell>
                               <TableCell className="text-xs text-muted-foreground">{s.rut}</TableCell>
-                              <TableCell className="text-xs text-muted-foreground">{s.telefono ?? '—'}</TableCell>
+                               <TableCell className="text-xs text-muted-foreground">{s.telefono ?? '—'}</TableCell>
+                               <TableCell className="text-xs text-muted-foreground">{s.altura ? `${s.altura} cm` : '—'}</TableCell>
+                               <TableCell className="text-xs">{s.idioma ?? '—'}</TableCell>
                               <TableCell><RankingBadge ranking={s.ranking} /></TableCell>
                               <TableCell onClick={e => e.stopPropagation()}>
                                 {isSelected && (
