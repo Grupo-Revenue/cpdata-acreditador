@@ -1,26 +1,18 @@
 
 
-## Plan: Corregir alineación de columnas en tabla de asignación de equipo
+## Plan: Permitir a superadmin y administracion agregar gastos en rendiciones
 
 ### Problema
-La tabla tiene 8 encabezados pero 9 celdas por fila. Falta el encabezado "Ranking" entre "Idioma" y "Turno", lo que causa que las columnas Turno y Monto se vean corridas respecto a sus datos.
+Actualmente solo el rol `supervisor` puede agregar gastos adicionales en la vista de rendiciones. Los roles `superadmin` y `administracion` solo pueden ver y aprobar/rechazar, pero no agregar.
 
-### Cambio
+### Cambios en `src/pages/app/Reimbursements.tsx`
 
-**Archivo: `src/components/events/EventTeamDialog.tsx`**
+1. **Formulario de agregar gasto (linea 574)**: Cambiar la condicion `isSupervisor && !isReimbursementClosed` a `(isSupervisor || isAdmin) && !isReimbursementClosed` para que el boton "Agregar adicional" y el formulario aparezcan tambien para superadmin y administracion.
 
-Agregar `<TableHead>Ranking</TableHead>` después de `<TableHead>Idioma</TableHead>` en ambas tablas (supervisores línea ~515 y acreditadores línea ~614).
+2. **Columna de acciones en tabla (linea 526)**: Actualizar la condicion del `<TableHead>` de acciones para incluir `isAdmin` cuando la rendicion no esta cerrada, de modo que admin pueda ver botones de eliminar sus propios gastos.
 
-Además, asignar anchos fijos a las columnas para mantener todo alineado:
-- Checkbox: `w-10`
-- Nombre: `w-[140px]`
-- RUT: `w-[100px]`
-- Teléfono: `w-[110px]`
-- Estatura: `w-[80px]`
-- Idioma: `w-[90px]`
-- Ranking: `w-[70px]`
-- Turno: `w-[160px]`
-- Monto: `w-[100px]`
+3. **Celda de eliminar (linea 555-562)**: Agregar una celda de acciones para `isAdmin && !isReimbursementClosed` que permita eliminar gastos creados por el admin (misma logica: `exp.created_by === user!.id`).
 
-Aumentar `min-w` de las tablas a `min-w-[900px]` para acomodar todas las columnas sin apretarlas.
+### Archivos a modificar
+- `src/pages/app/Reimbursements.tsx` (unico archivo)
 
