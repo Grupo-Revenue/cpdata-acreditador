@@ -5,7 +5,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious, PaginationEllipsis } from '@/components/ui/pagination';
-import { Pencil, Users, Download, FileDown, MessageSquare } from 'lucide-react';
+import { Pencil, Users, Download, FileDown, MessageSquare, DollarSign } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { jsPDF } from 'jspdf';
@@ -14,6 +14,7 @@ import { generateProfessionalPDF } from '@/lib/contract-utils';
 import { EventEditDialog } from '@/components/events/EventEditDialog';
 import { EventTeamDialog } from '@/components/events/EventTeamDialog';
 import { BulkWhatsappEventsDialog } from '@/components/events/BulkWhatsappEventsDialog';
+import { EventGeneralExpensesDialog } from '@/components/events/EventGeneralExpensesDialog';
 
 function getStageBadgeClass(stage: string): string {
   const s = stage.toLowerCase();
@@ -86,6 +87,8 @@ export function EventsAdminTable({ deals }: EventsAdminTableProps) {
   const [teamDeal, setTeamDeal] = useState<HubSpotDeal | null>(null);
   const [teamDialogOpen, setTeamDialogOpen] = useState(false);
   const [whatsappDialogOpen, setWhatsappDialogOpen] = useState(false);
+  const [expensesDeal, setExpensesDeal] = useState<HubSpotDeal | null>(null);
+  const [expensesDialogOpen, setExpensesDialogOpen] = useState(false);
 
   const totalPages = Math.ceil(deals.length / PAGE_SIZE);
   const paginatedDeals = deals.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
@@ -237,6 +240,11 @@ export function EventsAdminTable({ deals }: EventsAdminTableProps) {
                         <Download className="h-4 w-4" />
                       </Button>
                     )}
+                    {canEdit && (
+                      <Button variant="ghost" size="icon" onClick={() => { setExpensesDeal(deal); setExpensesDialogOpen(true); }} title="Adicionales">
+                        <DollarSign className="h-4 w-4" />
+                      </Button>
+                    )}
                   </TableCell>
                 </TableRow>
               ))}
@@ -284,6 +292,12 @@ export function EventsAdminTable({ deals }: EventsAdminTableProps) {
         onOpenChange={setTeamDialogOpen}
       />
       <BulkWhatsappEventsDialog open={whatsappDialogOpen} onOpenChange={setWhatsappDialogOpen} />
+      <EventGeneralExpensesDialog
+        hubspotDealId={expensesDeal?.id ?? null}
+        dealName={expensesDeal?.nombre_del_evento ?? expensesDeal?.dealname ?? null}
+        open={expensesDialogOpen}
+        onOpenChange={setExpensesDialogOpen}
+      />
     </>
   );
 }
