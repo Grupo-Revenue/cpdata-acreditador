@@ -63,7 +63,7 @@ export function EventManagementDialog({ open, onOpenChange, hubspotDealId, dealN
   const [closingEvent, setClosingEvent] = useState(false);
   const [attendanceRows, setAttendanceRows] = useState<AttendanceRow[]>([]);
   const [searchFilter, setSearchFilter] = useState('');
-  const [newExpenses, setNewExpenses] = useState<Record<string, { name: string; amount: string; file: File | null }>>({});
+  const [newExpenses, setNewExpenses] = useState<Record<ExpenseInputKey, { name: string; amount: string; file: File | null }>>({});
 
   // Resolve local event from hubspot_deal_id
   const { data: event } = useQuery({
@@ -247,9 +247,10 @@ export function EventManagementDialog({ open, onOpenChange, hubspotDealId, dealN
     }
   };
 
-  // Add expense
-  const addExpense = async (userId: string) => {
-    const exp = newExpenses[userId];
+  // Add expense (userId can be null for general event expenses)
+  const addExpense = async (userId: string | null) => {
+    const key = userId ?? '__general__';
+    const exp = newExpenses[key];
     if (!exp || !exp.name || !exp.amount) {
       toast({ title: 'Error', description: 'Nombre y valor son obligatorios.', variant: 'destructive' });
       return;
@@ -283,7 +284,7 @@ export function EventManagementDialog({ open, onOpenChange, hubspotDealId, dealN
       return;
     }
 
-    setNewExpenses(prev => ({ ...prev, [userId]: { name: '', amount: '', file: null } }));
+    setNewExpenses(prev => ({ ...prev, [key]: { name: '', amount: '', file: null } }));
     refetchExpenses();
     toast({ title: 'Adicional agregado' });
   };
@@ -333,7 +334,9 @@ export function EventManagementDialog({ open, onOpenChange, hubspotDealId, dealN
     });
   };
 
-  const getExpenseInput = (userId: string) => newExpenses[userId] ?? { name: '', amount: '', file: null };
+  const getExpenseInput = (key: ExpenseInputKey) => newExpenses[key] ?? { name: '', amount: '', file: null };
+
+  const generalExpenses = expenses?.filter(e => !e.user_id) ?? [];
 
   const searchLower = searchFilter.toLowerCase();
   const filteredRows = attendanceRows.filter(row => {
