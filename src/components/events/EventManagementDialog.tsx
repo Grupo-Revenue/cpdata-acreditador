@@ -483,6 +483,69 @@ export function EventManagementDialog({ open, onOpenChange, hubspotDealId, dealN
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
+                  {/* General event expenses */}
+                  <div className="border rounded-lg p-3 space-y-2">
+                    <p className="text-sm font-medium">Gastos generales del evento</p>
+
+                    {generalExpenses.length > 0 && (
+                      <div className="space-y-1">
+                        {generalExpenses.map(exp => (
+                          <div key={exp.id} className="flex items-center justify-between text-sm bg-muted/50 rounded px-2 py-1">
+                            <span>{exp.name}</span>
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium">${exp.amount.toLocaleString('es-CL')}</span>
+                              {exp.receipt_url && (
+                                <a href={exp.receipt_url} target="_blank" rel="noopener noreferrer" className="text-primary underline text-xs">
+                                  Ver
+                                </a>
+                              )}
+                              {!isClosed && (
+                                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => deleteExpense(exp.id)}>
+                                  <Trash2 className="h-3 w-3 text-destructive" />
+                                </Button>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {!isClosed && (
+                      <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto_auto_auto] gap-2 items-end">
+                        <Input
+                          placeholder="Nombre adicional"
+                          value={getExpenseInput('__general__').name}
+                          onChange={(e) => setNewExpenses(prev => ({ ...prev, ['__general__']: { ...getExpenseInput('__general__'), name: e.target.value } }))}
+                          className="h-8 text-xs"
+                        />
+                        <Input
+                          type="number"
+                          placeholder="Valor CLP"
+                          value={getExpenseInput('__general__').amount}
+                          onChange={(e) => setNewExpenses(prev => ({ ...prev, ['__general__']: { ...getExpenseInput('__general__'), amount: e.target.value } }))}
+                          className="h-8 text-xs w-full sm:w-[100px]"
+                        />
+                        <label className="cursor-pointer flex items-center gap-1 text-xs text-muted-foreground border rounded px-2 py-1 h-8 hover:bg-muted">
+                          <Upload className="h-3 w-3" />
+                          {getExpenseInput('__general__').file ? getExpenseInput('__general__').file!.name.substring(0, 10) + '...' : 'Comprobante'}
+                          <input
+                            type="file"
+                            className="hidden"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0] ?? null;
+                              setNewExpenses(prev => ({ ...prev, ['__general__']: { ...getExpenseInput('__general__'), file } }));
+                            }}
+                          />
+                        </label>
+                        <Button size="sm" variant="outline" className="h-8" onClick={() => addExpense(null)}>
+                          <Plus className="h-3 w-3 mr-1" />
+                          Agregar
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Per-accreditor expenses */}
                   {attendanceRows.map((row) => {
                     const userExpenses = expenses?.filter(e => e.user_id === row.userId) ?? [];
                     const input = getExpenseInput(row.userId);
