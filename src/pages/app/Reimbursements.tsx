@@ -523,7 +523,7 @@ export default function ReimbursementsPage() {
                               <TableHead className="text-right">Monto</TableHead>
                               <TableHead>Comprobante</TableHead>
                               <TableHead>Estado</TableHead>
-                              {(isSuperadmin || (isSupervisor && !isReimbursementClosed)) && <TableHead className="w-[120px]">Acciones</TableHead>}
+                              {(isSuperadmin || ((isSupervisor || isAdmin) && !isReimbursementClosed)) && <TableHead className="w-[120px]">Acciones</TableHead>}
                             </TableRow>
                           </TableHeader>
                           <TableBody>
@@ -552,7 +552,7 @@ export default function ReimbursementsPage() {
                                     )}
                                   </TableCell>
                                 )}
-                                {isSupervisor && !isReimbursementClosed && (
+{(isSupervisor || isAdmin) && !isReimbursementClosed && (
                                   <TableCell>
                                     {exp.created_by === user!.id && !exp.user_id && (
                                       <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => deleteExpense(exp.id)} title="Eliminar">
@@ -571,7 +571,7 @@ export default function ReimbursementsPage() {
                       )}
                     </>
                   )}
-                  {isSupervisor && !isReimbursementClosed && (
+                  {(isSupervisor || isAdmin) && !isReimbursementClosed && (
                     <div className="p-4 border-t">
                       {showAddForm === event.id ? (
                         <div className="space-y-3">
