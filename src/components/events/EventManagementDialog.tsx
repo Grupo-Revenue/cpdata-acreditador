@@ -46,12 +46,14 @@ interface AttendanceRow {
 
 interface ExpenseRow {
   id?: string;
-  userId: string;
+  userId: string | null;
   name: string;
   amount: number;
   receiptUrl: string | null;
   approvalStatus: string;
 }
+
+type ExpenseInputKey = string; // visually: userId or '__general__'
 
 export function EventManagementDialog({ open, onOpenChange, hubspotDealId, dealName }: EventManagementDialogProps) {
   const { user } = useAuth();
