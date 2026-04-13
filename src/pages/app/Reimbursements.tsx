@@ -535,6 +535,39 @@ export default function ReimbursementsPage() {
                                 <TableCell>
                                   {exp.receipt_url ? (
                                     <a href={exp.receipt_url} target="_blank" rel="noopener noreferrer" className="text-primary underline text-sm">Ver</a>
+                                  ) : (isSupervisor && !isReimbursementClosed) ? (
+                                    <label className="cursor-pointer inline-flex items-center gap-1 text-xs text-primary hover:underline">
+                                      <Upload className="h-3 w-3" />
+                                      Subir
+                                      <input
+                                        type="file"
+                                        className="hidden"
+                                        accept="image/*,.pdf"
+                                        onChange={async (e) => {
+                                          const file = e.target.files?.[0];
+                                          if (!file) return;
+                                          const filePath = `${user!.id}/${Date.now()}_${file.name}`;
+                                          const { error: uploadErr } = await supabase.storage
+                                            .from('expense-receipts')
+                                            .upload(filePath, file);
+                                          if (uploadErr) {
+                                            toast({ title: 'Error', description: 'No se pudo subir el comprobante.', variant: 'destructive' });
+                                            return;
+                                          }
+                                          const { data: urlData } = supabase.storage.from('expense-receipts').getPublicUrl(filePath);
+                                          const { error: updateErr } = await supabase
+                                            .from('event_expenses')
+                                            .update({ receipt_url: urlData.publicUrl })
+                                            .eq('id', exp.id);
+                                          if (updateErr) {
+                                            toast({ title: 'Error', description: 'No se pudo actualizar el comprobante.', variant: 'destructive' });
+                                            return;
+                                          }
+                                          toast({ title: 'Comprobante subido' });
+                                          queryClient.invalidateQueries({ queryKey: ['reimbursement-expenses'] });
+                                        }}
+                                      />
+                                    </label>
                                   ) : '—'}
                                 </TableCell>
                                 <TableCell>{getStatusBadge(exp.approval_status)}</TableCell>
