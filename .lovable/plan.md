@@ -1,18 +1,37 @@
 
 
-## Plan: Permitir a superadmin y administracion agregar gastos en rendiciones
+## Plan: Gastos generales del evento en Gestión de Evento
 
 ### Problema
-Actualmente solo el rol `supervisor` puede agregar gastos adicionales en la vista de rendiciones. Los roles `superadmin` y `administracion` solo pueden ver y aprobar/rechazar, pero no agregar.
+Actualmente la sección "Adicionales (Gastos)" solo muestra gastos por acreditador (itera sobre `attendanceRows`). Si no hay acreditadores aceptados con contrato firmado, no se puede agregar ningún gasto.
 
-### Cambios en `src/pages/app/Reimbursements.tsx`
+### Cambio en `src/components/events/EventManagementDialog.tsx`
 
-1. **Formulario de agregar gasto (linea 574)**: Cambiar la condicion `isSupervisor && !isReimbursementClosed` a `(isSupervisor || isAdmin) && !isReimbursementClosed` para que el boton "Agregar adicional" y el formulario aparezcan tambien para superadmin y administracion.
+1. **Agregar formulario de gasto general** debajo de los gastos por acreditador (o como única sección si no hay acreditadores). Este formulario permite agregar gastos con `user_id = null` (gasto a nivel de evento, no asociado a persona).
 
-2. **Columna de acciones en tabla (linea 526)**: Actualizar la condicion del `<TableHead>` de acciones para incluir `isAdmin` cuando la rendicion no esta cerrada, de modo que admin pueda ver botones de eliminar sus propios gastos.
+2. **Mostrar gastos generales existentes**: Filtrar `expenses` donde `user_id IS NULL` y renderizarlos en una sección "Gastos generales del evento" con nombre, monto, comprobante y botón eliminar.
 
-3. **Celda de eliminar (linea 555-562)**: Agregar una celda de acciones para `isAdmin && !isReimbursementClosed` que permita eliminar gastos creados por el admin (misma logica: `exp.created_by === user!.id`).
+3. **Formulario**: Input nombre, input monto, botón comprobante, botón agregar. Reutiliza la misma función `addExpense` pero pasando `null` como userId.
 
-### Archivos a modificar
-- `src/pages/app/Reimbursements.tsx` (unico archivo)
+4. **Ajustar `addExpense`**: Modificar para que acepte `userId: string | null` y pase `user_id: userId` (o omitirlo si es null, dado que la columna es nullable).
+
+### Diseño visual
+```text
+Adicionales (Gastos)
+  ┌─────────────────────────────────────────┐
+  │ Gastos generales del evento             │
+  │  Transporte  $15.000  [Ver] [🗑]        │
+  │  [Nombre___] [$____] [Comprobante] [+]  │
+  └─────────────────────────────────────────┘
+  
+  (gastos por acreditador, si los hay)
+  ┌─────────────────────────────────────────┐
+  │ Juan Pérez                              │
+  │  Almuerzo  $8.000  [Ver] [🗑]           │
+  │  [Nombre___] [$____] [Comprobante] [+]  │
+  └─────────────────────────────────────────┘
+```
+
+### Archivo a modificar
+- `src/components/events/EventManagementDialog.tsx` (único archivo)
 
