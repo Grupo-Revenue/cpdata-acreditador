@@ -38,6 +38,7 @@ const PAGE_SIZE = 5;
 export function EventsUserTable({ deals, isSupervisor, userId }: EventsUserTableProps) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const isMobile = useIsMobile();
   const [currentPage, setCurrentPage] = useState(1);
   const [managementOpen, setManagementOpen] = useState(false);
   const [selectedDeal, setSelectedDeal] = useState<HubSpotDeal | null>(null);
