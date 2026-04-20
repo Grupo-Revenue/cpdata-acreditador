@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious, PaginationEllipsis } from '@/components/ui/pagination';
 import { PenTool, ClipboardList, Download, Send } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { EventManagementDialog } from './EventManagementDialog';
 import { DigitalSignatureDialog } from './DigitalSignatureDialog';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
