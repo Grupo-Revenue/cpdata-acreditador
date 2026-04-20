@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious, PaginationEllipsis } from '@/components/ui/pagination';
 import { PenTool, ClipboardList, Download, Send } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { EventManagementDialog } from './EventManagementDialog';
 import { DigitalSignatureDialog } from './DigitalSignatureDialog';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
@@ -37,6 +38,7 @@ const PAGE_SIZE = 5;
 export function EventsUserTable({ deals, isSupervisor, userId }: EventsUserTableProps) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const isMobile = useIsMobile();
   const [currentPage, setCurrentPage] = useState(1);
   const [managementOpen, setManagementOpen] = useState(false);
   const [selectedDeal, setSelectedDeal] = useState<HubSpotDeal | null>(null);
@@ -216,6 +218,84 @@ export function EventsUserTable({ deals, isSupervisor, userId }: EventsUserTable
         <Input placeholder="Filtrar Estado Evento..." value={filters.estadoEvento} onChange={(e) => updateFilter('estadoEvento', e.target.value)} className="h-8 text-xs" />
         <Input placeholder="Filtrar Estado..." value={filters.estado} onChange={(e) => updateFilter('estado', e.target.value)} className="h-8 text-xs" />
       </div>
+      {isMobile ? (
+        <div className="space-y-3">
+          {paginatedDeals.length === 0 ? (
+            <Card><CardContent className="p-6 text-center text-muted-foreground text-sm">No se encontraron eventos.</CardContent></Card>
+          ) : (
+            paginatedDeals.map((deal) => {
+              const status = getDisplayStatus(deal.id);
+              const evStatus = getEventStatusBadge(deal.id);
+              const signed = hasSigned(deal.id);
+              const signEnabled = isSignEnabled(deal.id);
+              const amount = getPaymentAmount(deal.id);
+              return (
+                <Card key={deal.id}>
+                  <CardContent className="p-4 space-y-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0 flex-1">
+                        <div className="font-semibold text-sm truncate">
+                          {deal.nombre_del_evento ?? deal.dealname ?? '—'}
+                        </div>
+                        <div className="text-xs text-muted-foreground truncate">Id: {deal.dealname ?? '—'}</div>
+                      </div>
+                      <div className="flex flex-col gap-1 items-end">
+                        <Badge variant="outline" className={evStatus.className}>{evStatus.label}</Badge>
+                        <Badge variant="outline" className={status.color}>{status.label}</Badge>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-x-3 gap-y-2 text-xs">
+                      <div>
+                        <div className="text-muted-foreground">Tipo</div>
+                        <div className="font-medium truncate">{deal.tipo_de_evento ?? '—'}</div>
+                      </div>
+                      <div>
+                        <div className="text-muted-foreground">Fecha</div>
+                        <div className="font-medium truncate">{deal.fecha_inicio_del_evento ?? '—'}</div>
+                      </div>
+                      <div className="col-span-2">
+                        <div className="text-muted-foreground">Locación</div>
+                        <div className="font-medium truncate">{deal.locacion_del_evento ?? '—'}</div>
+                      </div>
+                      <div className="col-span-2">
+                        <div className="text-muted-foreground">Horario</div>
+                        <div className="font-medium truncate">{deal.hora_de_inicio_y_fin_del_evento ?? '—'}</div>
+                      </div>
+                      <div className="col-span-2">
+                        <div className="text-muted-foreground">Monto</div>
+                        <div className="font-semibold">{amount !== null ? formatCurrency(amount) : '—'}</div>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2 pt-2 border-t">
+                      {canApply(deal.id) && (
+                        <Button variant="outline" size="sm" className="h-10 text-xs" onClick={() => setApplyDeal(deal)}>
+                          <Send className="h-4 w-4" /> Postular
+                        </Button>
+                      )}
+                      {signed ? (
+                        <Button variant="outline" size="sm" className="h-10 text-xs" onClick={() => handleSignatureClick(deal)}>
+                          <Download className="h-4 w-4" /> Descargar contrato
+                        </Button>
+                      ) : (
+                        <Button variant="outline" size="sm" className="h-10 text-xs" onClick={() => handleSignatureClick(deal)} disabled={!signEnabled}>
+                          <PenTool className="h-4 w-4" /> Firmar
+                        </Button>
+                      )}
+                      {isSupervisor && (
+                        <Button variant="outline" size="sm" className="h-10 text-xs" onClick={() => handleGestionEvento(deal)}>
+                          <ClipboardList className="h-4 w-4" /> Gestión
+                        </Button>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })
+          )}
+        </div>
+      ) : (
       <Card>
         <CardContent className="p-0">
           <Table>
@@ -300,7 +380,7 @@ export function EventsUserTable({ deals, isSupervisor, userId }: EventsUserTable
           </Table>
         </CardContent>
       </Card>
-
+      )}
       {totalPages > 1 && (
         <Pagination className="mt-4">
           <PaginationContent>

@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious, PaginationEllipsis } from '@/components/ui/pagination';
 import { Pencil, Users, Download, FileDown, MessageSquare, DollarSign } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { supabase } from '@/integrations/supabase/client';
 import { jsPDF } from 'jspdf';
 import { useToast } from '@/hooks/use-toast';
@@ -52,6 +53,7 @@ const PAGE_SIZE = 5;
 export function EventsAdminTable({ deals }: EventsAdminTableProps) {
   const { hasRole } = useAuth();
   const { toast } = useToast();
+  const isMobile = useIsMobile();
   const canEdit = hasRole('superadmin') || hasRole('administracion');
   const canAssignTeam = hasRole('superadmin') || hasRole('administracion');
 
@@ -178,6 +180,90 @@ export function EventsAdminTable({ deals }: EventsAdminTableProps) {
           Descargar Todos los Contratos
         </Button>
       </div>
+      {isMobile ? (
+        <div className="space-y-3">
+          {paginatedDeals.map((deal) => {
+            const evStatus = getEventStatusBadge(deal.id);
+            return (
+              <Card key={deal.id}>
+                <CardContent className="p-4 space-y-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0 flex-1">
+                      <div className="font-semibold text-sm truncate">
+                        {deal.nombre_del_evento ?? deal.dealname ?? '—'}
+                      </div>
+                      <div className="text-xs text-muted-foreground truncate">
+                        Id: {deal.dealname ?? '—'}
+                      </div>
+                    </div>
+                    <Badge variant="outline" className={evStatus.className}>
+                      {evStatus.label}
+                    </Badge>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-x-3 gap-y-2 text-xs">
+                    <div>
+                      <div className="text-muted-foreground">Tipo</div>
+                      <div className="font-medium truncate">{deal.tipo_de_evento ?? '—'}</div>
+                    </div>
+                    <div>
+                      <div className="text-muted-foreground">Asistentes</div>
+                      <div className="font-medium truncate">{deal.cantidad_de_asistentes ?? '—'}</div>
+                    </div>
+                    <div className="col-span-2">
+                      <div className="text-muted-foreground">Locación</div>
+                      <div className="font-medium truncate">{deal.locacion_del_evento ?? '—'}</div>
+                    </div>
+                    <div>
+                      <div className="text-muted-foreground">Fecha Inicio</div>
+                      <div className="font-medium truncate">{deal.fecha_inicio_del_evento ?? '—'}</div>
+                    </div>
+                    <div>
+                      <div className="text-muted-foreground">Fecha Fin</div>
+                      <div className="font-medium truncate">{deal.fecha_fin_del_evento ?? '—'}</div>
+                    </div>
+                    <div className="col-span-2">
+                      <div className="text-muted-foreground">Horario</div>
+                      <div className="font-medium truncate">{deal.hora_de_inicio_y_fin_del_evento ?? '—'}</div>
+                    </div>
+                    {deal.dealstage && (
+                      <div className="col-span-2">
+                        <div className="text-muted-foreground mb-1">Etapa</div>
+                        <Badge variant="outline" className={getStageBadgeClass(deal.dealstage)}>
+                          {deal.dealstage}
+                        </Badge>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2 pt-2 border-t">
+                    {canEdit && (
+                      <Button variant="outline" size="sm" className="h-10 text-xs" onClick={() => { setEditingDeal(deal); setEditDialogOpen(true); }}>
+                        <Pencil className="h-4 w-4" /> Editar
+                      </Button>
+                    )}
+                    {canAssignTeam && (
+                      <Button variant="outline" size="sm" className="h-10 text-xs" onClick={() => { setTeamDeal(deal); setTeamDialogOpen(true); }}>
+                        <Users className="h-4 w-4" /> Equipo
+                      </Button>
+                    )}
+                    {canEdit && (
+                      <Button variant="outline" size="sm" className="h-10 text-xs" onClick={() => downloadContractsForDeal(deal)}>
+                        <Download className="h-4 w-4" /> Contratos
+                      </Button>
+                    )}
+                    {canEdit && (
+                      <Button variant="outline" size="sm" className="h-10 text-xs" onClick={() => { setExpensesDeal(deal); setExpensesDialogOpen(true); }}>
+                        <DollarSign className="h-4 w-4" /> Adicionales
+                      </Button>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      ) : (
       <Card>
         <CardContent className="p-0 overflow-x-auto">
           <Table className="min-w-[900px]">
@@ -252,6 +338,7 @@ export function EventsAdminTable({ deals }: EventsAdminTableProps) {
           </Table>
         </CardContent>
       </Card>
+      )}
 
       {totalPages > 1 && (
         <Pagination className="mt-4">
