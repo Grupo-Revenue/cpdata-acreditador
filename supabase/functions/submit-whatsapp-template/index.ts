@@ -207,12 +207,32 @@ Deno.serve(async (req) => {
     console.log("Meta API response:", JSON.stringify(metaData));
 
     if (!metaRes.ok) {
-      const errorMsg =
-        metaData?.error?.message || "Error desconocido de Meta API";
+      const metaError = metaData?.error;
+      const subcode = metaError?.error_subcode;
+      const userMsg = metaError?.error_user_msg;
+      const userTitle = metaError?.error_user_title;
+
+      // Specific case: 24h edit cooldown
+      let friendlyMsg: string;
+      if (subcode === 2388124) {
+        friendlyMsg =
+          userMsg ||
+          "Solo puedes editar una plantilla activa una vez cada 24 horas. Intenta nuevamente más tarde.";
+      } else if (userMsg) {
+        friendlyMsg = userTitle ? `${userTitle}: ${userMsg}` : userMsg;
+      } else {
+        friendlyMsg = metaError?.message || "Error desconocido de Meta API";
+      }
+
+      // Return 200 so frontend reads the body cleanly instead of hitting a generic 400 handler
       return new Response(
-        JSON.stringify({ error: errorMsg, meta_error: metaData?.error }),
+        JSON.stringify({
+          ok: false,
+          error: friendlyMsg,
+          meta_error: metaError,
+        }),
         {
-          status: 400,
+          status: 200,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         }
       );
