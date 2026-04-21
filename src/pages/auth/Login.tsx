@@ -73,7 +73,12 @@ export default function LoginPage() {
                     <Input 
                       placeholder="correo@ejemplo.cl" 
                       className="pl-10"
-                      {...field} 
+                      {...field}
+                      onChange={(e) => field.onChange(e.target.value.trim())}
+                      onBlur={(e) => {
+                        field.onChange(e.target.value.trim());
+                        field.onBlur();
+                      }}
                     />
                   </div>
                 </FormControl>
