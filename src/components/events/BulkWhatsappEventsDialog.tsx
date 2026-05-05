@@ -177,19 +177,20 @@ export function BulkWhatsappEventsDialog({ open, onOpenChange }: BulkWhatsappEve
               <p className="text-sm text-muted-foreground text-center py-8">No se encontraron usuarios con teléfono.</p>
             ) : (
               filtered.map(user => (
-                <label
+                <div
                   key={user.id}
+                  onClick={() => toggleUser(user.id)}
                   className="flex items-center gap-3 px-2 py-2 rounded hover:bg-muted/50 cursor-pointer"
                 >
                   <Checkbox
                     checked={selectedIds.has(user.id)}
-                    onCheckedChange={() => toggleUser(user.id)}
+                    className="pointer-events-none"
                   />
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium truncate">{user.nombre} {user.apellido}</p>
                     <p className="text-xs text-muted-foreground">{user.telefono} · {user.role}</p>
                   </div>
-                </label>
+                </div>
               ))
             )}
           </ScrollArea>
