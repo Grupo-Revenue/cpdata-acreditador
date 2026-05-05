@@ -1,47 +1,47 @@
-## Plan: Sincronizar contrato firmado con asistencia
+## Problema
 
-### Diagnóstico
-Hay 3 firmas en `digital_signatures` para el evento `76614149...`, pero las filas correspondientes en `event_accreditors` siguen con `contract_status='pendiente'`. Como el diálogo de Gestión filtra por `application_status='aceptado' AND contract_status='firmado'` (línea 101 de `EventManagementDialog.tsx`), esos acreditadores nunca aparecen para registrar asistencia.
+En el diálogo "Envío Masivo — Eventos Disponibles" (`BulkWhatsappEventsDialog.tsx`), al hacer clic sobre un acreditador no se logra seleccionar (parece que nada cambia, o se "deselecciona" inmediatamente).
 
-**Causa raíz:** Tras insertar la firma, `DigitalSignatureDialog.tsx` ejecuta un `UPDATE event_accreditors SET contract_status='firmado'` desde el cliente. Ese UPDATE no genera error pero queda como no-op silencioso (0 filas afectadas) en algunos casos por timing/contexto de RLS. Al no haber excepción, la UI marca la firma como exitosa pero la tabla operativa nunca se actualiza.
+## Causa raíz
 
-### Solución
+Cada fila usa un `<label>` envolviendo el `<Checkbox>` de Radix:
 
-**1. Trigger en base de datos (fuente de verdad)**
-Crear un trigger `AFTER INSERT` en `digital_signatures` que actualice automáticamente `event_accreditors.contract_status='firmado'` para el `(user_id, event_id)` correspondiente. Es `SECURITY DEFINER`, se ejecuta server-side y elimina cualquier dependencia del cliente o de RLS.
-
-```sql
-CREATE OR REPLACE FUNCTION public.sync_contract_signed()
-RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
-BEGIN
-  UPDATE public.event_accreditors
-  SET contract_status = 'firmado'
-  WHERE user_id = NEW.user_id AND event_id = NEW.event_id;
-  RETURN NEW;
-END;$$;
-
-CREATE TRIGGER trg_sync_contract_signed
-AFTER INSERT ON public.digital_signatures
-FOR EACH ROW EXECUTE FUNCTION public.sync_contract_signed();
+```tsx
+<label ...>
+  <Checkbox checked={...} onCheckedChange={() => toggleUser(user.id)} />
+  ...
+</label>
 ```
 
-**2. Backfill de las firmas existentes**
-```sql
-UPDATE event_accreditors ea
-SET contract_status='firmado'
-FROM digital_signatures ds
-WHERE ds.user_id=ea.user_id AND ds.event_id=ea.event_id
-  AND ea.contract_status<>'firmado';
+Esto provoca el clásico **doble disparo** de evento: al hacer clic sobre el `Checkbox`, Radix dispara `onCheckedChange` una vez; el evento `click` además burbujea al `<label>`, que reenvía un segundo `click` al control asociado, disparando `onCheckedChange` por segunda vez. Resultado: el ítem se marca y desmarca en el mismo clic, por eso "no permite seleccionar más de uno" (ni siquiera uno).
+
+## Solución
+
+Reemplazar el `<label>` por un `<div>` con `onClick={() => toggleUser(user.id)}`, y poner el `Checkbox` en modo no interactivo (`pointer-events-none`) para que sea un solo manejador de click el que dispare la selección.
+
+### Cambio en `src/components/events/BulkWhatsappEventsDialog.tsx`
+
+```tsx
+filtered.map(user => (
+  <div
+    key={user.id}
+    onClick={() => toggleUser(user.id)}
+    className="flex items-center gap-3 px-2 py-2 rounded hover:bg-muted/50 cursor-pointer"
+  >
+    <Checkbox
+      checked={selectedIds.has(user.id)}
+      className="pointer-events-none"
+    />
+    <div className="flex-1 min-w-0">
+      <p className="text-sm font-medium truncate">{user.nombre} {user.apellido}</p>
+      <p className="text-xs text-muted-foreground">{user.telefono} · {user.role}</p>
+    </div>
+  </div>
+))
 ```
 
-**3. Limpieza menor en `DigitalSignatureDialog.tsx`**
-Quitar el `UPDATE` redundante del cliente (ahora lo hace el trigger). Mantener el `onSigned?.()` y la invalidación de queries.
+Con esto cada clic dispara `toggleUser` exactamente una vez y se podrán seleccionar múltiples acreditadores sin problema.
 
-### Lo que NO cambia
-- Reglas de visibilidad (sigue requiriendo `application_status='aceptado'`).
-- Flujo de aceptación de postulantes ni RLS existente.
-- UI de la firma ni del módulo de gestión.
+## Archivos
 
-### Archivos
-- **Migración SQL** (trigger + backfill).
-- **Modificar** `src/components/events/DigitalSignatureDialog.tsx` (eliminar update redundante).
+- **Modificar**: `src/components/events/BulkWhatsappEventsDialog.tsx` (solo el bloque del `map` de la lista).
