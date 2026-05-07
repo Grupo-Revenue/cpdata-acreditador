@@ -17,6 +17,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -28,7 +29,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Check, X, ChevronLeft, ChevronRight, Eye, MessageSquare } from 'lucide-react';
+import { Check, X, ChevronLeft, ChevronRight, Eye, MessageSquare, Undo2 } from 'lucide-react';
 import { ApplicantProfileDialog, ProfileData } from './ApplicantProfileDialog';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 
@@ -53,6 +54,8 @@ interface Applicant {
   shift: string | null;
 }
 
+type TabKey = 'postulantes' | 'porAceptar' | 'pendienteFirma' | 'firmados';
+
 const PAGE_SIZE = 10;
 
 const statusStyles: Record<string, string> = {
@@ -74,6 +77,7 @@ const statusLabels: Record<string, string> = {
 export function EventApplicantsDialog({ open, onOpenChange }: EventApplicantsDialogProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [activeTab, setActiveTab] = useState<TabKey>('postulantes');
   const [page, setPage] = useState(0);
   const [viewingProfile, setViewingProfile] = useState<ProfileData | null>(null);
   const [acceptingApplicant, setAcceptingApplicant] = useState<Applicant | null>(null);
@@ -82,12 +86,13 @@ export function EventApplicantsDialog({ open, onOpenChange }: EventApplicantsDia
     nombre: '',
     evento: '__all__',
     rol: '__all__',
-    applicationStatus: '__all__',
-    contractStatus: '__all__',
     ranking: '',
   });
   const [bulkFirmaPendienteConfirmOpen, setBulkFirmaPendienteConfirmOpen] = useState(false);
   const [sendingFirmaPendiente, setSendingFirmaPendiente] = useState(false);
+  const [bulkRecordarPostularOpen, setBulkRecordarPostularOpen] = useState(false);
+  const [sendingRecordarPostular, setSendingRecordarPostular] = useState(false);
+  const [cancelingAccept, setCancelingAccept] = useState<Applicant | null>(null);
 
   const { data: rawData, isLoading } = useQuery({
     queryKey: ['event-applicants'],
@@ -128,7 +133,6 @@ export function EventApplicantsDialog({ open, onOpenChange }: EventApplicantsDia
     },
   });
 
-
   const hubspotDealMap = useMemo(() => {
     const map = new Map<string, any>();
     for (const deal of hubspotDeals ?? []) {
@@ -166,14 +170,58 @@ export function EventApplicantsDialog({ open, onOpenChange }: EventApplicantsDia
 
   const eventNames = useMemo(() => [...new Set(applicants.map((a) => a.event_name))].sort(), [applicants]);
 
-  const pendingContractApplicants = useMemo(() => {
-    return applicants.filter(
-      (a) =>
-        a.application_status === 'aceptado' &&
-        a.contract_status === 'pendiente' &&
-        profiles?.find((p) => p.id === a.user_id)?.telefono
+  // ---------- Tab partitions ----------
+  const lists = useMemo(() => {
+    const postulantes = applicants.filter((a) => a.application_status === 'pendiente');
+    const porAceptar = applicants.filter((a) => a.application_status === 'asignado');
+    const pendienteFirma = applicants.filter(
+      (a) => a.application_status === 'aceptado' && a.contract_status !== 'firmado'
     );
-  }, [applicants, profiles]);
+    const firmados = applicants.filter((a) => a.contract_status === 'firmado');
+    return { postulantes, porAceptar, pendienteFirma, firmados };
+  }, [applicants]);
+
+  const applyFilters = useCallback(
+    (list: Applicant[]) => {
+      let result = list;
+      if (filters.nombre) {
+        const q = filters.nombre.toLowerCase();
+        result = result.filter((a) => `${a.nombre} ${a.apellido}`.toLowerCase().includes(q));
+      }
+      if (filters.evento !== '__all__') result = result.filter((a) => a.event_name === filters.evento);
+      if (filters.rol !== '__all__') result = result.filter((a) => a.role === filters.rol);
+      if (filters.ranking) {
+        const val = Number(filters.ranking);
+        if (!isNaN(val)) result = result.filter((a) => a.ranking !== null && a.ranking >= val);
+      }
+      return result;
+    },
+    [filters]
+  );
+
+  const activeList = useMemo(() => {
+    return applyFilters(lists[activeTab]);
+  }, [lists, activeTab, applyFilters]);
+
+  const totalPages = Math.max(1, Math.ceil(activeList.length / PAGE_SIZE));
+  const paginated = activeList.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
+
+  const setFilter = (key: string, value: string) => {
+    setFilters((prev) => ({ ...prev, [key]: value }));
+    setPage(0);
+  };
+
+  const handleTabChange = (v: string) => {
+    setActiveTab(v as TabKey);
+    setPage(0);
+  };
+
+  // ---------- Bulk WhatsApp: firma pendiente ----------
+  const pendingContractApplicants = useMemo(() => {
+    return lists.pendienteFirma.filter(
+      (a) => profiles?.find((p) => p.id === a.user_id)?.telefono
+    );
+  }, [lists.pendienteFirma, profiles]);
 
   const handleBulkFirmaPendiente = useCallback(async () => {
     setSendingFirmaPendiente(true);
@@ -204,31 +252,43 @@ export function EventApplicantsDialog({ open, onOpenChange }: EventApplicantsDia
     });
   }, [pendingContractApplicants, profiles, toast]);
 
-  const filtered = useMemo(() => {
-    let result = applicants;
-    if (filters.nombre) {
-      const q = filters.nombre.toLowerCase();
-      result = result.filter((a) => `${a.nombre} ${a.apellido}`.toLowerCase().includes(q));
+  // ---------- Bulk WhatsApp: recordar postulación ----------
+  const recordarPostularApplicants = useMemo(() => {
+    return lists.porAceptar.filter(
+      (a) => profiles?.find((p) => p.id === a.user_id)?.telefono
+    );
+  }, [lists.porAceptar, profiles]);
+
+  const handleBulkRecordarPostular = useCallback(async () => {
+    setSendingRecordarPostular(true);
+    let sent = 0;
+    let failed = 0;
+    for (const a of recordarPostularApplicants) {
+      const profile = profiles?.find((p) => p.id === a.user_id);
+      if (!profile?.telefono) continue;
+      try {
+        await supabase.functions.invoke('send-whatsapp-message', {
+          body: {
+            template_name: 'msg_postular',
+            template_language: 'es',
+            to_phone: profile.telefono,
+            parameters: [a.nombre],
+          },
+        });
+        sent++;
+      } catch {
+        failed++;
+      }
     }
-    if (filters.evento !== '__all__') result = result.filter((a) => a.event_name === filters.evento);
-    if (filters.rol !== '__all__') result = result.filter((a) => a.role === filters.rol);
-    if (filters.applicationStatus !== '__all__') result = result.filter((a) => a.application_status === filters.applicationStatus);
-    if (filters.contractStatus !== '__all__') result = result.filter((a) => a.contract_status === filters.contractStatus);
-    if (filters.ranking) {
-      const val = Number(filters.ranking);
-      if (!isNaN(val)) result = result.filter((a) => a.ranking !== null && a.ranking >= val);
-    }
-    return result;
-  }, [applicants, filters]);
+    setSendingRecordarPostular(false);
+    setBulkRecordarPostularOpen(false);
+    toast({
+      title: 'Envío completado',
+      description: `${sent} mensaje(s) enviado(s)${failed > 0 ? `, ${failed} fallido(s)` : ''}.`,
+    });
+  }, [recordarPostularApplicants, profiles, toast]);
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-  const paginated = filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
-
-  const setFilter = (key: string, value: string) => {
-    setFilters((prev) => ({ ...prev, [key]: value }));
-    setPage(0);
-  };
-
+  // ---------- Aceptar (válido tanto para 'pendiente' como 'asignado') ----------
   const handleConfirmAccept = async () => {
     if (!acceptingApplicant) return;
     const amount = Number(paymentAmount);
@@ -255,9 +315,7 @@ export function EventApplicantsDialog({ open, onOpenChange }: EventApplicantsDia
     const conflictingEvent = (conflicts ?? []).find((c: any) => {
       if (c.events?.event_date !== applicant.event_date) return false;
       const existingShift = c.shift as string | null;
-      // If either is full day or null, always conflicts
       if (!currentShift || currentShift === 'Día Completo' || !existingShift || existingShift === 'Día Completo') return true;
-      // Same shift conflicts
       return currentShift === existingShift;
     });
 
@@ -281,15 +339,13 @@ export function EventApplicantsDialog({ open, onOpenChange }: EventApplicantsDia
       return;
     }
 
-    // Sync invoice amount
     await supabase
       .from('invoices')
       .update({ amount } as any)
       .eq('user_id', applicant.user_id)
       .eq('event_id', applicant.event_id);
 
-    // Send WhatsApp notification (fire-and-forget)
-    const profile = profiles?.find(p => p.id === applicant.user_id);
+    const profile = profiles?.find((p) => p.id === applicant.user_id);
     if (profile?.telefono) {
       supabase.functions.invoke('send-whatsapp-message', {
         body: {
@@ -322,30 +378,159 @@ export function EventApplicantsDialog({ open, onOpenChange }: EventApplicantsDia
     }
   };
 
+  const handleCancelAccept = async () => {
+    if (!cancelingAccept) return;
+    const a = cancelingAccept;
+    const { error } = await supabase
+      .from('event_accreditors')
+      .update({ application_status: 'asignado' } as any)
+      .eq('id', a.id);
+    if (error) {
+      toast({ title: 'Error', description: 'No se pudo cancelar la aceptación.', variant: 'destructive' });
+    } else {
+      toast({ title: 'Aceptación cancelada', description: `${a.nombre} ${a.apellido} vuelve a "Por aceptar".` });
+      queryClient.invalidateQueries({ queryKey: ['event-applicants'] });
+    }
+    setCancelingAccept(null);
+  };
+
+  const openProfile = (a: Applicant) => {
+    const profile = profiles?.find((p) => p.id === a.user_id);
+    if (!profile) return;
+    setViewingProfile({
+      nombre: profile.nombre,
+      apellido: profile.apellido,
+      rut: profile.rut,
+      email: profile.email,
+      telefono: profile.telefono,
+      referencia_contacto: profile.referencia_contacto,
+      idioma: profile.idioma,
+      altura: profile.altura,
+      universidad: profile.universidad,
+      carrera: profile.carrera,
+      banco: profile.banco,
+      numero_cuenta: profile.numero_cuenta,
+      tipo_cuenta: profile.tipo_cuenta,
+      ranking: profile.ranking,
+      foto_url: profile.foto_url,
+      role: a.role,
+    });
+  };
+
+  const renderActions = (a: Applicant) => {
+    const profileBtn = (
+      <Button
+        variant="ghost"
+        size="icon"
+        className="h-7 w-7 text-muted-foreground hover:text-foreground"
+        onClick={() => openProfile(a)}
+        title="Ver perfil"
+      >
+        <Eye className="h-4 w-4" />
+      </Button>
+    );
+
+    if (activeTab === 'postulantes' || activeTab === 'porAceptar') {
+      return (
+        <div className="flex gap-1">
+          {profileBtn}
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7 text-success hover:text-success/80"
+            onClick={() => {
+              setAcceptingApplicant(a);
+              setPaymentAmount(a.payment_amount ? String(a.payment_amount) : '');
+            }}
+            title="Aceptar"
+          >
+            <Check className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7 text-destructive hover:text-destructive/80"
+            onClick={() => handleReject(a)}
+            title="Rechazar"
+          >
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
+      );
+    }
+
+    if (activeTab === 'pendienteFirma') {
+      return (
+        <div className="flex gap-1">
+          {profileBtn}
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7 text-warning hover:text-warning/80"
+            onClick={() => setCancelingAccept(a)}
+            title="Cancelar aceptación"
+          >
+            <Undo2 className="h-4 w-4" />
+          </Button>
+        </div>
+      );
+    }
+
+    // firmados
+    return <div className="flex gap-1">{profileBtn}</div>;
+  };
+
+  const tabHeaderAction = () => {
+    if (activeTab === 'pendienteFirma') {
+      return (
+        <Button
+          variant="outline"
+          size="sm"
+          className="gap-2"
+          disabled={pendingContractApplicants.length === 0 || sendingFirmaPendiente}
+          onClick={() => setBulkFirmaPendienteConfirmOpen(true)}
+        >
+          <MessageSquare className="h-4 w-4" />
+          Recordar firma ({pendingContractApplicants.length})
+        </Button>
+      );
+    }
+    if (activeTab === 'porAceptar') {
+      return (
+        <Button
+          variant="outline"
+          size="sm"
+          className="gap-2"
+          disabled={recordarPostularApplicants.length === 0 || sendingRecordarPostular}
+          onClick={() => setBulkRecordarPostularOpen(true)}
+        >
+          <MessageSquare className="h-4 w-4" />
+          Recordar postulación ({recordarPostularApplicants.length})
+        </Button>
+      );
+    }
+    return null;
+  };
+
+  const tabLabel = (key: TabKey, label: string) => (
+    <span className="flex items-center gap-2">
+      {label}
+      <Badge variant="secondary" className="h-5 px-1.5 text-xs">
+        {applyFilters(lists[key]).length}
+      </Badge>
+    </span>
+  );
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <DialogTitle>Postulantes</DialogTitle>
-              <DialogDescription>Gestión de postulantes asignados a eventos</DialogDescription>
-            </div>
-            <Button
-              variant="outline"
-              size="sm"
-              className="gap-2"
-              disabled={pendingContractApplicants.length === 0 || sendingFirmaPendiente}
-              onClick={() => setBulkFirmaPendienteConfirmOpen(true)}
-            >
-              <MessageSquare className="h-4 w-4" />
-              Firma Pendiente ({pendingContractApplicants.length})
-            </Button>
-          </div>
+          <DialogTitle>Postulantes</DialogTitle>
+          <DialogDescription>Gestión del ciclo de postulación, aceptación y firma</DialogDescription>
         </DialogHeader>
 
         {/* Filters */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2">
+        <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-2">
           <Input
             placeholder="Nombre..."
             value={filters.nombre}
@@ -373,29 +558,6 @@ export function EventApplicantsDialog({ open, onOpenChange }: EventApplicantsDia
               <SelectItem value="Acreditador">Acreditador</SelectItem>
             </SelectContent>
           </Select>
-          <Select value={filters.applicationStatus} onValueChange={(v) => setFilter('applicationStatus', v)}>
-            <SelectTrigger className="h-8 text-xs">
-              <SelectValue placeholder="Postulación" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="__all__">Todos</SelectItem>
-              <SelectItem value="asignado">Asignado</SelectItem>
-              <SelectItem value="pendiente">Pendiente</SelectItem>
-              <SelectItem value="aceptado">Aceptado</SelectItem>
-              <SelectItem value="rechazado">Rechazado</SelectItem>
-            </SelectContent>
-          </Select>
-          <Select value={filters.contractStatus} onValueChange={(v) => setFilter('contractStatus', v)}>
-            <SelectTrigger className="h-8 text-xs">
-              <SelectValue placeholder="Contrato" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="__all__">Todos</SelectItem>
-              <SelectItem value="pendiente">Pendiente</SelectItem>
-              <SelectItem value="firmado">Firmado</SelectItem>
-              <SelectItem value="rechazado">Rechazado</SelectItem>
-            </SelectContent>
-          </Select>
           <Input
             placeholder="Ranking mín..."
             value={filters.ranking}
@@ -405,119 +567,78 @@ export function EventApplicantsDialog({ open, onOpenChange }: EventApplicantsDia
           />
         </div>
 
-        {/* Table */}
-        {isLoading ? (
-          <p className="text-center py-8 text-muted-foreground">Cargando...</p>
-        ) : filtered.length === 0 ? (
-          <p className="text-center py-8 text-muted-foreground">No se encontraron postulantes.</p>
-        ) : (
-          <>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Nombre</TableHead>
-                  <TableHead>Evento</TableHead>
-                  <TableHead>Rol</TableHead>
-                  <TableHead>Postulación</TableHead>
-                  <TableHead>Contrato</TableHead>
-                  <TableHead>Ranking</TableHead>
-                  <TableHead>Monto</TableHead>
-                  <TableHead>Acciones</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {paginated.map((a) => (
-                  <TableRow key={a.id}>
-                    <TableCell className="font-medium">{a.nombre} {a.apellido}</TableCell>
-                    <TableCell>{a.event_name}</TableCell>
-                    <TableCell>{a.role}</TableCell>
-                    <TableCell>
-                      <Badge variant="outline" className={cn(statusStyles[a.application_status])}>
-                        {statusLabels[a.application_status] ?? a.application_status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline" className={cn(statusStyles[a.contract_status])}>
-                        {statusLabels[a.contract_status] ?? a.contract_status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>{a.ranking ?? '—'}</TableCell>
-                    <TableCell>{a.payment_amount ? `$${a.payment_amount.toLocaleString()}` : '—'}</TableCell>
-                    <TableCell>
-                      <div className="flex gap-1">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-7 w-7 text-muted-foreground hover:text-foreground"
-                          onClick={() => {
-                            const profile = profiles?.find((p) => p.id === a.user_id);
-                            if (profile) {
-                              setViewingProfile({
-                                nombre: profile.nombre,
-                                apellido: profile.apellido,
-                                rut: profile.rut,
-                                email: profile.email,
-                                telefono: profile.telefono,
-                                referencia_contacto: profile.referencia_contacto,
-                                idioma: profile.idioma,
-                                altura: profile.altura,
-                                universidad: profile.universidad,
-                                carrera: profile.carrera,
-                                banco: profile.banco,
-                                numero_cuenta: profile.numero_cuenta,
-                                tipo_cuenta: profile.tipo_cuenta,
-                                ranking: profile.ranking,
-                                foto_url: profile.foto_url,
-                                role: a.role,
-                              });
-                            }
-                          }}
-                        >
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-7 w-7 text-success hover:text-success/80"
-                          onClick={() => {
-                            setAcceptingApplicant(a);
-                            setPaymentAmount(a.payment_amount ? String(a.payment_amount) : '');
-                          }}
-                          disabled={a.application_status !== 'pendiente'}
-                        >
-                          <Check className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-7 w-7 text-destructive hover:text-destructive/80"
-                          onClick={() => handleReject(a)}
-                          disabled={a.application_status === 'rechazado'}
-                        >
-                          <X className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+        <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
+          <div className="flex items-center justify-between gap-2 flex-wrap">
+            <TabsList>
+              <TabsTrigger value="postulantes">{tabLabel('postulantes', 'Postulantes')}</TabsTrigger>
+              <TabsTrigger value="porAceptar">{tabLabel('porAceptar', 'Por aceptar')}</TabsTrigger>
+              <TabsTrigger value="pendienteFirma">{tabLabel('pendienteFirma', 'Pendiente firma')}</TabsTrigger>
+              <TabsTrigger value="firmados">{tabLabel('firmados', 'Firmados')}</TabsTrigger>
+            </TabsList>
+            {tabHeaderAction()}
+          </div>
 
-            <div className="flex items-center justify-between pt-2">
-              <span className="text-xs text-muted-foreground">
-                {filtered.length} resultado{filtered.length !== 1 ? 's' : ''} · Página {page + 1} de {totalPages}
-              </span>
-              <div className="flex gap-1">
-                <Button variant="outline" size="icon" className="h-7 w-7" disabled={page === 0} onClick={() => setPage(page - 1)}>
-                  <ChevronLeft className="h-4 w-4" />
-                </Button>
-                <Button variant="outline" size="icon" className="h-7 w-7" disabled={page >= totalPages - 1} onClick={() => setPage(page + 1)}>
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
-          </>
-        )}
+          <TabsContent value={activeTab} className="mt-4">
+            {isLoading ? (
+              <p className="text-center py-8 text-muted-foreground">Cargando...</p>
+            ) : activeList.length === 0 ? (
+              <p className="text-center py-8 text-muted-foreground">No se encontraron registros en esta etapa.</p>
+            ) : (
+              <>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Nombre</TableHead>
+                      <TableHead>Evento</TableHead>
+                      <TableHead>Rol</TableHead>
+                      <TableHead>Postulación</TableHead>
+                      <TableHead>Contrato</TableHead>
+                      <TableHead>Ranking</TableHead>
+                      <TableHead>Monto</TableHead>
+                      <TableHead>Acciones</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {paginated.map((a) => (
+                      <TableRow key={a.id}>
+                        <TableCell className="font-medium">{a.nombre} {a.apellido}</TableCell>
+                        <TableCell>{a.event_name}</TableCell>
+                        <TableCell>{a.role}</TableCell>
+                        <TableCell>
+                          <Badge variant="outline" className={cn(statusStyles[a.application_status])}>
+                            {statusLabels[a.application_status] ?? a.application_status}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline" className={cn(statusStyles[a.contract_status])}>
+                            {statusLabels[a.contract_status] ?? a.contract_status}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>{a.ranking ?? '—'}</TableCell>
+                        <TableCell>{a.payment_amount ? `$${a.payment_amount.toLocaleString()}` : '—'}</TableCell>
+                        <TableCell>{renderActions(a)}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+
+                <div className="flex items-center justify-between pt-2">
+                  <span className="text-xs text-muted-foreground">
+                    {activeList.length} resultado{activeList.length !== 1 ? 's' : ''} · Página {page + 1} de {totalPages}
+                  </span>
+                  <div className="flex gap-1">
+                    <Button variant="outline" size="icon" className="h-7 w-7" disabled={page === 0} onClick={() => setPage(page - 1)}>
+                      <ChevronLeft className="h-4 w-4" />
+                    </Button>
+                    <Button variant="outline" size="icon" className="h-7 w-7" disabled={page >= totalPages - 1} onClick={() => setPage(page + 1)}>
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              </>
+            )}
+          </TabsContent>
+        </Tabs>
       </DialogContent>
 
       <ApplicantProfileDialog
@@ -560,6 +681,27 @@ export function EventApplicantsDialog({ open, onOpenChange }: EventApplicantsDia
         icon={MessageSquare}
         onConfirm={handleBulkFirmaPendiente}
         isLoading={sendingFirmaPendiente}
+      />
+
+      <ConfirmDialog
+        open={bulkRecordarPostularOpen}
+        onOpenChange={setBulkRecordarPostularOpen}
+        title="Envío masivo de WhatsApp"
+        description={`Se enviará la plantilla msg_postular a ${recordarPostularApplicants.length} persona(s) asignada(s) que aún no postulan. ¿Deseas continuar?`}
+        confirmLabel="Enviar"
+        icon={MessageSquare}
+        onConfirm={handleBulkRecordarPostular}
+        isLoading={sendingRecordarPostular}
+      />
+
+      <ConfirmDialog
+        open={!!cancelingAccept}
+        onOpenChange={(o) => { if (!o) setCancelingAccept(null); }}
+        title="Cancelar aceptación"
+        description={`¿Seguro que deseas cancelar la aceptación de ${cancelingAccept?.nombre} ${cancelingAccept?.apellido}? Volverá al estado "Por aceptar".`}
+        confirmLabel="Cancelar aceptación"
+        icon={Undo2}
+        onConfirm={handleCancelAccept}
       />
     </Dialog>
   );
