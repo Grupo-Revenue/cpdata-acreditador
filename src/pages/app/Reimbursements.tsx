@@ -689,16 +689,18 @@ export default function ReimbursementsPage() {
         title={
           confirmAction?.type === 'close_reimbursement' ? 'Cerrar rendiciones' :
           confirmAction?.type === 'reopen_event' ? 'Rehabilitar evento' :
+          confirmAction?.type === 'delete_expense' ? 'Eliminar gasto' :
           'Reabrir rendiciones'
         }
         description={
           confirmAction?.type === 'close_reimbursement' ? 'Al cerrar las rendiciones, no se podrán ingresar, editar ni eliminar gastos. Solo un Superadmin podrá reabrir.' :
           confirmAction?.type === 'reopen_event' ? 'Se rehabilitará el evento permitiendo editar asistencia y adicionales nuevamente.' :
+          confirmAction?.type === 'delete_expense' ? 'Se eliminará permanentemente este gasto. ¿Deseas continuar?' :
           'Se reabrirán las rendiciones permitiendo gestionar gastos nuevamente.'
         }
         confirmLabel="Confirmar"
-        variant={confirmAction?.type === 'close_reimbursement' ? 'destructive' : 'default'}
-        icon={confirmAction?.type === 'close_reimbursement' ? Lock : Unlock}
+        variant={confirmAction?.type === 'close_reimbursement' || confirmAction?.type === 'delete_expense' ? 'destructive' : 'default'}
+        icon={confirmAction?.type === 'close_reimbursement' ? Lock : confirmAction?.type === 'delete_expense' ? Trash2 : Unlock}
         onConfirm={handleConfirm}
         isLoading={processing}
       />
