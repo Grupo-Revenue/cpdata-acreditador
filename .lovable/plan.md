@@ -1,61 +1,37 @@
-## Agregar `title` a todos los botones de solo ícono que faltan
+## Panel de Clasificación de Tickets de Soporte
 
-Tras revisar el proyecto encontré varios `<Button size="icon">` sin `title`. Para cada uno se agregará un texto descriptivo en español.
+Permitir al superadmin definir categorías (ej. "Boletas", "Asistencia a eventos") con su prioridad asociada (alta/media/baja). Al crear un ticket, el usuario elige la categoría y la prioridad se asigna automáticamente.
 
-### Cambios
+### 1. Almacenamiento
+Usar la tabla `settings` existente (patrón de FAQs). Una sola fila con `key='ticket_categories'` y `value` como JSON:
+```json
+[
+  { "name": "Boletas", "priority": "media" },
+  { "name": "Asistencia a eventos", "priority": "alta" },
+  { "name": "Otro", "priority": "baja" }
+]
+```
+No requiere migración.
 
-**`src/pages/app/Profile.tsx`**
-- Botón cámara avatar → `title="Cambiar foto de perfil"`
+### 2. Nuevo componente
+**`src/components/settings/TicketCategoriesSettings.tsx`** (basado en `FaqSettings.tsx`)
+- Lista editable de categorías: input `name` + select `priority` (alta/media/baja).
+- Botones "Agregar categoría", "Eliminar" por fila, "Guardar cambios".
+- Lectura: `settings.select` por `key='ticket_categories'`.
+- Escritura: `upsert` en `settings`.
 
-**`src/components/support/TicketsTable.tsx`**
-- Pencil → `title="Editar ticket"`
-- Eye → `title="Ver ticket"`
+### 3. Integrar en Settings
+**`src/pages/app/Settings.tsx`** — Añadir nueva pestaña `<TabsTrigger value="tickets">Tickets</TabsTrigger>` con `<TabsContent>` que renderice `<TicketCategoriesSettings />`.
 
+### 4. Usar en creación de tickets
 **`src/components/support/TicketCreateDialog.tsx`**
-- X archivo → `title="Quitar archivo"`
-
-**`src/components/layout/Topbar.tsx`**
-- Menú móvil → `title="Abrir menú"`
-
-**`src/components/settings/FaqSettings.tsx`**
-- Trash → `title="Eliminar pregunta"`
-
-**`src/components/settings/HubspotIntegration.tsx`** (2 botones)
-- Eye/EyeOff → `title="Mostrar/Ocultar token"`
-
-**`src/components/settings/MetaIntegration.tsx`** (2 botones)
-- Eye/EyeOff → `title="Mostrar/Ocultar token"`
-
-**`src/components/settings/WhatsappTemplateDialog.tsx`**
-- Trash botón → `title="Eliminar botón"`
-
-**`src/components/settings/WhatsappTemplatesManager.tsx`** (3 botones)
-- Refresh → `title="Verificar estado"`
-- Pencil → `title="Editar plantilla"`
-- Trash → `title="Eliminar plantilla"`
-
-**`src/components/events/EventManagementDialog.tsx`** (3 botones)
-- Save asistencia → `title="Guardar asistencia"`
-- Trash gasto (x2) → `title="Eliminar gasto"`
-
-**`src/components/events/EventGeneralExpensesDialog.tsx`**
-- Trash → `title="Eliminar gasto"`
-
-**`src/components/events/EventApplicantsDialog.tsx`** (6 botones)
-- Ver perfil → `title="Ver perfil"`
-- Aceptar (Check) → `title="Aceptar postulación"`
-- Rechazar (X) → `title="Rechazar postulación"`
-- Cancelar aceptación (Undo2) → `title="Anular aceptación"`
-- ChevronLeft → `title="Página anterior"`
-- ChevronRight → `title="Página siguiente"`
-
-**`src/components/events/AttendanceCommentsDialog.tsx`** (2 botones)
-- ChevronLeft → `title="Página anterior"`
-- ChevronRight → `title="Página siguiente"`
-
-**`src/components/ui/LanguageTagsInput.tsx`**
-- Plus → `title="Agregar"`
+- Agregar campo "Categoría" (Select) cargado desde `settings.ticket_categories`.
+- Al seleccionar una categoría, se asigna automáticamente `priority` según la configuración.
+- Mantener el select de prioridad pero deshabilitado/auto (muestra la prioridad inferida; sigue siendo overridable solo si no se eligió categoría, o se puede mantener bloqueado tras elección — propongo bloquearlo para respetar la clasificación).
+- Si no hay categorías configuradas, fallback al comportamiento actual (select manual).
+- Guardar también `motivo` con prefijo `[Categoría] motivo` para que se vea en la tabla, sin nueva columna.
 
 ### Detalle técnico
-- Solo se agrega el atributo nativo `title` a cada `<Button>`. Sin cambios de lógica ni backend.
-- Se omite el botón interno de `src/components/ui/sidebar.tsx` (componente de librería shadcn).
+- Sólo el superadmin puede editar `settings` (política RLS ya existente).
+- Lectura abierta a `authenticated`.
+- Sin cambios en esquema ni en `support_tickets`.
