@@ -1,23 +1,36 @@
-## Problema
+## Cambios en `src/pages/app/Reimbursements.tsx`
 
-Al enviar la plantilla `msg_boleta_pagada` desde el diálogo individual (`InvoiceWhatsappDialog`), Meta responde con error porque la plantilla tiene una variable `{{1}}` y el formulario la deja vacía si el usuario no escribe nada. En cambio, el flujo masivo (`BulkWhatsappInvoicesDialog`) funciona porque pasa automáticamente el `nombre` del destinatario como parámetro `[nombre]`.
+Unificar la columna **Acciones** del panel de rendiciones para que, igual que en boletas, muestre todas las acciones en una sola celda para superadmin y administración.
 
-## Solución
+### 1. Visibilidad de la columna
 
-Alinear el envío individual con el masivo, prellenando las variables de la plantilla con el `nombre` del destinatario de la boleta y validando que no se envíen valores vacíos.
+- Mostrar la columna **Acciones** para `superadmin`, `administracion` y `supervisor` mientras la rendición no esté cerrada (`!isReimbursementClosed`).
+- Eliminar la celda duplicada actual (una para superadmin con aprobar/rechazar y otra separada para eliminar). Combinar en un único `<TableCell>`.
 
-### Edits en `src/components/invoices/InvoiceWhatsappDialog.tsx`
+### 2. Botones por fila
 
-1. Al cambiar de plantilla (efecto que detecta `variables`), prellenar `variableValues`:
-   - `{{1}}` → `invoice.profiles.nombre` (igual que el bulk).
-   - Resto de variables → string vacío (el usuario las completa).
-2. En `sendMutation.mutationFn`, antes de invocar la edge function, validar que cada variable detectada tenga un valor no vacío; si falta alguna, lanzar `throw new Error('Completa todas las variables de la plantilla')` para que aparezca un toast claro en vez del error 400 de Meta.
-3. Mantener `cleanPhone` y demás lógica como está.
+En la celda Acciones, renderizar (en este orden) usando íconos `lucide-react` ya importados:
 
-No requiere cambios en la edge function `send-whatsapp-message` ni en la base de datos.
+| Botón | Icono | Condición | Acción |
+|---|---|---|---|
+| Aprobar | `CheckCircle` | `isAdmin` y `approval_status === 'pendiente'` | `approveExpense(exp.id)` |
+| Rechazar | `XCircle` | `isAdmin` y `approval_status !== 'rechazado'` | `rejectExpense(exp.id)` |
+| Subir comprobante | `Upload` | `isAdmin` o `isSupervisor`, y `!exp.receipt_url` y `!isReimbursementClosed` | input file oculto + upload a bucket `expense-receipts` (reusar lógica existente del supervisor) |
+| WhatsApp | `MessageSquare` | `isAdmin` y existe `sup?.phone` del evento | reusar `sendWhatsapp(event.id)` (mensaje al supervisor del evento, igual que el botón actual de la cabecera) |
+| Eliminar | `Trash2` | (supervisor) creador propio sin user_id, igual que hoy; (admin) cualquier gasto del evento | `deleteExpense(exp.id)` con `ConfirmDialog` |
 
-## Verificación
+Todos con `Button variant="ghost" size="icon" className="h-7 w-7"` y `title` descriptivo (consistente con boletas/tickets).
 
-- Abrir una boleta pagada → ícono de WhatsApp → seleccionar `msg_boleta_pagada` → la variable `{{1}}` aparece prellenada con el nombre → enviar → mensaje recibido sin error.
-- Probar con `msg_pendiente_boleta` (mismo comportamiento).
-- Probar plantilla con variable vacía manualmente → toast "Completa todas las variables de la plantilla".
+### 3. Ajustes mínimos
+
+- Mantener la columna **Comprobante** existente; el botón Subir en Acciones es atajo para admin. Si ya hay comprobante, sigue mostrándose el "Ver".
+- Quitar el botón WhatsApp de la cabecera del card (queda redundante con el de fila). Mantener solo el masivo "Notificar pendientes".
+- `isAdmin` ya cubre superadmin + administracion, no se requieren nuevos permisos ni cambios en RLS (la política `Admins full access event_expenses` permite update/delete/insert).
+
+### 4. Verificación
+
+- Como superadmin/administración: en cada gasto pendiente aparecen los 5 botones (según corresponda); aprobar/rechazar actualiza estado, WhatsApp envía al supervisor del evento, Subir guarda comprobante, Eliminar quita el gasto.
+- Como supervisor: ve Subir (si falta) y Eliminar (sus propios gastos), sin Aprobar/Rechazar/WhatsApp.
+- Como acreditador o supervisor sin permisos: sin columna Acciones.
+
+No hay cambios en base de datos.
