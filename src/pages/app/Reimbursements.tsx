@@ -604,11 +604,85 @@ export default function ReimbursementsPage() {
               </>
             )}
           </div>
+
+          {/* Filters row */}
+          <div className="flex gap-2 items-center flex-wrap bg-muted/30 p-3 rounded-md">
+            <Select value={filterUser} onValueChange={setFilterUser}>
+              <SelectTrigger className="w-[200px]"><SelectValue placeholder="Persona" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todas las personas</SelectItem>
+                {userFilterOptions.map(([key, label]) => (
+                  <SelectItem key={key} value={key}>{label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={filterStatus} onValueChange={setFilterStatus}>
+              <SelectTrigger className="w-[160px]"><SelectValue placeholder="Estado" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos los estados</SelectItem>
+                <SelectItem value="pendiente">Pendiente</SelectItem>
+                <SelectItem value="aprobado">Aprobado</SelectItem>
+                <SelectItem value="rechazado">Rechazado</SelectItem>
+                <SelectItem value="pagado">Pagado</SelectItem>
+              </SelectContent>
+            </Select>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" size="sm" className={cn('justify-start text-left font-normal', !filterDateFrom && 'text-muted-foreground')}>
+                  <CalendarIcon className="h-4 w-4 mr-1" />
+                  {filterDateFrom ? format(filterDateFrom, 'dd-MM-yyyy') : 'Pago desde'}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar mode="single" selected={filterDateFrom} onSelect={setFilterDateFrom} initialFocus className={cn('p-3 pointer-events-auto')} />
+              </PopoverContent>
+            </Popover>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" size="sm" className={cn('justify-start text-left font-normal', !filterDateTo && 'text-muted-foreground')}>
+                  <CalendarIcon className="h-4 w-4 mr-1" />
+                  {filterDateTo ? format(filterDateTo, 'dd-MM-yyyy') : 'Pago hasta'}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar mode="single" selected={filterDateTo} onSelect={setFilterDateTo} initialFocus className={cn('p-3 pointer-events-auto')} />
+              </PopoverContent>
+            </Popover>
+            {hasFiltersActive && (
+              <Button size="sm" variant="ghost" onClick={clearFilters}>
+                <X className="h-4 w-4 mr-1" />
+                Limpiar filtros
+              </Button>
+            )}
+          </div>
+
+          {/* Bulk pay action bar */}
+          {isAdmin && selectedExpenses.size > 0 && (
+            <div className="flex items-center justify-between gap-3 bg-primary/5 border border-primary/20 rounded-md p-3 flex-wrap">
+              <div className="text-sm">
+                <span className="font-semibold">{selectedExpenses.size}</span> gasto(s) seleccionado(s) ·{' '}
+                <span className="font-semibold">${selectedTotal.toLocaleString('es-CL')}</span> ·{' '}
+                {selectedUsersCount} persona(s)
+              </div>
+              <div className="flex gap-2">
+                <Button size="sm" variant="ghost" onClick={() => setSelectedExpenses(new Set())}>
+                  Limpiar selección
+                </Button>
+                <Button size="sm" onClick={openPayDialog}>
+                  <DollarIcon className="h-4 w-4 mr-1" />
+                  Marcar como pagado
+                </Button>
+              </div>
+            </div>
+          )}
+
           {filteredEvents.length === 0 ? (
             <p className="text-sm text-muted-foreground text-center py-8">Sin resultados para la búsqueda</p>
           ) : (
           filteredEvents.map(event => {
-            const eventExpenses = expenses?.filter(e => e.event_id === event.id) ?? [];
+            const eventExpenses = hasFiltersActive
+              ? (visibleExpensesByEvent[event.id] ?? [])
+              : (expenses?.filter(e => e.event_id === event.id) ?? []);
             if (!isAdmin && !isSupervisor && eventExpenses.length === 0) return null;
             const isReimbursementClosed = !!event.reimbursement_closed_at;
             const isEventClosed = !!event.closed_at;
