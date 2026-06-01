@@ -93,11 +93,36 @@ export default function EventsPage() {
     },
   });
 
+  const [searchParams, setSearchParams] = useSearchParams();
+  const range = searchParams.get('range'); // today | week | month
+
+  const parseDealDate = (d: string | null | undefined): string | null => {
+    if (!d) return null;
+    const parts = d.split('-');
+    if (parts.length === 3 && parts[0].length === 2) return `${parts[2]}-${parts[1]}-${parts[0]}`;
+    return d;
+  };
+
   const userDeals = useMemo(() => {
-    if (isAdmin) return allDeals;
-    if (!assignedDealIds) return [];
-    return allDeals.filter((d) => assignedDealIds.includes(d.id));
-  }, [isAdmin, allDeals, assignedDealIds]);
+    const base = isAdmin ? allDeals : (!assignedDealIds ? [] : allDeals.filter((d) => assignedDealIds.includes(d.id)));
+    if (!range) return base;
+    const now = new Date();
+    const today = now.toISOString().split('T')[0];
+    const weekStart = startOfWeek(now, { weekStartsOn: 1 }).toISOString().split('T')[0];
+    const weekEnd = endOfWeek(now, { weekStartsOn: 1 }).toISOString().split('T')[0];
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+    const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
+    return base.filter((d) => {
+      const p = parseDealDate(d.fecha_inicio_del_evento);
+      if (!p) return false;
+      if (range === 'today') return p === today;
+      if (range === 'week') return p >= weekStart && p <= weekEnd;
+      if (range === 'month') return p >= monthStart && p <= monthEnd;
+      return true;
+    });
+  }, [isAdmin, allDeals, assignedDealIds, range]);
+
+  const rangeLabel = range === 'today' ? 'Eventos de hoy' : range === 'week' ? 'Eventos de la semana' : range === 'month' ? 'Eventos del mes' : null;
 
   return (
     <AppShell>
