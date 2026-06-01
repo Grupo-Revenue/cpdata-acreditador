@@ -107,11 +107,11 @@ export function TicketsTable({ tickets, canEdit, canView, showCreatorColumns = t
                   {showActions && (
                     <TableCell>
                       {canEdit ? (
-                        <Button variant="ghost" size="icon" onClick={() => onEdit(ticket)}>
+                        <Button variant="ghost" size="icon" onClick={() => onEdit(ticket)} title="Editar ticket">
                           <Pencil className="h-4 w-4" />
                         </Button>
                       ) : canView && onView ? (
-                        <Button variant="ghost" size="icon" onClick={() => onView(ticket)}>
+                        <Button variant="ghost" size="icon" onClick={() => onView(ticket)} title="Ver ticket">
                           <Eye className="h-4 w-4" />
                         </Button>
                       ) : null}

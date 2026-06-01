@@ -145,10 +145,10 @@ export function WhatsappTemplatesManager() {
                               <RefreshCw className={`w-4 h-4 ${checkingId === t.id ? 'animate-spin' : ''}`} />
                             </Button>
                           )}
-                          <Button variant="ghost" size="icon" onClick={() => handleEdit(t)}>
+                          <Button variant="ghost" size="icon" onClick={() => handleEdit(t)} title="Editar plantilla">
                             <Pencil className="w-4 h-4" />
                           </Button>
-                          <Button variant="ghost" size="icon" onClick={() => setDeleteId(t.id)}>
+                          <Button variant="ghost" size="icon" onClick={() => setDeleteId(t.id)} title="Eliminar plantilla">
                             <Trash2 className="w-4 h-4 text-destructive" />
                           </Button>
                         </div>

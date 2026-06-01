@@ -50,7 +50,7 @@ export function LanguageTagsInput({ value, onChange, disabled, placeholder = 'Ej
           placeholder={placeholder}
           className="flex-1"
         />
-        <Button type="button" variant="outline" size="icon" onClick={addTag} disabled={disabled || !inputValue.trim()}>
+        <Button type="button" variant="outline" size="icon" onClick={addTag} disabled={disabled || !inputValue.trim()} title="Agregar">
           <Plus className="h-4 w-4" />
         </Button>
       </div>

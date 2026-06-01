@@ -305,6 +305,7 @@ export default function ProfilePage() {
                   className="absolute bottom-0 right-0 h-8 w-8 rounded-full shadow-md"
                   onClick={() => fileInputRef.current?.click()}
                   disabled={isUploadingPhoto}
+                  title="Cambiar foto de perfil"
                 >
                   {isUploadingPhoto ? (
                     <Loader2 className="h-4 w-4 animate-spin" />

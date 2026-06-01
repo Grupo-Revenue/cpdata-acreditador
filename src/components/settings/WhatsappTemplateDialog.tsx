@@ -344,7 +344,7 @@ export function WhatsappTemplateDialog({ open, onOpenChange, template }: Props) 
                     <Input placeholder="+56912345678" value={btn.phone_number ?? ''} onChange={(e) => updateButton(idx, { phone_number: e.target.value })} />
                   )}
                 </div>
-                <Button type="button" variant="ghost" size="icon" onClick={() => removeButton(idx)}>
+                <Button type="button" variant="ghost" size="icon" onClick={() => removeButton(idx)} title="Eliminar botón">
                   <Trash2 className="w-4 h-4 text-destructive" />
                 </Button>
               </div>

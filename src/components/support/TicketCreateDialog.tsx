@@ -131,7 +131,7 @@ export function TicketCreateDialog({ open, onOpenChange, onCreated }: TicketCrea
               {file && (
                 <div className="flex items-center gap-1 text-sm text-muted-foreground">
                   <span className="truncate max-w-[180px]">{file.name}</span>
-                  <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => setFile(null)}>
+                  <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => setFile(null)} title="Quitar archivo">
                     <X className="h-3 w-3" />
                   </Button>
                 </div>
