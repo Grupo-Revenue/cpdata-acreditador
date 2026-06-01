@@ -52,10 +52,22 @@ export function InvoiceWhatsappDialog({ open, onOpenChange, invoice }: Props) {
     return detectVariables(selected.body_text);
   }, [selected]);
 
-  // Reset variable values when template changes
+  // Prefill {{1}} with recipient first name (mirrors bulk send behavior)
   useEffect(() => {
-    setVariableValues({});
-  }, [selectedTemplate]);
+    if (!selected) {
+      setVariableValues({});
+      return;
+    }
+    const initial: Record<string, string> = {};
+    variables.forEach((v) => {
+      if (v === '{{1}}' && invoice?.profiles?.nombre) {
+        initial[v] = invoice.profiles.nombre;
+      } else {
+        initial[v] = '';
+      }
+    });
+    setVariableValues(initial);
+  }, [selectedTemplate, selected, variables, invoice?.profiles?.nombre]);
 
   const previewBody = useMemo(() => {
     if (!selected) return '';
@@ -72,8 +84,11 @@ export function InvoiceWhatsappDialog({ open, onOpenChange, invoice }: Props) {
       if (!phone) throw new Error('El usuario no tiene número de teléfono registrado.');
       if (!selected) throw new Error('Selecciona una plantilla.');
 
-      // Build parameters array in order
-      const parameters = variables.map((v) => variableValues[v] || '');
+      // Build parameters array in order and validate non-empty
+      const parameters = variables.map((v) => (variableValues[v] ?? '').trim());
+      if (parameters.some((p) => !p)) {
+        throw new Error('Completa todas las variables de la plantilla.');
+      }
 
       const { data, error } = await supabase.functions.invoke('send-whatsapp-message', {
         body: {
