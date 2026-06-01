@@ -9,6 +9,7 @@ import { RankingTable } from '@/components/dashboard/RankingTable';
 import { FaqDialog } from '@/components/dashboard/FaqDialog';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
 import {
   ArrowRight,
   Calendar,
@@ -16,10 +17,12 @@ import {
   CheckCircle,
   DollarSign,
   HelpCircle,
+  Send,
 } from 'lucide-react';
 
 export default function AcreditadorDashboard() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [faqOpen, setFaqOpen] = useState(false);
 
   const now = new Date();

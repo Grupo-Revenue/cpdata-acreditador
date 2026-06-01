@@ -1,22 +1,23 @@
-## Problema
-En `EventsUserTable` el acreditador ve un ícono de avión (Send) sin texto y una badge "Asignado" cuando el admin le envía una postulación. No queda claro que debe presionar para postular.
+## Objetivo
+Agregar un card/cuadrado en los dashboards de **acreditador** y **supervisor** que muestre la cantidad de eventos pendientes para postular (aquellos donde `application_status = 'asignado'`), con la posibilidad de hacer clic para ir a la página de eventos.
 
-## Solución
-Hacer más explícita la acción y el estado en `src/components/events/EventsUserTable.tsx`:
+## Archivos a modificar
 
-1. **Botón de escritorio (desktop):** Reemplazar el botón ghost con ícono de avión por un botón visible con texto **"Postular"** + ícono `Send`, variante `default` (primario) tamaño `sm`. Solo se muestra cuando `application_status === 'asignado'`.
+### 1. `src/pages/dashboard/AcreditadorDashboard.tsx`
+- Agregar una nueva query que cuente los `event_accreditors` del usuario actual donde `application_status = 'asignado'`.
+- Insertar un nuevo card en el grid de stats con:
+  - Título: "Postulaciones Pendientes" o "Eventos para Postular"
+  - Icono: `Send` (lucide-react)
+  - Color: warning o accent (destacado para llamar la atención)
+  - Valor: cantidad de eventos con `application_status = 'asignado'`
+  - Hacer el card clickeable para navegar a `/app/events`
 
-2. **Badges de estado de postulación:**
-   - `asignado` → "Postulación pendiente" (azul, en vez de "Asignado")
-   - `pendiente` → "En revisión" (en vez de "Pendiente"), para indicar que está esperando aprobación del admin
-   - `aceptado` → "Aceptado" (sin cambios)
-   - `rechazado` → "Rechazado" (sin cambios)
+### 2. `src/pages/dashboard/SupervisorDashboard.tsx`
+- Agregar la misma query de eventos pendientes para postular (conteo de `event_accreditors` donde `application_status = 'asignado'`).
+- Insertar el mismo card en el grid de stats, con las mismas características.
+- El card debe ser clickeable y llevar a `/app/events`.
 
-3. **Móvil:** El botón ya tiene el texto "Postular"; solo se actualizan las etiquetas de las badges (cambio centralizado en `getDisplayStatus`).
-
-## Sin cambios
-- Backend / flujo de estados (`asignado` → `pendiente` → `aceptado`/`rechazado`) intacto.
-- `EventApplicantsDialog` (donde el admin acepta/rechaza) intacto.
-- Otras tablas y páginas intactas.
-
-**Archivo modificado:** `src/components/events/EventsUserTable.tsx`
+## Detalles técnicos
+- La query debe usar `supabase.from('event_accreditors').select('id', { count: 'exact', head: true }).eq('user_id', user!.id).eq('application_status', 'asignado')`.
+- Se debe mantener el estilo visual consistente con los cards existentes (colores semanticos, animaciones, etc.).
+- No se requieren cambios de backend ni de base de datos.
