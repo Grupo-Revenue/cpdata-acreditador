@@ -755,17 +755,44 @@ export default function ReimbursementsPage() {
                         <Table>
                           <TableHeader>
                             <TableRow>
+                              {isAdmin && (
+                                <TableHead className="w-[40px]">
+                                  <Checkbox
+                                    checked={eventExpenses.filter(e => e.approval_status === 'aprobado').length > 0 && eventExpenses.filter(e => e.approval_status === 'aprobado').every(e => selectedExpenses.has(e.id))}
+                                    onCheckedChange={(checked) => {
+                                      const eligible = eventExpenses.filter(e => e.approval_status === 'aprobado');
+                                      setSelectedExpenses(prev => {
+                                        const next = new Set(prev);
+                                        if (checked) eligible.forEach(e => next.add(e.id));
+                                        else eligible.forEach(e => next.delete(e.id));
+                                        return next;
+                                      });
+                                    }}
+                                    disabled={eventExpenses.filter(e => e.approval_status === 'aprobado').length === 0}
+                                  />
+                                </TableHead>
+                              )}
                               <TableHead>Asignado a</TableHead>
                               <TableHead>Adicional</TableHead>
                               <TableHead className="text-right">Monto</TableHead>
                               <TableHead>Comprobante</TableHead>
                               <TableHead>Estado</TableHead>
+                              <TableHead>Fecha pago</TableHead>
                               {((isAdmin || isSupervisor) && !isReimbursementClosed) && <TableHead className="w-[180px]">Acciones</TableHead>}
                             </TableRow>
                           </TableHeader>
                           <TableBody>
                             {eventExpenses.map(exp => (
                               <TableRow key={exp.id}>
+                                {isAdmin && (
+                                  <TableCell>
+                                    <Checkbox
+                                      checked={selectedExpenses.has(exp.id)}
+                                      onCheckedChange={() => toggleExpenseSelection(exp.id)}
+                                      disabled={exp.approval_status !== 'aprobado'}
+                                    />
+                                  </TableCell>
+                                )}
                                 <TableCell>{getProfileName(exp.user_id)}</TableCell>
                                 <TableCell>{exp.name}</TableCell>
                                 <TableCell className="text-right font-medium">${exp.amount.toLocaleString('es-CL')}</TableCell>
@@ -790,6 +817,9 @@ export default function ReimbursementsPage() {
                                   ) : '—'}
                                 </TableCell>
                                 <TableCell>{getStatusBadge(exp.approval_status)}</TableCell>
+                                <TableCell className="text-sm text-muted-foreground">
+                                  {exp.payment_date ? format(parseLocalDate(exp.payment_date)!, 'dd-MM-yyyy') : '—'}
+                                </TableCell>
                                 {((isAdmin || isSupervisor) && !isReimbursementClosed) && (
                                   <TableCell>
                                     <div className="flex gap-1">
