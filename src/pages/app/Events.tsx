@@ -5,13 +5,16 @@ import { PageHeader } from '@/components/ui/PageHeader';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { LoadingState } from '@/components/ui/LoadingState';
 import { useToast } from '@/hooks/use-toast';
-import { Calendar, AlertCircle, UserCheck } from 'lucide-react';
+import { Calendar, AlertCircle, UserCheck, X } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { startOfWeek, endOfWeek } from 'date-fns';
 import { useAuth } from '@/contexts/AuthContext';
 import { EventsAdminTable } from '@/components/events/EventsAdminTable';
 import { EventsUserTable } from '@/components/events/EventsUserTable';
 import { EventApplicantsDialog } from '@/components/events/EventApplicantsDialog';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 
 interface HubSpotDeal {
   id: string;
