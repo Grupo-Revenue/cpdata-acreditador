@@ -417,17 +417,128 @@ export default function ReimbursementsPage() {
 
   const isLoading = eventsLoading || expensesLoading;
 
-  const filteredEvents = (events ?? []).filter(event => event.name.toLowerCase().includes(searchTerm.toLowerCase()));
+  // Build user filter options from expenses
+  const userFilterOptions = useMemo(() => {
+    const opts = new Map<string, string>();
+    (expenses ?? []).forEach(e => {
+      const key = e.user_id || '__event__';
+      const label = e.user_id ? getProfileName(e.user_id) : 'Gasto del evento';
+      if (!opts.has(key)) opts.set(key, label);
+    });
+    return Array.from(opts.entries()).sort((a, b) => a[1].localeCompare(b[1]));
+  }, [expenses, profiles]);
+
+  // Apply filters to expenses
+  const expenseMatchesFilters = (exp: any) => {
+    if (filterUser !== 'all') {
+      const expKey = exp.user_id || '__event__';
+      if (expKey !== filterUser) return false;
+    }
+    if (filterStatus !== 'all' && exp.approval_status !== filterStatus) return false;
+    if (filterDateFrom || filterDateTo) {
+      const d = parseLocalDate(exp.payment_date);
+      if (!d) return false;
+      if (filterDateFrom && d < filterDateFrom) return false;
+      if (filterDateTo) {
+        const end = new Date(filterDateTo);
+        end.setHours(23, 59, 59, 999);
+        if (d > end) return false;
+      }
+    }
+    return true;
+  };
+
+  const hasFiltersActive = filterUser !== 'all' || filterStatus !== 'all' || !!filterDateFrom || !!filterDateTo;
+
+  const visibleExpensesByEvent = useMemo(() => {
+    const map: Record<string, any[]> = {};
+    (expenses ?? []).forEach(exp => {
+      if (!expenseMatchesFilters(exp)) return;
+      (map[exp.event_id] ||= []).push(exp);
+    });
+    return map;
+  }, [expenses, filterUser, filterStatus, filterDateFrom, filterDateTo]);
+
+  const filteredEvents = (events ?? []).filter(event => {
+    if (!event.name.toLowerCase().includes(searchTerm.toLowerCase())) return false;
+    if (hasFiltersActive) {
+      return (visibleExpensesByEvent[event.id]?.length ?? 0) > 0;
+    }
+    return true;
+  });
+
+  const clearFilters = () => {
+    setFilterUser('all');
+    setFilterStatus('all');
+    setFilterDateFrom(undefined);
+    setFilterDateTo(undefined);
+  };
+
+  // Bulk pay handlers
+  const toggleExpenseSelection = (id: string) => {
+    setSelectedExpenses(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const selectedExpensesData = useMemo(
+    () => (expenses ?? []).filter(e => selectedExpenses.has(e.id)),
+    [expenses, selectedExpenses]
+  );
+  const selectedTotal = selectedExpensesData.reduce((s, e) => s + e.amount, 0);
+  const selectedUsersCount = new Set(selectedExpensesData.map(e => e.user_id || '__event__')).size;
+
+  const openPayDialog = () => {
+    if (selectedExpenses.size === 0) return;
+    setPayDate(new Date());
+    setPayFile(null);
+    setShowPayDialog(true);
+  };
+
+  const confirmBulkPayment = async () => {
+    if (!payDate || selectedExpenses.size === 0) return;
+    setPayingBulk(true);
+    try {
+      let sharedUrl: string | null = null;
+      if (payFile) {
+        const filePath = `payments/${Date.now()}_${payFile.name}`;
+        const { error: upErr } = await supabase.storage.from('expense-receipts').upload(filePath, payFile);
+        if (upErr) throw upErr;
+        const { data: urlData } = supabase.storage.from('expense-receipts').getPublicUrl(filePath);
+        sharedUrl = urlData.publicUrl;
+      }
+      const ids = Array.from(selectedExpenses);
+      const dateStr = format(payDate, 'yyyy-MM-dd');
+
+      // Update without overwriting existing receipts when no new file
+      const update: any = { approval_status: 'pagado', payment_date: dateStr, paid_by: user!.id };
+      if (sharedUrl) update.receipt_url = sharedUrl;
+
+      const { error } = await supabase.from('event_expenses').update(update).in('id', ids);
+      if (error) throw error;
+
+      toast({ title: 'Pago registrado', description: `${ids.length} gasto(s) marcados como pagados.` });
+      setSelectedExpenses(new Set());
+      setShowPayDialog(false);
+      invalidateAll();
+    } catch (err: any) {
+      toast({ title: 'Error al registrar pago', description: err.message, variant: 'destructive' });
+    } finally {
+      setPayingBulk(false);
+    }
+  };
 
   const downloadExpensesAsCSV = () => {
     const BOM = '\uFEFF';
-    const header = 'Evento;Supervisor;Asignado a;Adicional;Monto;Comprobante;Estado';
+    const header = 'Evento;Supervisor;Asignado a;Adicional;Monto;Comprobante;Estado;Fecha pago';
     const rows: string[] = [];
     filteredEvents.forEach(event => {
-      const eventExpenses = expenses?.filter(e => e.event_id === event.id) ?? [];
+      const eventExpenses = (hasFiltersActive ? (visibleExpensesByEvent[event.id] ?? []) : (expenses?.filter(e => e.event_id === event.id) ?? []));
       const sup = supervisorMap?.[event.id];
       eventExpenses.forEach(exp => {
-        const statusMap: Record<string, string> = { pendiente: 'Pendiente', aprobado: 'Aprobado', rechazado: 'Rechazado' };
+        const statusMap: Record<string, string> = { pendiente: 'Pendiente', aprobado: 'Aprobado', rechazado: 'Rechazado', pagado: 'Pagado' };
         rows.push([
           event.name,
           sup?.name || '',
@@ -436,6 +547,7 @@ export default function ReimbursementsPage() {
           exp.amount,
           exp.receipt_url || '',
           statusMap[exp.approval_status] || exp.approval_status,
+          exp.payment_date || '',
         ].join(';'));
       });
     });
