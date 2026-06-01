@@ -15,8 +15,13 @@ import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Wallet, Lock, Unlock, CheckCircle, XCircle, DollarSign, Plus, Trash2, Upload, Search, Download, MessageSquare } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { Wallet, Lock, Unlock, CheckCircle, XCircle, DollarSign, Plus, Trash2, Upload, Search, Download, MessageSquare, CalendarIcon, DollarSign as DollarIcon, X } from 'lucide-react';
 import { downloadFile } from '@/lib/csv-parser';
+import { format } from 'date-fns';
+import { cn } from '@/lib/utils';
 
 interface SupervisorInfo {
   name: string;
@@ -45,6 +50,19 @@ export default function ReimbursementsPage() {
   const [showBulkConfirm, setShowBulkConfirm] = useState(false);
   const [bulkTargets, setBulkTargets] = useState<{ eventId: string; eventName: string; sup: SupervisorInfo }[]>([]);
   const [selectedBulkTargets, setSelectedBulkTargets] = useState<Set<string>>(new Set());
+
+  // Filters
+  const [filterUser, setFilterUser] = useState<string>('all');
+  const [filterStatus, setFilterStatus] = useState<string>('all');
+  const [filterDateFrom, setFilterDateFrom] = useState<Date | undefined>(undefined);
+  const [filterDateTo, setFilterDateTo] = useState<Date | undefined>(undefined);
+
+  // Bulk payment
+  const [selectedExpenses, setSelectedExpenses] = useState<Set<string>>(new Set());
+  const [showPayDialog, setShowPayDialog] = useState(false);
+  const [payDate, setPayDate] = useState<Date | undefined>(new Date());
+  const [payFile, setPayFile] = useState<File | null>(null);
+  const [payingBulk, setPayingBulk] = useState(false);
 
   // For supervisors: get assigned events; for admins: get all events with expenses
   const { data: events, isLoading: eventsLoading } = useQuery({
@@ -305,9 +323,15 @@ export default function ReimbursementsPage() {
   };
 
   const getStatusBadge = (status: string) => {
+    if (status === 'pagado') return <Badge className="bg-success/10 text-success border-success/20">Pagado</Badge>;
     if (status === 'aprobado') return <Badge className="bg-primary/10 text-primary border-primary/20">Aprobado</Badge>;
     if (status === 'rechazado') return <Badge variant="destructive">Rechazado</Badge>;
     return <Badge variant="secondary">Pendiente</Badge>;
+  };
+
+  const parseLocalDate = (d: string | null | undefined) => {
+    if (!d) return null;
+    return new Date(`${d}T00:00:00`);
   };
 
   // Send individual WhatsApp
@@ -393,17 +417,128 @@ export default function ReimbursementsPage() {
 
   const isLoading = eventsLoading || expensesLoading;
 
-  const filteredEvents = (events ?? []).filter(event => event.name.toLowerCase().includes(searchTerm.toLowerCase()));
+  // Build user filter options from expenses
+  const userFilterOptions = useMemo(() => {
+    const opts = new Map<string, string>();
+    (expenses ?? []).forEach(e => {
+      const key = e.user_id || '__event__';
+      const label = e.user_id ? getProfileName(e.user_id) : 'Gasto del evento';
+      if (!opts.has(key)) opts.set(key, label);
+    });
+    return Array.from(opts.entries()).sort((a, b) => a[1].localeCompare(b[1]));
+  }, [expenses, profiles]);
+
+  // Apply filters to expenses
+  const expenseMatchesFilters = (exp: any) => {
+    if (filterUser !== 'all') {
+      const expKey = exp.user_id || '__event__';
+      if (expKey !== filterUser) return false;
+    }
+    if (filterStatus !== 'all' && exp.approval_status !== filterStatus) return false;
+    if (filterDateFrom || filterDateTo) {
+      const d = parseLocalDate(exp.payment_date);
+      if (!d) return false;
+      if (filterDateFrom && d < filterDateFrom) return false;
+      if (filterDateTo) {
+        const end = new Date(filterDateTo);
+        end.setHours(23, 59, 59, 999);
+        if (d > end) return false;
+      }
+    }
+    return true;
+  };
+
+  const hasFiltersActive = filterUser !== 'all' || filterStatus !== 'all' || !!filterDateFrom || !!filterDateTo;
+
+  const visibleExpensesByEvent = useMemo(() => {
+    const map: Record<string, any[]> = {};
+    (expenses ?? []).forEach(exp => {
+      if (!expenseMatchesFilters(exp)) return;
+      (map[exp.event_id] ||= []).push(exp);
+    });
+    return map;
+  }, [expenses, filterUser, filterStatus, filterDateFrom, filterDateTo]);
+
+  const filteredEvents = (events ?? []).filter(event => {
+    if (!event.name.toLowerCase().includes(searchTerm.toLowerCase())) return false;
+    if (hasFiltersActive) {
+      return (visibleExpensesByEvent[event.id]?.length ?? 0) > 0;
+    }
+    return true;
+  });
+
+  const clearFilters = () => {
+    setFilterUser('all');
+    setFilterStatus('all');
+    setFilterDateFrom(undefined);
+    setFilterDateTo(undefined);
+  };
+
+  // Bulk pay handlers
+  const toggleExpenseSelection = (id: string) => {
+    setSelectedExpenses(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const selectedExpensesData = useMemo(
+    () => (expenses ?? []).filter(e => selectedExpenses.has(e.id)),
+    [expenses, selectedExpenses]
+  );
+  const selectedTotal = selectedExpensesData.reduce((s, e) => s + e.amount, 0);
+  const selectedUsersCount = new Set(selectedExpensesData.map(e => e.user_id || '__event__')).size;
+
+  const openPayDialog = () => {
+    if (selectedExpenses.size === 0) return;
+    setPayDate(new Date());
+    setPayFile(null);
+    setShowPayDialog(true);
+  };
+
+  const confirmBulkPayment = async () => {
+    if (!payDate || selectedExpenses.size === 0) return;
+    setPayingBulk(true);
+    try {
+      let sharedUrl: string | null = null;
+      if (payFile) {
+        const filePath = `payments/${Date.now()}_${payFile.name}`;
+        const { error: upErr } = await supabase.storage.from('expense-receipts').upload(filePath, payFile);
+        if (upErr) throw upErr;
+        const { data: urlData } = supabase.storage.from('expense-receipts').getPublicUrl(filePath);
+        sharedUrl = urlData.publicUrl;
+      }
+      const ids = Array.from(selectedExpenses);
+      const dateStr = format(payDate, 'yyyy-MM-dd');
+
+      // Update without overwriting existing receipts when no new file
+      const update: any = { approval_status: 'pagado', payment_date: dateStr, paid_by: user!.id };
+      if (sharedUrl) update.receipt_url = sharedUrl;
+
+      const { error } = await supabase.from('event_expenses').update(update).in('id', ids);
+      if (error) throw error;
+
+      toast({ title: 'Pago registrado', description: `${ids.length} gasto(s) marcados como pagados.` });
+      setSelectedExpenses(new Set());
+      setShowPayDialog(false);
+      invalidateAll();
+    } catch (err: any) {
+      toast({ title: 'Error al registrar pago', description: err.message, variant: 'destructive' });
+    } finally {
+      setPayingBulk(false);
+    }
+  };
 
   const downloadExpensesAsCSV = () => {
     const BOM = '\uFEFF';
-    const header = 'Evento;Supervisor;Asignado a;Adicional;Monto;Comprobante;Estado';
+    const header = 'Evento;Supervisor;Asignado a;Adicional;Monto;Comprobante;Estado;Fecha pago';
     const rows: string[] = [];
     filteredEvents.forEach(event => {
-      const eventExpenses = expenses?.filter(e => e.event_id === event.id) ?? [];
+      const eventExpenses = (hasFiltersActive ? (visibleExpensesByEvent[event.id] ?? []) : (expenses?.filter(e => e.event_id === event.id) ?? []));
       const sup = supervisorMap?.[event.id];
       eventExpenses.forEach(exp => {
-        const statusMap: Record<string, string> = { pendiente: 'Pendiente', aprobado: 'Aprobado', rechazado: 'Rechazado' };
+        const statusMap: Record<string, string> = { pendiente: 'Pendiente', aprobado: 'Aprobado', rechazado: 'Rechazado', pagado: 'Pagado' };
         rows.push([
           event.name,
           sup?.name || '',
@@ -412,6 +547,7 @@ export default function ReimbursementsPage() {
           exp.amount,
           exp.receipt_url || '',
           statusMap[exp.approval_status] || exp.approval_status,
+          exp.payment_date || '',
         ].join(';'));
       });
     });
@@ -468,11 +604,85 @@ export default function ReimbursementsPage() {
               </>
             )}
           </div>
+
+          {/* Filters row */}
+          <div className="flex gap-2 items-center flex-wrap bg-muted/30 p-3 rounded-md">
+            <Select value={filterUser} onValueChange={setFilterUser}>
+              <SelectTrigger className="w-[200px]"><SelectValue placeholder="Persona" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todas las personas</SelectItem>
+                {userFilterOptions.map(([key, label]) => (
+                  <SelectItem key={key} value={key}>{label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={filterStatus} onValueChange={setFilterStatus}>
+              <SelectTrigger className="w-[160px]"><SelectValue placeholder="Estado" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos los estados</SelectItem>
+                <SelectItem value="pendiente">Pendiente</SelectItem>
+                <SelectItem value="aprobado">Aprobado</SelectItem>
+                <SelectItem value="rechazado">Rechazado</SelectItem>
+                <SelectItem value="pagado">Pagado</SelectItem>
+              </SelectContent>
+            </Select>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" size="sm" className={cn('justify-start text-left font-normal', !filterDateFrom && 'text-muted-foreground')}>
+                  <CalendarIcon className="h-4 w-4 mr-1" />
+                  {filterDateFrom ? format(filterDateFrom, 'dd-MM-yyyy') : 'Pago desde'}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar mode="single" selected={filterDateFrom} onSelect={setFilterDateFrom} initialFocus className={cn('p-3 pointer-events-auto')} />
+              </PopoverContent>
+            </Popover>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" size="sm" className={cn('justify-start text-left font-normal', !filterDateTo && 'text-muted-foreground')}>
+                  <CalendarIcon className="h-4 w-4 mr-1" />
+                  {filterDateTo ? format(filterDateTo, 'dd-MM-yyyy') : 'Pago hasta'}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar mode="single" selected={filterDateTo} onSelect={setFilterDateTo} initialFocus className={cn('p-3 pointer-events-auto')} />
+              </PopoverContent>
+            </Popover>
+            {hasFiltersActive && (
+              <Button size="sm" variant="ghost" onClick={clearFilters}>
+                <X className="h-4 w-4 mr-1" />
+                Limpiar filtros
+              </Button>
+            )}
+          </div>
+
+          {/* Bulk pay action bar */}
+          {isAdmin && selectedExpenses.size > 0 && (
+            <div className="flex items-center justify-between gap-3 bg-primary/5 border border-primary/20 rounded-md p-3 flex-wrap">
+              <div className="text-sm">
+                <span className="font-semibold">{selectedExpenses.size}</span> gasto(s) seleccionado(s) ·{' '}
+                <span className="font-semibold">${selectedTotal.toLocaleString('es-CL')}</span> ·{' '}
+                {selectedUsersCount} persona(s)
+              </div>
+              <div className="flex gap-2">
+                <Button size="sm" variant="ghost" onClick={() => setSelectedExpenses(new Set())}>
+                  Limpiar selección
+                </Button>
+                <Button size="sm" onClick={openPayDialog}>
+                  <DollarIcon className="h-4 w-4 mr-1" />
+                  Marcar como pagado
+                </Button>
+              </div>
+            </div>
+          )}
+
           {filteredEvents.length === 0 ? (
             <p className="text-sm text-muted-foreground text-center py-8">Sin resultados para la búsqueda</p>
           ) : (
           filteredEvents.map(event => {
-            const eventExpenses = expenses?.filter(e => e.event_id === event.id) ?? [];
+            const eventExpenses = hasFiltersActive
+              ? (visibleExpensesByEvent[event.id] ?? [])
+              : (expenses?.filter(e => e.event_id === event.id) ?? []);
             if (!isAdmin && !isSupervisor && eventExpenses.length === 0) return null;
             const isReimbursementClosed = !!event.reimbursement_closed_at;
             const isEventClosed = !!event.closed_at;
@@ -545,17 +755,44 @@ export default function ReimbursementsPage() {
                         <Table>
                           <TableHeader>
                             <TableRow>
+                              {isAdmin && (
+                                <TableHead className="w-[40px]">
+                                  <Checkbox
+                                    checked={eventExpenses.filter(e => e.approval_status === 'aprobado').length > 0 && eventExpenses.filter(e => e.approval_status === 'aprobado').every(e => selectedExpenses.has(e.id))}
+                                    onCheckedChange={(checked) => {
+                                      const eligible = eventExpenses.filter(e => e.approval_status === 'aprobado');
+                                      setSelectedExpenses(prev => {
+                                        const next = new Set(prev);
+                                        if (checked) eligible.forEach(e => next.add(e.id));
+                                        else eligible.forEach(e => next.delete(e.id));
+                                        return next;
+                                      });
+                                    }}
+                                    disabled={eventExpenses.filter(e => e.approval_status === 'aprobado').length === 0}
+                                  />
+                                </TableHead>
+                              )}
                               <TableHead>Asignado a</TableHead>
                               <TableHead>Adicional</TableHead>
                               <TableHead className="text-right">Monto</TableHead>
                               <TableHead>Comprobante</TableHead>
                               <TableHead>Estado</TableHead>
+                              <TableHead>Fecha pago</TableHead>
                               {((isAdmin || isSupervisor) && !isReimbursementClosed) && <TableHead className="w-[180px]">Acciones</TableHead>}
                             </TableRow>
                           </TableHeader>
                           <TableBody>
                             {eventExpenses.map(exp => (
                               <TableRow key={exp.id}>
+                                {isAdmin && (
+                                  <TableCell>
+                                    <Checkbox
+                                      checked={selectedExpenses.has(exp.id)}
+                                      onCheckedChange={() => toggleExpenseSelection(exp.id)}
+                                      disabled={exp.approval_status !== 'aprobado'}
+                                    />
+                                  </TableCell>
+                                )}
                                 <TableCell>{getProfileName(exp.user_id)}</TableCell>
                                 <TableCell>{exp.name}</TableCell>
                                 <TableCell className="text-right font-medium">${exp.amount.toLocaleString('es-CL')}</TableCell>
@@ -580,6 +817,9 @@ export default function ReimbursementsPage() {
                                   ) : '—'}
                                 </TableCell>
                                 <TableCell>{getStatusBadge(exp.approval_status)}</TableCell>
+                                <TableCell className="text-sm text-muted-foreground">
+                                  {exp.payment_date ? format(parseLocalDate(exp.payment_date)!, 'dd-MM-yyyy') : '—'}
+                                </TableCell>
                                 {((isAdmin || isSupervisor) && !isReimbursementClosed) && (
                                   <TableCell>
                                     <div className="flex gap-1">
@@ -764,6 +1004,65 @@ export default function ReimbursementsPage() {
             <Button onClick={executeBulkWhatsapp} disabled={selectedBulkTargets.size === 0}>
               <MessageSquare className="h-4 w-4 mr-1" />
               Enviar {selectedBulkTargets.size} mensaje{selectedBulkTargets.size !== 1 ? 's' : ''}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showPayDialog} onOpenChange={setShowPayDialog}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Registrar pago</DialogTitle>
+            <DialogDescription>
+              Marca como pagados los gastos seleccionados con una fecha y un comprobante único.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="rounded-md border p-3 max-h-[200px] overflow-y-auto space-y-1 text-sm">
+              {selectedExpensesData.map(e => {
+                const ev = events?.find(x => x.id === e.event_id);
+                return (
+                  <div key={e.id} className="flex justify-between gap-2">
+                    <span className="truncate">{ev?.name ?? '—'} · {getProfileName(e.user_id)} · {e.name}</span>
+                    <span className="font-medium whitespace-nowrap">${e.amount.toLocaleString('es-CL')}</span>
+                  </div>
+                );
+              })}
+              <div className="flex justify-between pt-2 mt-2 border-t font-semibold">
+                <span>Total</span>
+                <span>${selectedTotal.toLocaleString('es-CL')}</span>
+              </div>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="text-sm font-medium mb-1 block">Fecha de pago</label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" className={cn('w-full justify-start text-left font-normal', !payDate && 'text-muted-foreground')}>
+                      <CalendarIcon className="h-4 w-4 mr-1" />
+                      {payDate ? format(payDate, 'dd-MM-yyyy') : 'Seleccionar fecha'}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar mode="single" selected={payDate} onSelect={setPayDate} initialFocus className={cn('p-3 pointer-events-auto')} />
+                  </PopoverContent>
+                </Popover>
+              </div>
+              <div>
+                <label className="text-sm font-medium mb-1 block">Comprobante (opcional)</label>
+                <label className="cursor-pointer flex items-center gap-1 text-sm border rounded-md px-3 py-2 hover:bg-accent">
+                  <Upload className="h-4 w-4" />
+                  <span className="truncate">{payFile ? payFile.name : 'Subir archivo'}</span>
+                  <input type="file" className="hidden" accept="image/*,.pdf" onChange={e => setPayFile(e.target.files?.[0] ?? null)} />
+                </label>
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowPayDialog(false)} disabled={payingBulk}>Cancelar</Button>
+            <Button onClick={confirmBulkPayment} disabled={payingBulk || !payDate}>
+              <DollarIcon className="h-4 w-4 mr-1" />
+              {payingBulk ? 'Registrando...' : 'Confirmar pago'}
             </Button>
           </DialogFooter>
         </DialogContent>

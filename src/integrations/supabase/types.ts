@@ -191,6 +191,8 @@ export type Database = {
           event_id: string
           id: string
           name: string
+          paid_by: string | null
+          payment_date: string | null
           receipt_url: string | null
           updated_at: string
           user_id: string | null
@@ -204,6 +206,8 @@ export type Database = {
           event_id: string
           id?: string
           name: string
+          paid_by?: string | null
+          payment_date?: string | null
           receipt_url?: string | null
           updated_at?: string
           user_id?: string | null
@@ -217,6 +221,8 @@ export type Database = {
           event_id?: string
           id?: string
           name?: string
+          paid_by?: string | null
+          payment_date?: string | null
           receipt_url?: string | null
           updated_at?: string
           user_id?: string | null
@@ -739,7 +745,7 @@ export type Database = {
       attendance_status: "presente" | "atrasado" | "ausente"
       contract_status: "pendiente" | "firmado" | "rechazado"
       event_status: "pending" | "in_progress" | "completed" | "cancelled"
-      expense_approval_status: "pendiente" | "aprobado" | "rechazado"
+      expense_approval_status: "pendiente" | "aprobado" | "rechazado" | "pagado"
       invoice_status: "pendiente" | "pagado" | "rechazado"
       ticket_priority: "alta" | "media" | "baja"
       ticket_status: "pendiente" | "resuelto" | "inactivo"
@@ -877,7 +883,7 @@ export const Constants = {
       attendance_status: ["presente", "atrasado", "ausente"],
       contract_status: ["pendiente", "firmado", "rechazado"],
       event_status: ["pending", "in_progress", "completed", "cancelled"],
-      expense_approval_status: ["pendiente", "aprobado", "rechazado"],
+      expense_approval_status: ["pendiente", "aprobado", "rechazado", "pagado"],
       invoice_status: ["pendiente", "pagado", "rechazado"],
       ticket_priority: ["alta", "media", "baja"],
       ticket_status: ["pendiente", "resuelto", "inactivo"],
