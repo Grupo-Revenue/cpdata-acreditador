@@ -93,12 +93,45 @@ export function EventsAdminTable({ deals }: EventsAdminTableProps) {
   const [expensesDeal, setExpensesDeal] = useState<HubSpotDeal | null>(null);
   const [expensesDialogOpen, setExpensesDialogOpen] = useState(false);
 
-  const totalPages = Math.ceil(deals.length / PAGE_SIZE);
-  const paginatedDeals = deals.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+  const [filters, setFilters] = useState({
+    dealname: '',
+    nombre_del_evento: '',
+    tipo_de_evento: '',
+    locacion_del_evento: '',
+    fecha_inicio_del_evento: '',
+    hora_de_inicio_y_fin_del_evento: '',
+    dealstage: '',
+    estado: '',
+  });
+
+  const updateFilter = (key: keyof typeof filters, value: string) => {
+    setFilters((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const filteredDeals = useMemo(() => {
+    return deals.filter((deal) => {
+      const match = (value: string | null, filter: string) =>
+        !filter || (value ?? '').toLowerCase().includes(filter.toLowerCase());
+      const evStatusLabel = (eventStatusMap?.[deal.id] === 'completed' || eventStatusMap?.[deal.id] === 'cancelled') ? 'Cerrado' : 'Abierto';
+      return (
+        match(deal.dealname, filters.dealname) &&
+        match(deal.nombre_del_evento, filters.nombre_del_evento) &&
+        match(deal.tipo_de_evento, filters.tipo_de_evento) &&
+        match(deal.locacion_del_evento, filters.locacion_del_evento) &&
+        match(deal.fecha_inicio_del_evento, filters.fecha_inicio_del_evento) &&
+        match(deal.hora_de_inicio_y_fin_del_evento, filters.hora_de_inicio_y_fin_del_evento) &&
+        match(deal.dealstage, filters.dealstage) &&
+        match(evStatusLabel, filters.estado)
+      );
+    });
+  }, [deals, filters, eventStatusMap]);
+
+  const totalPages = Math.ceil(filteredDeals.length / PAGE_SIZE);
+  const paginatedDeals = filteredDeals.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [deals.length]);
+  }, [filteredDeals.length, filters]);
 
   const downloadContractsForDeal = async (deal: HubSpotDeal) => {
     // Get internal event
