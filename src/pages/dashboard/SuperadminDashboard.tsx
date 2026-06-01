@@ -84,6 +84,7 @@ export default function SuperadminDashboard({
       color: 'text-primary',
       bgColor: 'bg-primary/10',
       isLoading: loadingEvents,
+      href: '/app/events?range=today',
     },
     {
       title: 'Eventos del Mes',
@@ -93,6 +94,7 @@ export default function SuperadminDashboard({
       color: 'text-accent',
       bgColor: 'bg-accent/10',
       isLoading: loadingEvents,
+      href: '/app/events?range=month',
     },
     {
       title: 'Eventos Semanales',
@@ -102,6 +104,7 @@ export default function SuperadminDashboard({
       color: 'text-success',
       bgColor: 'bg-success/10',
       isLoading: loadingEvents,
+      href: '/app/events?range=week',
     },
     {
       title: 'Usuarios Pendientes',
@@ -111,6 +114,7 @@ export default function SuperadminDashboard({
       color: 'text-warning',
       bgColor: 'bg-warning/10',
       isLoading: loadingPending,
+      href: '/app/users?tab=pending',
     },
   ];
 
