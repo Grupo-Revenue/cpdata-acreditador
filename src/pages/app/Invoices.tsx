@@ -124,10 +124,23 @@ export default function InvoicesPage() {
       />
 
       {(() => {
-        const displayInvoices = isAdmin ? invoices : invoices.filter(inv => inv.user_id === user?.id);
-        return isLoading ? (
-          <LoadingState />
-        ) : displayInvoices.length === 0 ? (
+        let displayInvoices = isAdmin ? invoices : invoices.filter(inv => inv.user_id === user?.id);
+        if (statusFilter) displayInvoices = displayInvoices.filter(inv => inv.status === statusFilter);
+        return (
+          <>
+            {statusFilter && (
+              <div className="mb-3">
+                <Badge variant="outline" className="gap-2 py-1.5 px-3 bg-warning/10 text-warning border-warning/20">
+                  Mostrando boletas: {statusFilter}
+                  <button onClick={() => setSearchParams({})} className="ml-1 hover:opacity-70" aria-label="Limpiar filtro">
+                    <X className="h-3 w-3" />
+                  </button>
+                </Badge>
+              </div>
+            )}
+            {isLoading ? (
+              <LoadingState />
+            ) : displayInvoices.length === 0 ? (
         <EmptyState
           icon={FileText}
           title="Sin boletas"
