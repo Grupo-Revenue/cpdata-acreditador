@@ -48,6 +48,9 @@ interface WhatsappTemplate {
 export default function UsersPage() {
   const { hasRole } = useAuth();
   const isSuperadmin = hasRole('superadmin');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tabParam = searchParams.get('tab');
+  const activeTab = tabParam === 'pending' || tabParam === 'all' || tabParam === 'acreditadores' || tabParam === 'supervisores' || tabParam === 'administradores' ? tabParam : 'pending';
 
   const [pendingUsers, setPendingUsers] = useState<PendingUser[]>([]);
   const [allUsers, setAllUsers] = useState<UserWithRoles[]>([]);
