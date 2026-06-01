@@ -88,12 +88,27 @@ export default function AcreditadorDashboard() {
     enabled: !!user,
   });
 
-  const isLoading = l1 || l2 || l3 || l4;
+  const { data: pendingApplications, isLoading: l5 } = useQuery({
+    queryKey: ['acred-pending-applications', user?.id],
+    queryFn: async () => {
+      const { count, error } = await supabase
+        .from('event_accreditors')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', user!.id)
+        .eq('application_status', 'asignado');
+      if (error) throw error;
+      return count ?? 0;
+    },
+    enabled: !!user,
+  });
+
+  const isLoading = l1 || l2 || l3 || l4 || l5;
 
   const stats = [
+    { title: 'Postulaciones Pendientes', value: pendingApplications ?? 0, icon: Send, color: 'text-warning', bgColor: 'bg-warning/10', href: '/app/events', highlight: true },
     { title: 'Eventos Semana', value: eventsWeek ?? 0, icon: Calendar, color: 'text-primary', bgColor: 'bg-primary/10' },
-    { title: 'Eventos Mes', value: eventsMonth ?? 0, icon: CalendarDays, color: 'text-warning', bgColor: 'bg-warning/10' },
-    { title: 'Total Participados', value: totalEvents ?? 0, icon: CheckCircle, color: 'text-accent', bgColor: 'bg-accent/10' },
+    { title: 'Eventos Mes', value: eventsMonth ?? 0, icon: CalendarDays, color: 'text-accent', bgColor: 'bg-accent/10' },
+    { title: 'Total Participados', value: totalEvents ?? 0, icon: CheckCircle, color: 'text-success', bgColor: 'bg-success/10' },
     {
       title: 'Monto Ganado',
       value: `$${(totalEarned ?? 0).toLocaleString('es-CL')}`,
@@ -111,9 +126,14 @@ export default function AcreditadorDashboard() {
         breadcrumbs={[{ label: 'Dashboard' }]}
       />
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
         {stats.map((stat, index) => (
-          <Card key={index} className="hover-lift animate-fade-in-up" style={{ animationDelay: `${index * 100}ms` }}>
+          <Card
+            key={index}
+            onClick={stat.href ? () => navigate(stat.href!) : undefined}
+            className={`hover-lift animate-fade-in-up ${stat.href ? 'cursor-pointer' : ''} ${stat.highlight && (stat.value as number) > 0 ? 'ring-2 ring-warning' : ''}`}
+            style={{ animationDelay: `${index * 100}ms` }}
+          >
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
@@ -132,6 +152,7 @@ export default function AcreditadorDashboard() {
           </Card>
         ))}
       </div>
+
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <RankingTable limit={5} />
