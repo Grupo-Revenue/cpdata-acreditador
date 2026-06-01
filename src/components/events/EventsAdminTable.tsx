@@ -1,8 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious, PaginationEllipsis } from '@/components/ui/pagination';
 import { Pencil, Users, Download, FileDown, MessageSquare, DollarSign } from 'lucide-react';
@@ -92,12 +93,45 @@ export function EventsAdminTable({ deals }: EventsAdminTableProps) {
   const [expensesDeal, setExpensesDeal] = useState<HubSpotDeal | null>(null);
   const [expensesDialogOpen, setExpensesDialogOpen] = useState(false);
 
-  const totalPages = Math.ceil(deals.length / PAGE_SIZE);
-  const paginatedDeals = deals.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+  const [filters, setFilters] = useState({
+    dealname: '',
+    nombre_del_evento: '',
+    tipo_de_evento: '',
+    locacion_del_evento: '',
+    fecha_inicio_del_evento: '',
+    hora_de_inicio_y_fin_del_evento: '',
+    dealstage: '',
+    estado: '',
+  });
+
+  const updateFilter = (key: keyof typeof filters, value: string) => {
+    setFilters((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const filteredDeals = useMemo(() => {
+    return deals.filter((deal) => {
+      const match = (value: string | null, filter: string) =>
+        !filter || (value ?? '').toLowerCase().includes(filter.toLowerCase());
+      const evStatusLabel = (eventStatusMap?.[deal.id] === 'completed' || eventStatusMap?.[deal.id] === 'cancelled') ? 'Cerrado' : 'Abierto';
+      return (
+        match(deal.dealname, filters.dealname) &&
+        match(deal.nombre_del_evento, filters.nombre_del_evento) &&
+        match(deal.tipo_de_evento, filters.tipo_de_evento) &&
+        match(deal.locacion_del_evento, filters.locacion_del_evento) &&
+        match(deal.fecha_inicio_del_evento, filters.fecha_inicio_del_evento) &&
+        match(deal.hora_de_inicio_y_fin_del_evento, filters.hora_de_inicio_y_fin_del_evento) &&
+        match(deal.dealstage, filters.dealstage) &&
+        match(evStatusLabel, filters.estado)
+      );
+    });
+  }, [deals, filters, eventStatusMap]);
+
+  const totalPages = Math.ceil(filteredDeals.length / PAGE_SIZE);
+  const paginatedDeals = filteredDeals.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [deals.length]);
+  }, [filteredDeals.length, filters]);
 
   const downloadContractsForDeal = async (deal: HubSpotDeal) => {
     // Get internal event
@@ -179,6 +213,16 @@ export function EventsAdminTable({ deals }: EventsAdminTableProps) {
           <FileDown className="h-4 w-4 mr-2" />
           Descargar Todos los Contratos
         </Button>
+      </div>
+      <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-8 gap-2 mb-4">
+        <Input placeholder="Filtrar Id..." value={filters.dealname} onChange={(e) => updateFilter('dealname', e.target.value)} className="h-8 text-xs" />
+        <Input placeholder="Filtrar Nombre..." value={filters.nombre_del_evento} onChange={(e) => updateFilter('nombre_del_evento', e.target.value)} className="h-8 text-xs" />
+        <Input placeholder="Filtrar Tipo..." value={filters.tipo_de_evento} onChange={(e) => updateFilter('tipo_de_evento', e.target.value)} className="h-8 text-xs" />
+        <Input placeholder="Filtrar Locación..." value={filters.locacion_del_evento} onChange={(e) => updateFilter('locacion_del_evento', e.target.value)} className="h-8 text-xs" />
+        <Input placeholder="Filtrar Fecha..." value={filters.fecha_inicio_del_evento} onChange={(e) => updateFilter('fecha_inicio_del_evento', e.target.value)} className="h-8 text-xs" />
+        <Input placeholder="Filtrar Horario..." value={filters.hora_de_inicio_y_fin_del_evento} onChange={(e) => updateFilter('hora_de_inicio_y_fin_del_evento', e.target.value)} className="h-8 text-xs" />
+        <Input placeholder="Filtrar Etapa..." value={filters.dealstage} onChange={(e) => updateFilter('dealstage', e.target.value)} className="h-8 text-xs" />
+        <Input placeholder="Filtrar Estado..." value={filters.estado} onChange={(e) => updateFilter('estado', e.target.value)} className="h-8 text-xs" />
       </div>
       {isMobile ? (
         <div className="space-y-3">
