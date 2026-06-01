@@ -10,6 +10,7 @@ import { FaqSettings } from '@/components/settings/FaqSettings';
 import { DigitalSignatureSettings } from '@/components/settings/DigitalSignatureSettings';
 import { PermissionsSettings } from '@/components/settings/PermissionsSettings';
 import { ProfileFieldsSettings } from '@/components/settings/ProfileFieldsSettings';
+import { TicketCategoriesSettings } from '@/components/settings/TicketCategoriesSettings';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 export default function SettingsPage() {
@@ -32,6 +33,8 @@ export default function SettingsPage() {
           <TabsTrigger value="whatsapp">Plantillas WhatsApp</TabsTrigger>
           <TabsTrigger value="faqs">FAQs</TabsTrigger>
           <TabsTrigger value="firma-digital">Firma Digital</TabsTrigger>
+          <TabsTrigger value="firma-digital">Firma Digital</TabsTrigger>
+          <TabsTrigger value="tickets">Tickets</TabsTrigger>
         </TabsList>
 
         <TabsContent value="general" className="space-y-6">
@@ -60,6 +63,10 @@ export default function SettingsPage() {
 
         <TabsContent value="firma-digital">
           <DigitalSignatureSettings />
+        </TabsContent>
+
+        <TabsContent value="tickets">
+          <TicketCategoriesSettings />
         </TabsContent>
       </Tabs>
     </AppShell>
