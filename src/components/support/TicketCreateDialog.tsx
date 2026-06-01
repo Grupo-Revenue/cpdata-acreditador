@@ -1,9 +1,10 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
@@ -15,14 +16,49 @@ interface TicketCreateDialogProps {
   onCreated: () => void;
 }
 
+type Priority = 'alta' | 'media' | 'baja';
+interface Category { name: string; priority: Priority }
+
+const priorityLabel: Record<Priority, string> = { alta: 'Alta', media: 'Media', baja: 'Baja' };
+const priorityClass: Record<Priority, string> = {
+  alta: 'bg-destructive/10 text-destructive border-destructive/20',
+  media: 'bg-warning/10 text-warning border-warning/20',
+  baja: 'bg-muted text-muted-foreground border-muted',
+};
+
 export function TicketCreateDialog({ open, onOpenChange, onCreated }: TicketCreateDialogProps) {
   const [motivo, setMotivo] = useState('');
-  const [priority, setPriority] = useState<string>('media');
+  const [priority, setPriority] = useState<Priority>('media');
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [categoryName, setCategoryName] = useState<string>('');
   const [file, setFile] = useState<File | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const { profile, roles } = useAuth();
+
+  useEffect(() => {
+    if (!open) return;
+    (async () => {
+      const { data } = await supabase
+        .from('settings')
+        .select('value')
+        .eq('key', 'ticket_categories')
+        .maybeSingle();
+      if (data?.value) {
+        try {
+          const parsed = JSON.parse(data.value) as Category[];
+          setCategories(parsed.filter((c) => c.name?.trim()));
+        } catch {}
+      }
+    })();
+  }, [open]);
+
+  const handleCategoryChange = (name: string) => {
+    setCategoryName(name);
+    const cat = categories.find((c) => c.name === name);
+    if (cat) setPriority(cat.priority);
+  };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selected = e.target.files?.[0];
@@ -34,14 +70,19 @@ export function TicketCreateDialog({ open, onOpenChange, onCreated }: TicketCrea
       toast({ title: 'Error', description: 'El motivo es obligatorio', variant: 'destructive' });
       return;
     }
+    if (categories.length > 0 && !categoryName) {
+      toast({ title: 'Error', description: 'Debes seleccionar una categoría', variant: 'destructive' });
+      return;
+    }
 
     setIsSubmitting(true);
     try {
+      const motivoFinal = categoryName ? `[${categoryName}] ${motivo.trim()}` : motivo.trim();
       const { data: newTicket, error } = await supabase
         .from('support_tickets')
         .insert({
-          motivo: motivo.trim(),
-          priority: priority as 'alta' | 'media' | 'baja',
+          motivo: motivoFinal,
+          priority,
           creator_nombre: profile?.nombre || '',
           creator_apellido: profile?.apellido || '',
           creator_email: profile?.email || '',
@@ -54,17 +95,13 @@ export function TicketCreateDialog({ open, onOpenChange, onCreated }: TicketCrea
 
       if (error) throw error;
 
-      // Upload file if selected
       if (file && newTicket) {
         const fileExt = file.name.split('.').pop();
         const filePath = `${newTicket.id}/${Date.now()}.${fileExt}`;
-
         const { error: uploadError } = await supabase.storage
           .from('ticket-evidence')
           .upload(filePath, file);
-
         if (uploadError) throw uploadError;
-
         await supabase
           .from('support_tickets')
           .update({ evidence_url: filePath })
@@ -74,6 +111,7 @@ export function TicketCreateDialog({ open, onOpenChange, onCreated }: TicketCrea
       toast({ title: 'Ticket creado', description: 'El ticket de soporte ha sido creado exitosamente' });
       setMotivo('');
       setPriority('media');
+      setCategoryName('');
       setFile(null);
       onOpenChange(false);
       onCreated();
@@ -84,6 +122,8 @@ export function TicketCreateDialog({ open, onOpenChange, onCreated }: TicketCrea
     }
   };
 
+  const hasCategories = categories.length > 0;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
@@ -91,6 +131,24 @@ export function TicketCreateDialog({ open, onOpenChange, onCreated }: TicketCrea
           <DialogTitle>Crear Ticket de Soporte</DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
+          {hasCategories && (
+            <div className="space-y-2">
+              <Label htmlFor="category">Categoría</Label>
+              <Select value={categoryName} onValueChange={handleCategoryChange}>
+                <SelectTrigger id="category">
+                  <SelectValue placeholder="Selecciona una categoría" />
+                </SelectTrigger>
+                <SelectContent>
+                  {categories.map((c) => (
+                    <SelectItem key={c.name} value={c.name}>
+                      {c.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
           <div className="space-y-2">
             <Label htmlFor="motivo">Motivo</Label>
             <Textarea
@@ -101,19 +159,32 @@ export function TicketCreateDialog({ open, onOpenChange, onCreated }: TicketCrea
               rows={4}
             />
           </div>
+
           <div className="space-y-2">
             <Label htmlFor="priority">Prioridad</Label>
-            <Select value={priority} onValueChange={setPriority}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="alta">Alta</SelectItem>
-                <SelectItem value="media">Media</SelectItem>
-                <SelectItem value="baja">Baja</SelectItem>
-              </SelectContent>
-            </Select>
+            {hasCategories ? (
+              <div>
+                <Badge variant="outline" className={priorityClass[priority]}>
+                  {priorityLabel[priority]}
+                </Badge>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Asignada automáticamente según la categoría seleccionada.
+                </p>
+              </div>
+            ) : (
+              <Select value={priority} onValueChange={(v) => setPriority(v as Priority)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="alta">Alta</SelectItem>
+                  <SelectItem value="media">Media</SelectItem>
+                  <SelectItem value="baja">Baja</SelectItem>
+                </SelectContent>
+              </Select>
+            )}
           </div>
+
           <div className="space-y-2">
             <Label>Evidencia (opcional)</Label>
             <div className="flex items-center gap-2">
