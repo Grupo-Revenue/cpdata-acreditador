@@ -275,6 +275,33 @@ export default function ReimbursementsPage() {
     if (confirmAction.type === 'close_reimbursement') closeReimbursements(confirmAction.eventId);
     if (confirmAction.type === 'reopen_event') reopenEvent(confirmAction.eventId);
     if (confirmAction.type === 'reopen_reimbursement') reopenReimbursements(confirmAction.eventId);
+    if (confirmAction.type === 'delete_expense' && confirmAction.expenseId) {
+      deleteExpense(confirmAction.expenseId);
+      setConfirmAction(null);
+    }
+  };
+
+  // Upload receipt for an existing expense (reused by supervisor column and admin action button)
+  const uploadReceipt = async (expenseId: string, file: File) => {
+    const filePath = `${user!.id}/${Date.now()}_${file.name}`;
+    const { error: uploadErr } = await supabase.storage
+      .from('expense-receipts')
+      .upload(filePath, file);
+    if (uploadErr) {
+      toast({ title: 'Error', description: 'No se pudo subir el comprobante.', variant: 'destructive' });
+      return;
+    }
+    const { data: urlData } = supabase.storage.from('expense-receipts').getPublicUrl(filePath);
+    const { error: updateErr } = await supabase
+      .from('event_expenses')
+      .update({ receipt_url: urlData.publicUrl })
+      .eq('id', expenseId);
+    if (updateErr) {
+      toast({ title: 'Error', description: 'No se pudo actualizar el comprobante.', variant: 'destructive' });
+      return;
+    }
+    toast({ title: 'Comprobante subido' });
+    queryClient.invalidateQueries({ queryKey: ['reimbursement-expenses'] });
   };
 
   const getStatusBadge = (status: string) => {
