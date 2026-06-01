@@ -1,24 +1,26 @@
 import { AppShell } from '@/components/layout/AppShell';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { Card, CardContent } from '@/components/ui/card';
-import { Calendar, CalendarDays, CheckCircle, Receipt } from 'lucide-react';
+import { Calendar, CalendarDays, CheckCircle, Receipt, Send } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { RankingTable } from '@/components/dashboard/RankingTable';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useNavigate } from 'react-router-dom';
 
 export default function SupervisorDashboard() {
   const { user } = useAuth();
+  const navigate = useNavigate();
 
   const { data: metrics, isLoading } = useQuery({
     queryKey: ['supervisor-metrics', user?.id],
     queryFn: async () => {
-      if (!user?.id) return { today: 0, month: 0, total: 0, paid: 0 };
+      if (!user?.id) return { today: 0, month: 0, total: 0, paid: 0, pending: 0 };
 
       const { data: assignments } = await supabase
         .from('event_accreditors')
-        .select('event_id, events(event_date)')
+        .select('event_id, application_status, events(event_date)')
         .eq('user_id', user.id);
 
       const now = new Date();
@@ -36,6 +38,8 @@ export default function SupervisorDashboard() {
         return ev?.event_date && ev.event_date >= monthStart && ev.event_date <= monthEnd;
       }).length;
 
+      const pending = (assignments || []).filter(a => a.application_status === 'asignado').length;
+
       const { count } = await supabase
         .from('invoices')
         .select('*', { count: 'exact', head: true })
@@ -47,12 +51,14 @@ export default function SupervisorDashboard() {
         month: eventsMonth,
         total: (assignments || []).length,
         paid: count || 0,
+        pending,
       };
     },
     enabled: !!user?.id,
   });
 
   const stats = [
+    { title: 'Postulaciones Pendientes', value: metrics?.pending ?? 0, icon: Send, color: 'text-warning', bgColor: 'bg-warning/10', href: '/app/events', highlight: true },
     { title: 'Eventos Hoy', value: metrics?.today ?? 0, icon: Calendar, color: 'text-primary', bgColor: 'bg-primary/10' },
     { title: 'Eventos Mes', value: metrics?.month ?? 0, icon: CalendarDays, color: 'text-accent', bgColor: 'bg-accent/10' },
     { title: 'Total Participados', value: metrics?.total ?? 0, icon: CheckCircle, color: 'text-success', bgColor: 'bg-success/10' },
@@ -67,9 +73,14 @@ export default function SupervisorDashboard() {
         breadcrumbs={[{ label: 'Dashboard' }]}
       />
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
         {stats.map((stat, index) => (
-          <Card key={index} className="hover-lift animate-fade-in-up" style={{ animationDelay: `${index * 100}ms` }}>
+          <Card
+            key={index}
+            onClick={stat.href ? () => navigate(stat.href!) : undefined}
+            className={`hover-lift animate-fade-in-up ${stat.href ? 'cursor-pointer' : ''} ${stat.highlight && (stat.value as number) > 0 ? 'ring-2 ring-warning' : ''}`}
+            style={{ animationDelay: `${index * 100}ms` }}
+          >
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
