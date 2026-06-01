@@ -194,6 +194,7 @@ export function AttendanceCommentsDialog({ open, onOpenChange, userId, userName 
                     className="h-8 w-8"
                     disabled={page <= 1}
                     onClick={() => setPage(p => p - 1)}
+                    title="Página anterior"
                   >
                     <ChevronLeft className="h-4 w-4" />
                   </Button>
@@ -203,6 +204,7 @@ export function AttendanceCommentsDialog({ open, onOpenChange, userId, userName 
                     className="h-8 w-8"
                     disabled={page >= totalPages}
                     onClick={() => setPage(p => p + 1)}
+                    title="Página siguiente"
                   >
                     <ChevronRight className="h-4 w-4" />
                   </Button>

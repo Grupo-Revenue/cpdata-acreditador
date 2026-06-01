@@ -43,6 +43,7 @@ export function Topbar({ onMenuClick, sidebarCollapsed }: TopbarProps) {
             size="icon"
             className="lg:hidden"
             onClick={onMenuClick}
+            title="Abrir menú"
           >
             <Menu className="w-5 h-5" />
           </Button>

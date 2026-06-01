@@ -162,7 +162,7 @@ export function EventGeneralExpensesDialog({ hubspotDealId, dealName, open, onOp
                         ) : '—'}
                       </TableCell>
                       <TableCell>
-                        <Button variant="ghost" size="icon" onClick={() => handleDelete(exp.id)}>
+                        <Button variant="ghost" size="icon" onClick={() => handleDelete(exp.id)} title="Eliminar gasto">
                           <Trash2 className="h-4 w-4 text-destructive" />
                         </Button>
                       </TableCell>

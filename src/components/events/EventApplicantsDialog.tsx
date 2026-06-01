@@ -627,10 +627,10 @@ export function EventApplicantsDialog({ open, onOpenChange }: EventApplicantsDia
                     {activeList.length} resultado{activeList.length !== 1 ? 's' : ''} · Página {page + 1} de {totalPages}
                   </span>
                   <div className="flex gap-1">
-                    <Button variant="outline" size="icon" className="h-7 w-7" disabled={page === 0} onClick={() => setPage(page - 1)}>
+                    <Button variant="outline" size="icon" className="h-7 w-7" disabled={page === 0} onClick={() => setPage(page - 1)} title="Página anterior">
                       <ChevronLeft className="h-4 w-4" />
                     </Button>
-                    <Button variant="outline" size="icon" className="h-7 w-7" disabled={page >= totalPages - 1} onClick={() => setPage(page + 1)}>
+                    <Button variant="outline" size="icon" className="h-7 w-7" disabled={page >= totalPages - 1} onClick={() => setPage(page + 1)} title="Página siguiente">
                       <ChevronRight className="h-4 w-4" />
                     </Button>
                   </div>

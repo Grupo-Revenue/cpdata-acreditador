@@ -126,7 +126,7 @@ export function HubspotIntegration() {
                   value={showToken ? (setting?.value ?? '') : maskToken(setting?.value ?? '')}
                   className="font-mono"
                 />
-                <Button variant="ghost" size="icon" onClick={() => setShowToken(!showToken)}>
+                <Button variant="ghost" size="icon" onClick={() => setShowToken(!showToken)} title={showToken ? 'Ocultar token' : 'Mostrar token'}>
                   {showToken ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </Button>
               </div>
@@ -139,7 +139,7 @@ export function HubspotIntegration() {
                   onChange={(e) => setTokenInput(e.target.value)}
                   className="font-mono"
                 />
-                <Button variant="ghost" size="icon" onClick={() => setShowToken(!showToken)}>
+                <Button variant="ghost" size="icon" onClick={() => setShowToken(!showToken)} title={showToken ? 'Ocultar token' : 'Mostrar token'}>
                   {showToken ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </Button>
               </div>
