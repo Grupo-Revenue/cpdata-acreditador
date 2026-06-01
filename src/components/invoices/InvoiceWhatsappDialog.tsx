@@ -52,10 +52,22 @@ export function InvoiceWhatsappDialog({ open, onOpenChange, invoice }: Props) {
     return detectVariables(selected.body_text);
   }, [selected]);
 
-  // Reset variable values when template changes
+  // Prefill {{1}} with recipient first name (mirrors bulk send behavior)
   useEffect(() => {
-    setVariableValues({});
-  }, [selectedTemplate]);
+    if (!selected) {
+      setVariableValues({});
+      return;
+    }
+    const initial: Record<string, string> = {};
+    variables.forEach((v) => {
+      if (v === '{{1}}' && invoice?.profiles?.nombre) {
+        initial[v] = invoice.profiles.nombre;
+      } else {
+        initial[v] = '';
+      }
+    });
+    setVariableValues(initial);
+  }, [selectedTemplate, selected, variables, invoice?.profiles?.nombre]);
 
   const previewBody = useMemo(() => {
     if (!selected) return '';

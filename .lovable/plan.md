@@ -1,17 +1,23 @@
 ## Problema
 
-El diálogo `InvoiceEditDialog` no limita su alto al viewport, por lo que en pantallas normales el contenido se corta y no se puede hacer scroll dentro del modal (solo bajando el zoom del navegador se ve completo).
+Al enviar la plantilla `msg_boleta_pagada` desde el diálogo individual (`InvoiceWhatsappDialog`), Meta responde con error porque la plantilla tiene una variable `{{1}}` y el formulario la deja vacía si el usuario no escribe nada. En cambio, el flujo masivo (`BulkWhatsappInvoicesDialog`) funciona porque pasa automáticamente el `nombre` del destinatario como parámetro `[nombre]`.
 
 ## Solución
 
-Editar `src/components/invoices/InvoiceEditDialog.tsx` (línea 160):
+Alinear el envío individual con el masivo, prellenando las variables de la plantilla con el `nombre` del destinatario de la boleta y validando que no se envíen valores vacíos.
 
-- Cambiar `DialogContent` para que tenga alto máximo y scroll vertical interno:
-  - `className="max-w-lg max-h-[90vh] overflow-y-auto"`
-- Mantener `DialogFooter` dentro del flujo (scrolleable junto con el contenido) para mantener la solución mínima. Si se prefiere footer fijo, se puede convertir luego a layout flex con `flex flex-col` + body `overflow-y-auto` + footer sticky, pero no es necesario para resolver el problema.
+### Edits en `src/components/invoices/InvoiceWhatsappDialog.tsx`
+
+1. Al cambiar de plantilla (efecto que detecta `variables`), prellenar `variableValues`:
+   - `{{1}}` → `invoice.profiles.nombre` (igual que el bulk).
+   - Resto de variables → string vacío (el usuario las completa).
+2. En `sendMutation.mutationFn`, antes de invocar la edge function, validar que cada variable detectada tenga un valor no vacío; si falta alguna, lanzar `throw new Error('Completa todas las variables de la plantilla')` para que aparezca un toast claro en vez del error 400 de Meta.
+3. Mantener `cleanPhone` y demás lógica como está.
+
+No requiere cambios en la edge function `send-whatsapp-message` ni en la base de datos.
 
 ## Verificación
 
-Abrir una boleta → botón Editar → el panel debe verse completo a zoom normal y permitir scroll interno hasta los botones de acción.
-
-No hay cambios de lógica ni de backend.
+- Abrir una boleta pagada → ícono de WhatsApp → seleccionar `msg_boleta_pagada` → la variable `{{1}}` aparece prellenada con el nombre → enviar → mensaje recibido sin error.
+- Probar con `msg_pendiente_boleta` (mismo comportamiento).
+- Probar plantilla con variable vacía manualmente → toast "Completa todas las variables de la plantilla".
