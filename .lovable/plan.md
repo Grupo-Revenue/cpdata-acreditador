@@ -1,36 +1,24 @@
-## Resumen
-Hacer clickeables las tarjetas de estadísticas en los dashboards de Superadmin y Administración, redirigiendo a la sección correspondiente con un filtro pre-aplicado para mostrar solo los registros del rango deseado (hoy / semana / mes / pendientes).
+## Problema
+La tabla de eventos para roles de acreditador/supervisor (`EventsUserTable`) ya cuenta con un panel de filtros por columna. Sin embargo, la tabla de eventos para administradores (`EventsAdminTable`) **no tiene ningún panel de búsqueda ni filtros**.
 
-## Cambios
+## Solución
+Agregar a `EventsAdminTable` un panel de filtros equivalente al que ya existe en `EventsUserTable`, adaptado a las columnas que muestra la tabla admin:
 
-### 1. `src/pages/app/Events.tsx`
-- Leer query param `range` (`today` | `week` | `month`) con `useSearchParams`.
-- Aplicar filtro sobre `userDeals` usando la misma lógica de `parseDate` que ya usan los dashboards (formato `DD-MM-YYYY` → ISO) contra `fecha_inicio_del_evento`.
-- Mostrar un chip/badge arriba de la tabla indicando el rango activo (ej. "Eventos de hoy") con botón "Limpiar filtro" que remueve el param.
+- **Filtro por Id** (`dealname`)
+- **Filtro por Nombre del Evento** (`nombre_del_evento`)
+- **Filtro por Tipo** (`tipo_de_evento`)
+- **Filtro por Locación** (`locacion_del_evento`)
+- **Filtro por Fecha Inicio** (`fecha_inicio_del_evento`)
+- **Filtro por Horario** (`hora_de_inicio_y_fin_del_evento`)
+- **Filtro por Etapa** (`dealstage`)
+- **Filtro por Estado** (estado interno del evento: Abierto/Cerrado)
 
-### 2. `src/pages/app/Users.tsx`
-- Leer query param `tab` con `useSearchParams`.
-- Pasar `value` controlado al `<Tabs>` (en lugar de `defaultValue`) cuando `tab=pending`, para abrir directamente la pestaña Pendientes.
+## Cambios técnicos
+1. **`src/components/events/EventsAdminTable.tsx`**:
+   - Agregar estado `filters` con las claves correspondientes.
+   - Agregar `filteredDeals` con `useMemo` que aplique los filtros sobre `deals` (igual que en `EventsUserTable`).
+   - Agregar la grilla de inputs `<Input>` debajo de los botones de acción y sobre la tabla.
+   - Usar `filteredDeals` para la paginación en lugar de `deals`.
+   - Resetear `currentPage` a 1 cuando cambien los filtros.
 
-### 3. `src/pages/app/Invoices.tsx`
-- Leer query param `status=pendiente`.
-- Si está presente, filtrar `displayInvoices` por `inv.status === 'pendiente'` y mostrar chip "Mostrando boletas pendientes" con opción de limpiar.
-
-### 4. `src/pages/dashboard/SuperadminDashboard.tsx`
-- Añadir `href` a cada item de `stats`:
-  - Eventos Hoy → `/app/events?range=today`
-  - Eventos del Mes → `/app/events?range=month`
-  - Eventos Semanales → `/app/events?range=week`
-  - Usuarios Pendientes → `/app/users?tab=pending`
-- Envolver cada `<Card>` con `onClick={() => navigate(href)}` + clases `cursor-pointer hover-lift`.
-
-### 5. `src/pages/dashboard/AdminDashboard.tsx`
-- Mismo tratamiento:
-  - Eventos Hoy / Mes / Semanales → `/app/events?range=...`
-  - Boletas Pendientes → `/app/invoices?status=pendiente`
-- Cards clickeables con navegación.
-
-## Notas técnicas
-- Reutilizar la función `parseDate` ya presente en los dashboards (copiar a Events.tsx) para mantener consistencia con `DD-MM-YYYY` de HubSpot.
-- Rangos calculados con `date-fns` (`startOfWeek`/`endOfWeek` con `weekStartsOn: 1`) tal como en los dashboards.
-- No se cambia lógica de negocio ni queries existentes; solo se añaden filtros en frontend.
+No se modifican otras páginas ni componentes. La tabla de usuarios (`EventsUserTable`) ya tiene filtros y no necesita cambios.
