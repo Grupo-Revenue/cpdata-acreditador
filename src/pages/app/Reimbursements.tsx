@@ -550,7 +550,7 @@ export default function ReimbursementsPage() {
                               <TableHead className="text-right">Monto</TableHead>
                               <TableHead>Comprobante</TableHead>
                               <TableHead>Estado</TableHead>
-                              {(isSuperadmin || ((isSupervisor || isAdmin) && !isReimbursementClosed)) && <TableHead className="w-[120px]">Acciones</TableHead>}
+                              {((isAdmin || isSupervisor) && !isReimbursementClosed) && <TableHead className="w-[180px]">Acciones</TableHead>}
                             </TableRow>
                           </TableHeader>
                           <TableBody>
@@ -562,7 +562,7 @@ export default function ReimbursementsPage() {
                                 <TableCell>
                                   {exp.receipt_url ? (
                                     <a href={exp.receipt_url} target="_blank" rel="noopener noreferrer" className="text-primary underline text-sm">Ver</a>
-                                  ) : (isSupervisor && !isReimbursementClosed) ? (
+                                  ) : ((isSupervisor || isAdmin) && !isReimbursementClosed) ? (
                                     <label className="cursor-pointer inline-flex items-center gap-1 text-xs text-primary hover:underline">
                                       <Upload className="h-3 w-3" />
                                       Subir
@@ -570,55 +570,68 @@ export default function ReimbursementsPage() {
                                         type="file"
                                         className="hidden"
                                         accept="image/*,.pdf"
-                                        onChange={async (e) => {
+                                        onChange={(e) => {
                                           const file = e.target.files?.[0];
-                                          if (!file) return;
-                                          const filePath = `${user!.id}/${Date.now()}_${file.name}`;
-                                          const { error: uploadErr } = await supabase.storage
-                                            .from('expense-receipts')
-                                            .upload(filePath, file);
-                                          if (uploadErr) {
-                                            toast({ title: 'Error', description: 'No se pudo subir el comprobante.', variant: 'destructive' });
-                                            return;
-                                          }
-                                          const { data: urlData } = supabase.storage.from('expense-receipts').getPublicUrl(filePath);
-                                          const { error: updateErr } = await supabase
-                                            .from('event_expenses')
-                                            .update({ receipt_url: urlData.publicUrl })
-                                            .eq('id', exp.id);
-                                          if (updateErr) {
-                                            toast({ title: 'Error', description: 'No se pudo actualizar el comprobante.', variant: 'destructive' });
-                                            return;
-                                          }
-                                          toast({ title: 'Comprobante subido' });
-                                          queryClient.invalidateQueries({ queryKey: ['reimbursement-expenses'] });
+                                          if (file) uploadReceipt(exp.id, file);
+                                          e.target.value = '';
                                         }}
                                       />
                                     </label>
                                   ) : '—'}
                                 </TableCell>
                                 <TableCell>{getStatusBadge(exp.approval_status)}</TableCell>
-                                {isSuperadmin && (
-                                  <TableCell className="flex gap-1">
-                                    {exp.approval_status === 'pendiente' && (
-                                      <>
+                                {((isAdmin || isSupervisor) && !isReimbursementClosed) && (
+                                  <TableCell>
+                                    <div className="flex gap-1">
+                                      {isAdmin && exp.approval_status === 'pendiente' && (
                                         <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => approveExpense(exp.id)} title="Aprobar">
                                           <CheckCircle className="h-4 w-4 text-primary" />
                                         </Button>
+                                      )}
+                                      {isAdmin && exp.approval_status !== 'rechazado' && (
                                         <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => rejectExpense(exp.id)} title="Rechazar">
                                           <XCircle className="h-4 w-4 text-destructive" />
                                         </Button>
-                                      </>
-                                    )}
-                                  </TableCell>
-                                )}
-{(isSupervisor || isAdmin) && !isReimbursementClosed && (
-                                  <TableCell>
-                                    {exp.created_by === user!.id && !exp.user_id && (
-                                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => deleteExpense(exp.id)} title="Eliminar">
-                                        <Trash2 className="h-4 w-4 text-destructive" />
-                                      </Button>
-                                    )}
+                                      )}
+                                      {(isAdmin || isSupervisor) && !exp.receipt_url && (
+                                        <label className="inline-flex items-center justify-center h-7 w-7 rounded-md hover:bg-accent cursor-pointer" title="Subir comprobante">
+                                          <Upload className="h-4 w-4" />
+                                          <input
+                                            type="file"
+                                            className="hidden"
+                                            accept="image/*,.pdf"
+                                            onChange={(e) => {
+                                              const file = e.target.files?.[0];
+                                              if (file) uploadReceipt(exp.id, file);
+                                              e.target.value = '';
+                                            }}
+                                          />
+                                        </label>
+                                      )}
+                                      {isAdmin && sup?.phone && (
+                                        <Button
+                                          variant="ghost"
+                                          size="icon"
+                                          className="h-7 w-7"
+                                          onClick={() => sendWhatsapp(event.id)}
+                                          disabled={sendingWsp === event.id}
+                                          title={`Enviar WhatsApp a ${sup.name}`}
+                                        >
+                                          <MessageSquare className="h-4 w-4" />
+                                        </Button>
+                                      )}
+                                      {(isAdmin || (isSupervisor && exp.created_by === user!.id && !exp.user_id)) && (
+                                        <Button
+                                          variant="ghost"
+                                          size="icon"
+                                          className="h-7 w-7"
+                                          onClick={() => setConfirmAction({ type: 'delete_expense', eventId: event.id, expenseId: exp.id })}
+                                          title="Eliminar"
+                                        >
+                                          <Trash2 className="h-4 w-4 text-destructive" />
+                                        </Button>
+                                      )}
+                                    </div>
                                   </TableCell>
                                 )}
                               </TableRow>
