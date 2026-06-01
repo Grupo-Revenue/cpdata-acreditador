@@ -58,10 +58,10 @@ export default function AdminDashboard() {
   });
 
   const stats = [
-    { title: 'Eventos Hoy', value: (eventCounts?.today ?? 0).toString(), icon: Calendar, trend: 'Programados para hoy', color: 'text-primary', bgColor: 'bg-primary/10', isLoading: loadingEvents },
-    { title: 'Eventos del Mes', value: (eventCounts?.month ?? 0).toString(), icon: Calendar, trend: 'En este mes', color: 'text-accent', bgColor: 'bg-accent/10', isLoading: loadingEvents },
-    { title: 'Eventos Semanales', value: (eventCounts?.week ?? 0).toString(), icon: Calendar, trend: 'En esta semana', color: 'text-success', bgColor: 'bg-success/10', isLoading: loadingEvents },
-    { title: 'Boletas Pendientes', value: pendingInvoices?.toString() || '0', icon: FileText, trend: (pendingInvoices || 0) > 0 ? 'Requieren revisión' : 'Todo al día', color: 'text-warning', bgColor: 'bg-warning/10', isLoading: loadingInvoices },
+    { title: 'Eventos Hoy', value: (eventCounts?.today ?? 0).toString(), icon: Calendar, trend: 'Programados para hoy', color: 'text-primary', bgColor: 'bg-primary/10', isLoading: loadingEvents, href: '/app/events?range=today' },
+    { title: 'Eventos del Mes', value: (eventCounts?.month ?? 0).toString(), icon: Calendar, trend: 'En este mes', color: 'text-accent', bgColor: 'bg-accent/10', isLoading: loadingEvents, href: '/app/events?range=month' },
+    { title: 'Eventos Semanales', value: (eventCounts?.week ?? 0).toString(), icon: Calendar, trend: 'En esta semana', color: 'text-success', bgColor: 'bg-success/10', isLoading: loadingEvents, href: '/app/events?range=week' },
+    { title: 'Boletas Pendientes', value: pendingInvoices?.toString() || '0', icon: FileText, trend: (pendingInvoices || 0) > 0 ? 'Requieren revisión' : 'Todo al día', color: 'text-warning', bgColor: 'bg-warning/10', isLoading: loadingInvoices, href: '/app/invoices?status=pendiente' },
   ];
 
   const quickLinks = [
