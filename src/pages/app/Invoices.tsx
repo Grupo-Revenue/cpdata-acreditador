@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { AppShell } from '@/components/layout/AppShell';
@@ -6,7 +7,8 @@ import { PageHeader } from '@/components/ui/PageHeader';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { LoadingState } from '@/components/ui/LoadingState';
 import { Button } from '@/components/ui/button';
-import { FileText, Plus, MessageSquare } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { FileText, Plus, MessageSquare, X } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { InvoicesTable, type InvoiceRow } from '@/components/invoices/InvoicesTable';
 import { InvoiceCreateDialog } from '@/components/invoices/InvoiceCreateDialog';
