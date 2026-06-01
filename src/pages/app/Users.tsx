@@ -598,7 +598,7 @@ export default function UsersPage() {
       />
 
       {isSuperadmin ? (
-        <Tabs defaultValue="pending" className="space-y-4">
+        <Tabs value={activeTab} onValueChange={(v) => setSearchParams(v === 'pending' ? {} : { tab: v })} className="space-y-4">
           <TabsList className="flex-wrap h-auto gap-1">
             <TabsTrigger value="pending">
               Pendientes
