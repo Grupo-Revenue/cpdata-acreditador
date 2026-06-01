@@ -146,15 +146,17 @@ export default function InvoicesPage() {
           title="Sin boletas"
           description="Las boletas aparecerán aquí cuando se registren."
         />
-      ) : (
-        <InvoicesTable
-          invoices={displayInvoices}
-          isAdmin={isAdmin}
-          paymentDays={paymentDays}
-          onEdit={setEditInvoice}
-          onWhatsapp={setWhatsappInvoice}
-          onUpload={setUploadInvoice}
-        />
+            ) : (
+              <InvoicesTable
+                invoices={displayInvoices}
+                isAdmin={isAdmin}
+                paymentDays={paymentDays}
+                onEdit={setEditInvoice}
+                onWhatsapp={setWhatsappInvoice}
+                onUpload={setUploadInvoice}
+              />
+            )}
+          </>
         );
       })()}
 
