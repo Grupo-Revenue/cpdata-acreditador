@@ -26,6 +26,18 @@ export default function AdminDashboard() {
     },
   });
 
+  const { data: pendingReimbursements, isLoading: loadingReimbursements } = useQuery({
+    queryKey: ['pending-reimbursements-count'],
+    queryFn: async () => {
+      const { count, error } = await supabase
+        .from('event_expenses')
+        .select('*', { count: 'exact', head: true })
+        .eq('approval_status', 'pendiente');
+      if (error) throw error;
+      return count || 0;
+    },
+  });
+
   const { data: eventCounts, isLoading: loadingEvents } = useQuery({
     queryKey: ['hubspot-events-counts'],
     queryFn: async () => {
@@ -62,6 +74,7 @@ export default function AdminDashboard() {
     { title: 'Eventos del Mes', value: (eventCounts?.month ?? 0).toString(), icon: Calendar, trend: 'En este mes', color: 'text-accent', bgColor: 'bg-accent/10', isLoading: loadingEvents, href: '/app/events?range=month' },
     { title: 'Eventos Semanales', value: (eventCounts?.week ?? 0).toString(), icon: Calendar, trend: 'En esta semana', color: 'text-success', bgColor: 'bg-success/10', isLoading: loadingEvents, href: '/app/events?range=week' },
     { title: 'Boletas Pendientes', value: pendingInvoices?.toString() || '0', icon: FileText, trend: (pendingInvoices || 0) > 0 ? 'Requieren revisión' : 'Todo al día', color: 'text-warning', bgColor: 'bg-warning/10', isLoading: loadingInvoices, href: '/app/invoices?status=pendiente' },
+    { title: 'Rendiciones Pendientes', value: pendingReimbursements?.toString() || '0', icon: Wallet, trend: (pendingReimbursements || 0) > 0 ? 'Requieren aprobación' : 'Todo al día', color: 'text-info', bgColor: 'bg-info/10', isLoading: loadingReimbursements, href: '/app/reimbursements?status=pendiente' },
   ];
 
   const quickLinks = [
@@ -78,7 +91,7 @@ export default function AdminDashboard() {
         breadcrumbs={[{ label: 'Dashboard' }]}
       />
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
         {stats.map((stat, index) => (
           <Card key={index} onClick={() => navigate(stat.href)} className="hover-lift animate-fade-in-up cursor-pointer" style={{ animationDelay: `${index * 100}ms` }}>
             <CardContent className="p-6">
