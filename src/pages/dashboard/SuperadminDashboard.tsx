@@ -84,6 +84,7 @@ export default function SuperadminDashboard({
       color: 'text-primary',
       bgColor: 'bg-primary/10',
       isLoading: loadingEvents,
+      href: '/app/events?range=today',
     },
     {
       title: 'Eventos del Mes',
@@ -93,6 +94,7 @@ export default function SuperadminDashboard({
       color: 'text-accent',
       bgColor: 'bg-accent/10',
       isLoading: loadingEvents,
+      href: '/app/events?range=month',
     },
     {
       title: 'Eventos Semanales',
@@ -102,6 +104,7 @@ export default function SuperadminDashboard({
       color: 'text-success',
       bgColor: 'bg-success/10',
       isLoading: loadingEvents,
+      href: '/app/events?range=week',
     },
     {
       title: 'Usuarios Pendientes',
@@ -111,6 +114,7 @@ export default function SuperadminDashboard({
       color: 'text-warning',
       bgColor: 'bg-warning/10',
       isLoading: loadingPending,
+      href: '/app/users?tab=pending',
     },
   ];
 
@@ -160,7 +164,7 @@ export default function SuperadminDashboard({
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         {stats.map((stat, index) => (
-          <Card key={index} className="hover-lift animate-fade-in-up" style={{ animationDelay: `${index * 100}ms` }}>
+          <Card key={index} onClick={() => navigate(stat.href)} className="hover-lift animate-fade-in-up cursor-pointer" style={{ animationDelay: `${index * 100}ms` }}>
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>

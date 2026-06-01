@@ -5,13 +5,16 @@ import { PageHeader } from '@/components/ui/PageHeader';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { LoadingState } from '@/components/ui/LoadingState';
 import { useToast } from '@/hooks/use-toast';
-import { Calendar, AlertCircle, UserCheck } from 'lucide-react';
+import { Calendar, AlertCircle, UserCheck, X } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { startOfWeek, endOfWeek } from 'date-fns';
 import { useAuth } from '@/contexts/AuthContext';
 import { EventsAdminTable } from '@/components/events/EventsAdminTable';
 import { EventsUserTable } from '@/components/events/EventsUserTable';
 import { EventApplicantsDialog } from '@/components/events/EventApplicantsDialog';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 
 interface HubSpotDeal {
   id: string;
@@ -90,11 +93,36 @@ export default function EventsPage() {
     },
   });
 
+  const [searchParams, setSearchParams] = useSearchParams();
+  const range = searchParams.get('range'); // today | week | month
+
+  const parseDealDate = (d: string | null | undefined): string | null => {
+    if (!d) return null;
+    const parts = d.split('-');
+    if (parts.length === 3 && parts[0].length === 2) return `${parts[2]}-${parts[1]}-${parts[0]}`;
+    return d;
+  };
+
   const userDeals = useMemo(() => {
-    if (isAdmin) return allDeals;
-    if (!assignedDealIds) return [];
-    return allDeals.filter((d) => assignedDealIds.includes(d.id));
-  }, [isAdmin, allDeals, assignedDealIds]);
+    const base = isAdmin ? allDeals : (!assignedDealIds ? [] : allDeals.filter((d) => assignedDealIds.includes(d.id)));
+    if (!range) return base;
+    const now = new Date();
+    const today = now.toISOString().split('T')[0];
+    const weekStart = startOfWeek(now, { weekStartsOn: 1 }).toISOString().split('T')[0];
+    const weekEnd = endOfWeek(now, { weekStartsOn: 1 }).toISOString().split('T')[0];
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+    const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
+    return base.filter((d) => {
+      const p = parseDealDate(d.fecha_inicio_del_evento);
+      if (!p) return false;
+      if (range === 'today') return p === today;
+      if (range === 'week') return p >= weekStart && p <= weekEnd;
+      if (range === 'month') return p >= monthStart && p <= monthEnd;
+      return true;
+    });
+  }, [isAdmin, allDeals, assignedDealIds, range]);
+
+  const rangeLabel = range === 'today' ? 'Eventos de hoy' : range === 'week' ? 'Eventos de la semana' : range === 'month' ? 'Eventos del mes' : null;
 
   return (
     <AppShell>
@@ -114,6 +142,18 @@ export default function EventsPage() {
           </Button>
         )}
       </div>
+
+      {rangeLabel && (
+        <div className="my-3">
+          <Badge variant="outline" className="gap-2 py-1.5 px-3 bg-primary/10 text-primary border-primary/20">
+            {rangeLabel}
+            <button onClick={() => setSearchParams({})} className="ml-1 hover:opacity-70" aria-label="Limpiar filtro">
+              <X className="h-3 w-3" />
+            </button>
+          </Badge>
+        </div>
+      )}
+
 
       {isLoading ? (
         <LoadingState text="Cargando eventos..." className="py-12" />

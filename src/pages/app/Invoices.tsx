@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { AppShell } from '@/components/layout/AppShell';
@@ -6,7 +7,8 @@ import { PageHeader } from '@/components/ui/PageHeader';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { LoadingState } from '@/components/ui/LoadingState';
 import { Button } from '@/components/ui/button';
-import { FileText, Plus, MessageSquare } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { FileText, Plus, MessageSquare, X } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { InvoicesTable, type InvoiceRow } from '@/components/invoices/InvoicesTable';
 import { InvoiceCreateDialog } from '@/components/invoices/InvoiceCreateDialog';
@@ -17,6 +19,8 @@ import { BulkWhatsappInvoicesDialog } from '@/components/invoices/BulkWhatsappIn
 
 export default function InvoicesPage() {
   const { isAdmin, user } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const statusFilter = searchParams.get('status');
   const [createOpen, setCreateOpen] = useState(false);
   const [editInvoice, setEditInvoice] = useState<InvoiceRow | null>(null);
   const [uploadInvoice, setUploadInvoice] = useState<InvoiceRow | null>(null);
@@ -120,24 +124,39 @@ export default function InvoicesPage() {
       />
 
       {(() => {
-        const displayInvoices = isAdmin ? invoices : invoices.filter(inv => inv.user_id === user?.id);
-        return isLoading ? (
-          <LoadingState />
-        ) : displayInvoices.length === 0 ? (
+        let displayInvoices = isAdmin ? invoices : invoices.filter(inv => inv.user_id === user?.id);
+        if (statusFilter) displayInvoices = displayInvoices.filter(inv => inv.status === statusFilter);
+        return (
+          <>
+            {statusFilter && (
+              <div className="mb-3">
+                <Badge variant="outline" className="gap-2 py-1.5 px-3 bg-warning/10 text-warning border-warning/20">
+                  Mostrando boletas: {statusFilter}
+                  <button onClick={() => setSearchParams({})} className="ml-1 hover:opacity-70" aria-label="Limpiar filtro">
+                    <X className="h-3 w-3" />
+                  </button>
+                </Badge>
+              </div>
+            )}
+            {isLoading ? (
+              <LoadingState />
+            ) : displayInvoices.length === 0 ? (
         <EmptyState
           icon={FileText}
           title="Sin boletas"
           description="Las boletas aparecerán aquí cuando se registren."
         />
-      ) : (
-        <InvoicesTable
-          invoices={displayInvoices}
-          isAdmin={isAdmin}
-          paymentDays={paymentDays}
-          onEdit={setEditInvoice}
-          onWhatsapp={setWhatsappInvoice}
-          onUpload={setUploadInvoice}
-        />
+            ) : (
+              <InvoicesTable
+                invoices={displayInvoices}
+                isAdmin={isAdmin}
+                paymentDays={paymentDays}
+                onEdit={setEditInvoice}
+                onWhatsapp={setWhatsappInvoice}
+                onUpload={setUploadInvoice}
+              />
+            )}
+          </>
         );
       })()}
 

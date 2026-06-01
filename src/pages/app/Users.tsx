@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { AppShell } from '@/components/layout/AppShell';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -47,6 +48,9 @@ interface WhatsappTemplate {
 export default function UsersPage() {
   const { hasRole } = useAuth();
   const isSuperadmin = hasRole('superadmin');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tabParam = searchParams.get('tab');
+  const activeTab = tabParam === 'pending' || tabParam === 'all' || tabParam === 'acreditadores' || tabParam === 'supervisores' || tabParam === 'administradores' ? tabParam : 'pending';
 
   const [pendingUsers, setPendingUsers] = useState<PendingUser[]>([]);
   const [allUsers, setAllUsers] = useState<UserWithRoles[]>([]);
@@ -594,7 +598,7 @@ export default function UsersPage() {
       />
 
       {isSuperadmin ? (
-        <Tabs defaultValue="pending" className="space-y-4">
+        <Tabs value={activeTab} onValueChange={(v) => setSearchParams(v === 'pending' ? {} : { tab: v })} className="space-y-4">
           <TabsList className="flex-wrap h-auto gap-1">
             <TabsTrigger value="pending">
               Pendientes
