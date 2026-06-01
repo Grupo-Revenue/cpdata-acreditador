@@ -1,18 +1,18 @@
-## Plan: Agregar ícono de información al campo "Número de boleta"
+## Agregar tooltips (title) a iconos de acción sin etiqueta
 
-### Contexto
-En el diálogo de subida de boletas (`InvoiceUploadDialog`), los usuarios no saben qué es el "número de boleta" ni dónde encontrarlo. Se requiere un ícono de ayuda con tooltip explicativo.
+### Problema
+Varios botones con `size="icon"` en las tablas de eventos no tienen el atributo `title`, por lo que al acercar el cursor no se muestra qué acción representan. El usuario reportó específicamente el icono del avión (Send) para postular a eventos.
 
 ### Cambios
 
-**Archivo:** `src/components/invoices/InvoiceUploadDialog.tsx`
+**`src/components/events/EventsUserTable.tsx`**
+- Agregar `title="Postular al evento"` al botón `<Send>` (línea ~356) que abre el diálogo de postulación.
 
-1. Importar `HelpCircle` de `lucide-react` y los componentes `Tooltip`, `TooltipTrigger`, `TooltipContent`, `TooltipProvider` de `@/components/ui/tooltip`.
-2. Modificar el label "Número de boleta" para incluir un ícono `HelpCircle` al lado.
-3. Agregar un `<Tooltip>` que explique: "El número de boleta es el folio que aparece en la parte superior del documento emitido por el SII. Ejemplo: B-001."
-4. El ícono debe ser pequeño, con color `text-muted-foreground`, y mostrar el tooltip al pasar el mouse (hover).
+**`src/components/events/EventsAdminTable.tsx`**
+- Agregar `title="Editar evento"` al botón `<Pencil>` (línea ~359).
+- Agregar `title="Asignar equipo"` al botón `<Users>` (línea ~364).
 
-### Notas técnicas
-- No requiere cambios de backend ni estado.
-- Se usa el componente `Tooltip` existente del proyecto (`src/components/ui/tooltip.tsx`).
-- Texto en español, acorde al idioma UI del proyecto.
+### Detalle técnico
+- Se usa el atributo nativo `title` de HTML en los `<Button>` de shadcn/ui (ya usado en otros botones del mismo archivo).
+- Sin cambios de backend.
+- Texto en español, consistente con el resto de la UI.
