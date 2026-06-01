@@ -356,12 +356,12 @@ export function EventsAdminTable({ deals }: EventsAdminTableProps) {
                   </TableCell>
                   <TableCell className="flex gap-1">
                     {canEdit && (
-                      <Button variant="ghost" size="icon" onClick={() => { setEditingDeal(deal); setEditDialogOpen(true); }}>
+                      <Button variant="ghost" size="icon" onClick={() => { setEditingDeal(deal); setEditDialogOpen(true); }} title="Editar evento">
                         <Pencil className="h-4 w-4" />
                       </Button>
                     )}
                     {canAssignTeam && (
-                      <Button variant="ghost" size="icon" onClick={() => { setTeamDeal(deal); setTeamDialogOpen(true); }}>
+                      <Button variant="ghost" size="icon" onClick={() => { setTeamDeal(deal); setTeamDialogOpen(true); }} title="Asignar equipo">
                         <Users className="h-4 w-4" />
                       </Button>
                     )}

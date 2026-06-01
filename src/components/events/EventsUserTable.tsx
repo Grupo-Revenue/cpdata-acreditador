@@ -353,7 +353,7 @@ export function EventsUserTable({ deals, isSupervisor, userId }: EventsUserTable
                       </TableCell>
                       <TableCell className="flex gap-1">
                         {canApply(deal.id) && (
-                          <Button variant="default" size="sm" onClick={() => setApplyDeal(deal)}>
+                          <Button variant="default" size="sm" onClick={() => setApplyDeal(deal)} title="Postular al evento">
                             <Send className="h-4 w-4 mr-1" /> Postular
                           </Button>
                         )}
