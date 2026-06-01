@@ -1,23 +1,18 @@
-## Objetivo
-Agregar un card/cuadrado en los dashboards de **acreditador** y **supervisor** que muestre la cantidad de eventos pendientes para postular (aquellos donde `application_status = 'asignado'`), con la posibilidad de hacer clic para ir a la página de eventos.
+## Plan: Agregar ícono de información al campo "Número de boleta"
 
-## Archivos a modificar
+### Contexto
+En el diálogo de subida de boletas (`InvoiceUploadDialog`), los usuarios no saben qué es el "número de boleta" ni dónde encontrarlo. Se requiere un ícono de ayuda con tooltip explicativo.
 
-### 1. `src/pages/dashboard/AcreditadorDashboard.tsx`
-- Agregar una nueva query que cuente los `event_accreditors` del usuario actual donde `application_status = 'asignado'`.
-- Insertar un nuevo card en el grid de stats con:
-  - Título: "Postulaciones Pendientes" o "Eventos para Postular"
-  - Icono: `Send` (lucide-react)
-  - Color: warning o accent (destacado para llamar la atención)
-  - Valor: cantidad de eventos con `application_status = 'asignado'`
-  - Hacer el card clickeable para navegar a `/app/events`
+### Cambios
 
-### 2. `src/pages/dashboard/SupervisorDashboard.tsx`
-- Agregar la misma query de eventos pendientes para postular (conteo de `event_accreditors` donde `application_status = 'asignado'`).
-- Insertar el mismo card en el grid de stats, con las mismas características.
-- El card debe ser clickeable y llevar a `/app/events`.
+**Archivo:** `src/components/invoices/InvoiceUploadDialog.tsx`
 
-## Detalles técnicos
-- La query debe usar `supabase.from('event_accreditors').select('id', { count: 'exact', head: true }).eq('user_id', user!.id).eq('application_status', 'asignado')`.
-- Se debe mantener el estilo visual consistente con los cards existentes (colores semanticos, animaciones, etc.).
-- No se requieren cambios de backend ni de base de datos.
+1. Importar `HelpCircle` de `lucide-react` y los componentes `Tooltip`, `TooltipTrigger`, `TooltipContent`, `TooltipProvider` de `@/components/ui/tooltip`.
+2. Modificar el label "Número de boleta" para incluir un ícono `HelpCircle` al lado.
+3. Agregar un `<Tooltip>` que explique: "El número de boleta es el folio que aparece en la parte superior del documento emitido por el SII. Ejemplo: B-001."
+4. El ícono debe ser pequeño, con color `text-muted-foreground`, y mostrar el tooltip al pasar el mouse (hover).
+
+### Notas técnicas
+- No requiere cambios de backend ni estado.
+- Se usa el componente `Tooltip` existente del proyecto (`src/components/ui/tooltip.tsx`).
+- Texto en español, acorde al idioma UI del proyecto.
