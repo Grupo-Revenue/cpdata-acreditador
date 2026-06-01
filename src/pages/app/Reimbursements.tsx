@@ -15,8 +15,13 @@ import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Wallet, Lock, Unlock, CheckCircle, XCircle, DollarSign, Plus, Trash2, Upload, Search, Download, MessageSquare } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { Wallet, Lock, Unlock, CheckCircle, XCircle, DollarSign, Plus, Trash2, Upload, Search, Download, MessageSquare, CalendarIcon, DollarSign as DollarIcon, X } from 'lucide-react';
 import { downloadFile } from '@/lib/csv-parser';
+import { format } from 'date-fns';
+import { cn } from '@/lib/utils';
 
 interface SupervisorInfo {
   name: string;
@@ -45,6 +50,19 @@ export default function ReimbursementsPage() {
   const [showBulkConfirm, setShowBulkConfirm] = useState(false);
   const [bulkTargets, setBulkTargets] = useState<{ eventId: string; eventName: string; sup: SupervisorInfo }[]>([]);
   const [selectedBulkTargets, setSelectedBulkTargets] = useState<Set<string>>(new Set());
+
+  // Filters
+  const [filterUser, setFilterUser] = useState<string>('all');
+  const [filterStatus, setFilterStatus] = useState<string>('all');
+  const [filterDateFrom, setFilterDateFrom] = useState<Date | undefined>(undefined);
+  const [filterDateTo, setFilterDateTo] = useState<Date | undefined>(undefined);
+
+  // Bulk payment
+  const [selectedExpenses, setSelectedExpenses] = useState<Set<string>>(new Set());
+  const [showPayDialog, setShowPayDialog] = useState(false);
+  const [payDate, setPayDate] = useState<Date | undefined>(new Date());
+  const [payFile, setPayFile] = useState<File | null>(null);
+  const [payingBulk, setPayingBulk] = useState(false);
 
   // For supervisors: get assigned events; for admins: get all events with expenses
   const { data: events, isLoading: eventsLoading } = useQuery({
@@ -305,9 +323,15 @@ export default function ReimbursementsPage() {
   };
 
   const getStatusBadge = (status: string) => {
+    if (status === 'pagado') return <Badge className="bg-success/10 text-success border-success/20">Pagado</Badge>;
     if (status === 'aprobado') return <Badge className="bg-primary/10 text-primary border-primary/20">Aprobado</Badge>;
     if (status === 'rechazado') return <Badge variant="destructive">Rechazado</Badge>;
     return <Badge variant="secondary">Pendiente</Badge>;
+  };
+
+  const parseLocalDate = (d: string | null | undefined) => {
+    if (!d) return null;
+    return new Date(`${d}T00:00:00`);
   };
 
   // Send individual WhatsApp
