@@ -19,6 +19,8 @@ import { BulkWhatsappInvoicesDialog } from '@/components/invoices/BulkWhatsappIn
 
 export default function InvoicesPage() {
   const { isAdmin, user } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const statusFilter = searchParams.get('status');
   const [createOpen, setCreateOpen] = useState(false);
   const [editInvoice, setEditInvoice] = useState<InvoiceRow | null>(null);
   const [uploadInvoice, setUploadInvoice] = useState<InvoiceRow | null>(null);
