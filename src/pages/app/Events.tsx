@@ -143,6 +143,18 @@ export default function EventsPage() {
         )}
       </div>
 
+      {rangeLabel && (
+        <div className="my-3">
+          <Badge variant="outline" className="gap-2 py-1.5 px-3 bg-primary/10 text-primary border-primary/20">
+            {rangeLabel}
+            <button onClick={() => setSearchParams({})} className="ml-1 hover:opacity-70" aria-label="Limpiar filtro">
+              <X className="h-3 w-3" />
+            </button>
+          </Badge>
+        </div>
+      )}
+
+
       {isLoading ? (
         <LoadingState text="Cargando eventos..." className="py-12" />
       ) : notConfigured ? (
