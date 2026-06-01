@@ -214,6 +214,16 @@ export function EventsAdminTable({ deals }: EventsAdminTableProps) {
           Descargar Todos los Contratos
         </Button>
       </div>
+      <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-8 gap-2 mb-4">
+        <Input placeholder="Filtrar Id..." value={filters.dealname} onChange={(e) => updateFilter('dealname', e.target.value)} className="h-8 text-xs" />
+        <Input placeholder="Filtrar Nombre..." value={filters.nombre_del_evento} onChange={(e) => updateFilter('nombre_del_evento', e.target.value)} className="h-8 text-xs" />
+        <Input placeholder="Filtrar Tipo..." value={filters.tipo_de_evento} onChange={(e) => updateFilter('tipo_de_evento', e.target.value)} className="h-8 text-xs" />
+        <Input placeholder="Filtrar Locación..." value={filters.locacion_del_evento} onChange={(e) => updateFilter('locacion_del_evento', e.target.value)} className="h-8 text-xs" />
+        <Input placeholder="Filtrar Fecha..." value={filters.fecha_inicio_del_evento} onChange={(e) => updateFilter('fecha_inicio_del_evento', e.target.value)} className="h-8 text-xs" />
+        <Input placeholder="Filtrar Horario..." value={filters.hora_de_inicio_y_fin_del_evento} onChange={(e) => updateFilter('hora_de_inicio_y_fin_del_evento', e.target.value)} className="h-8 text-xs" />
+        <Input placeholder="Filtrar Etapa..." value={filters.dealstage} onChange={(e) => updateFilter('dealstage', e.target.value)} className="h-8 text-xs" />
+        <Input placeholder="Filtrar Estado..." value={filters.estado} onChange={(e) => updateFilter('estado', e.target.value)} className="h-8 text-xs" />
+      </div>
       {isMobile ? (
         <div className="space-y-3">
           {paginatedDeals.map((deal) => {
