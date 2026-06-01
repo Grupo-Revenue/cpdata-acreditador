@@ -1008,6 +1008,65 @@ export default function ReimbursementsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <Dialog open={showPayDialog} onOpenChange={setShowPayDialog}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Registrar pago</DialogTitle>
+            <DialogDescription>
+              Marca como pagados los gastos seleccionados con una fecha y un comprobante único.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="rounded-md border p-3 max-h-[200px] overflow-y-auto space-y-1 text-sm">
+              {selectedExpensesData.map(e => {
+                const ev = events?.find(x => x.id === e.event_id);
+                return (
+                  <div key={e.id} className="flex justify-between gap-2">
+                    <span className="truncate">{ev?.name ?? '—'} · {getProfileName(e.user_id)} · {e.name}</span>
+                    <span className="font-medium whitespace-nowrap">${e.amount.toLocaleString('es-CL')}</span>
+                  </div>
+                );
+              })}
+              <div className="flex justify-between pt-2 mt-2 border-t font-semibold">
+                <span>Total</span>
+                <span>${selectedTotal.toLocaleString('es-CL')}</span>
+              </div>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="text-sm font-medium mb-1 block">Fecha de pago</label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" className={cn('w-full justify-start text-left font-normal', !payDate && 'text-muted-foreground')}>
+                      <CalendarIcon className="h-4 w-4 mr-1" />
+                      {payDate ? format(payDate, 'dd-MM-yyyy') : 'Seleccionar fecha'}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar mode="single" selected={payDate} onSelect={setPayDate} initialFocus className={cn('p-3 pointer-events-auto')} />
+                  </PopoverContent>
+                </Popover>
+              </div>
+              <div>
+                <label className="text-sm font-medium mb-1 block">Comprobante (opcional)</label>
+                <label className="cursor-pointer flex items-center gap-1 text-sm border rounded-md px-3 py-2 hover:bg-accent">
+                  <Upload className="h-4 w-4" />
+                  <span className="truncate">{payFile ? payFile.name : 'Subir archivo'}</span>
+                  <input type="file" className="hidden" accept="image/*,.pdf" onChange={e => setPayFile(e.target.files?.[0] ?? null)} />
+                </label>
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowPayDialog(false)} disabled={payingBulk}>Cancelar</Button>
+            <Button onClick={confirmBulkPayment} disabled={payingBulk || !payDate}>
+              <DollarIcon className="h-4 w-4 mr-1" />
+              {payingBulk ? 'Registrando...' : 'Confirmar pago'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </AppShell>
   );
 }
