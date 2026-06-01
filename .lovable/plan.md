@@ -1,37 +1,17 @@
-## Panel de Clasificación de Tickets de Soporte
+## Problema
 
-Permitir al superadmin definir categorías (ej. "Boletas", "Asistencia a eventos") con su prioridad asociada (alta/media/baja). Al crear un ticket, el usuario elige la categoría y la prioridad se asigna automáticamente.
+El diálogo `InvoiceEditDialog` no limita su alto al viewport, por lo que en pantallas normales el contenido se corta y no se puede hacer scroll dentro del modal (solo bajando el zoom del navegador se ve completo).
 
-### 1. Almacenamiento
-Usar la tabla `settings` existente (patrón de FAQs). Una sola fila con `key='ticket_categories'` y `value` como JSON:
-```json
-[
-  { "name": "Boletas", "priority": "media" },
-  { "name": "Asistencia a eventos", "priority": "alta" },
-  { "name": "Otro", "priority": "baja" }
-]
-```
-No requiere migración.
+## Solución
 
-### 2. Nuevo componente
-**`src/components/settings/TicketCategoriesSettings.tsx`** (basado en `FaqSettings.tsx`)
-- Lista editable de categorías: input `name` + select `priority` (alta/media/baja).
-- Botones "Agregar categoría", "Eliminar" por fila, "Guardar cambios".
-- Lectura: `settings.select` por `key='ticket_categories'`.
-- Escritura: `upsert` en `settings`.
+Editar `src/components/invoices/InvoiceEditDialog.tsx` (línea 160):
 
-### 3. Integrar en Settings
-**`src/pages/app/Settings.tsx`** — Añadir nueva pestaña `<TabsTrigger value="tickets">Tickets</TabsTrigger>` con `<TabsContent>` que renderice `<TicketCategoriesSettings />`.
+- Cambiar `DialogContent` para que tenga alto máximo y scroll vertical interno:
+  - `className="max-w-lg max-h-[90vh] overflow-y-auto"`
+- Mantener `DialogFooter` dentro del flujo (scrolleable junto con el contenido) para mantener la solución mínima. Si se prefiere footer fijo, se puede convertir luego a layout flex con `flex flex-col` + body `overflow-y-auto` + footer sticky, pero no es necesario para resolver el problema.
 
-### 4. Usar en creación de tickets
-**`src/components/support/TicketCreateDialog.tsx`**
-- Agregar campo "Categoría" (Select) cargado desde `settings.ticket_categories`.
-- Al seleccionar una categoría, se asigna automáticamente `priority` según la configuración.
-- Mantener el select de prioridad pero deshabilitado/auto (muestra la prioridad inferida; sigue siendo overridable solo si no se eligió categoría, o se puede mantener bloqueado tras elección — propongo bloquearlo para respetar la clasificación).
-- Si no hay categorías configuradas, fallback al comportamiento actual (select manual).
-- Guardar también `motivo` con prefijo `[Categoría] motivo` para que se vea en la tabla, sin nueva columna.
+## Verificación
 
-### Detalle técnico
-- Sólo el superadmin puede editar `settings` (política RLS ya existente).
-- Lectura abierta a `authenticated`.
-- Sin cambios en esquema ni en `support_tickets`.
+Abrir una boleta → botón Editar → el panel debe verse completo a zoom normal y permitir scroll interno hasta los botones de acción.
+
+No hay cambios de lógica ni de backend.
