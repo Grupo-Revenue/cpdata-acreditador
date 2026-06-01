@@ -84,8 +84,11 @@ export function InvoiceWhatsappDialog({ open, onOpenChange, invoice }: Props) {
       if (!phone) throw new Error('El usuario no tiene número de teléfono registrado.');
       if (!selected) throw new Error('Selecciona una plantilla.');
 
-      // Build parameters array in order
-      const parameters = variables.map((v) => variableValues[v] || '');
+      // Build parameters array in order and validate non-empty
+      const parameters = variables.map((v) => (variableValues[v] ?? '').trim());
+      if (parameters.some((p) => !p)) {
+        throw new Error('Completa todas las variables de la plantilla.');
+      }
 
       const { data, error } = await supabase.functions.invoke('send-whatsapp-message', {
         body: {
