@@ -88,18 +88,16 @@ export function InvoiceUploadDialog({ open, onOpenChange, invoice }: InvoiceUplo
           <div>
             <div className="flex items-center gap-1.5 mb-1">
               <label className="text-sm font-medium">Número de boleta</label>
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button type="button" className="text-muted-foreground hover:text-foreground transition-colors" aria-label="Información sobre el número de boleta">
-                      <HelpCircle className="h-4 w-4" />
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent className="max-w-xs">
-                    <p>El número de boleta es el folio (N°) que aparece en la parte superior de la boleta de honorarios emitida en el portal del SII. Ejemplo: 12345.</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <button type="button" className="text-muted-foreground hover:text-foreground transition-colors" aria-label="Información sobre el número de boleta">
+                    <HelpCircle className="h-4 w-4" />
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent className="max-w-xs text-sm">
+                  <p>El número de boleta es el folio (N°) que aparece en la parte superior de la boleta de honorarios emitida en el portal del SII. Ejemplo: 12345.</p>
+                </PopoverContent>
+              </Popover>
             </div>
             <Input
               placeholder="Ej: 12345"
