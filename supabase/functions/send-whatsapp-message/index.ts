@@ -96,10 +96,24 @@ Deno.serve(async (req) => {
 
     if (!metaRes.ok) {
       console.error("Meta API error:", JSON.stringify(metaData));
-      const errorMsg = metaData?.error?.message || "Unknown Meta API error";
+      const code = metaData?.error?.code;
+      const subcode = metaData?.error?.error_subcode;
+      let errorMsg = metaData?.error?.message || "Unknown Meta API error";
+
+      // OAuthException code 1 = token inválido/expirado o permisos insuficientes
+      if (metaData?.error?.type === "OAuthException" && (code === 1 || code === 190)) {
+        errorMsg =
+          "El access token de Meta es inválido o ha expirado. Actualízalo en Configuración > Integraciones > Meta WhatsApp.";
+      } else if (code === 131026) {
+        errorMsg = "El destinatario no puede recibir mensajes (no tiene WhatsApp o número inválido).";
+      } else if (code === 132000 || code === 132001 || subcode === 2494072) {
+        errorMsg = "La plantilla no está aprobada o el número de variables no coincide.";
+      }
+
+      // Return 200 so supabase.functions.invoke does NOT throw → no blank screen.
       return new Response(
         JSON.stringify({ error: errorMsg, meta_error: metaData?.error }),
-        { status: metaRes.status, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
@@ -110,8 +124,8 @@ Deno.serve(async (req) => {
   } catch (err) {
     console.error("send-whatsapp-message error:", err);
     return new Response(
-      JSON.stringify({ error: err.message }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      JSON.stringify({ error: (err as Error).message }),
+      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
 });
