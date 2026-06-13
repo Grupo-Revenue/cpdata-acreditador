@@ -183,6 +183,46 @@ export function EventManagementDialog({ open, onOpenChange, hubspotDealId, dealN
     },
   });
 
+  // Fetch evaluation items + options
+  const { data: evaluationItems } = useQuery({
+    queryKey: ['evaluation-items-active'],
+    enabled: !!eventId,
+    queryFn: async () => {
+      const { data: items, error } = await supabase
+        .from('evaluation_items')
+        .select('*')
+        .eq('is_active', true)
+        .order('sort_order');
+      if (error) throw error;
+      const itemIds = (items ?? []).map((i: any) => i.id);
+      if (itemIds.length === 0) return [] as EvaluationItem[];
+      const { data: opts, error: oErr } = await supabase
+        .from('evaluation_options')
+        .select('*')
+        .in('item_id', itemIds)
+        .order('sort_order');
+      if (oErr) throw oErr;
+      return (items ?? []).map((it: any) => ({
+        ...it,
+        options: (opts ?? []).filter((o: any) => o.item_id === it.id),
+      })) as EvaluationItem[];
+    },
+  });
+
+  // Fetch existing evaluation records
+  const { data: existingEvaluations } = useQuery({
+    queryKey: ['evaluation-records', eventId],
+    enabled: !!eventId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('evaluation_records')
+        .select('*')
+        .eq('event_id', eventId!);
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
   // Initialize attendance rows from accreditors + existing records
   useEffect(() => {
     if (!accreditors) return;
@@ -190,6 +230,9 @@ export function EventManagementDialog({ open, onOpenChange, hubspotDealId, dealN
     const rows: AttendanceRow[] = accreditors.map(acc => {
       const existing = existingAttendance?.find(a => a.user_id === acc.id);
       const existingComment = existingComments?.find(c => c.user_id_from_record === acc.id);
+      const userEvals = (existingEvaluations ?? []).filter((e: any) => e.user_id === acc.id);
+      const evaluations: Record<string, string> = {};
+      userEvals.forEach((e: any) => { evaluations[e.item_id] = e.option_id; });
       return {
         userId: acc.id,
         nombre: acc.nombre,
@@ -201,10 +244,11 @@ export function EventManagementDialog({ open, onOpenChange, hubspotDealId, dealN
         checkInTime: existing?.check_in_time?.substring(0, 5) ?? '',
         comment: existingComment?.comment ?? '',
         saved: !!existing,
+        evaluations,
       };
     });
     setAttendanceRows(rows);
-  }, [accreditors, existingAttendance, existingComments]);
+  }, [accreditors, existingAttendance, existingComments, existingEvaluations]);
 
   // Save attendance
   const saveAttendance = useMutation({
