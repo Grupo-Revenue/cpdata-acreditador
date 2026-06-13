@@ -289,11 +289,28 @@ export function EventManagementDialog({ open, onOpenChange, hubspotDealId, dealN
           });
         if (commentError) console.error('Error saving comment:', commentError);
       }
+
+      // Save evaluations
+      for (const item of evaluationItems ?? []) {
+        const optionId = row.evaluations[item.id];
+        if (!optionId) continue;
+        const opt = item.options.find(o => o.id === optionId);
+        if (!opt) continue;
+        await supabase.from('evaluation_records').upsert({
+          event_id: eventId!,
+          user_id: row.userId,
+          item_id: item.id,
+          option_id: optionId,
+          points: opt.points,
+          recorded_by: user!.id,
+        }, { onConflict: 'event_id,user_id,item_id' });
+      }
     },
     onSuccess: () => {
       toast({ title: 'Asistencia guardada' });
       queryClient.invalidateQueries({ queryKey: ['attendance-records', eventId] });
       queryClient.invalidateQueries({ queryKey: ['attendance-comments-event', eventId] });
+      queryClient.invalidateQueries({ queryKey: ['evaluation-records', eventId] });
     },
     onError: () => {
       toast({ title: 'Error', description: 'No se pudo guardar la asistencia.', variant: 'destructive' });
