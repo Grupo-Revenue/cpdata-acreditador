@@ -42,6 +42,22 @@ interface AttendanceRow {
   checkInTime: string;
   comment: string;
   saved: boolean;
+  evaluations: Record<string, string>;
+}
+
+interface EvaluationOption {
+  id: string;
+  item_id: string;
+  label: string;
+  points: number;
+  sort_order: number;
+}
+interface EvaluationItem {
+  id: string;
+  name: string;
+  is_active: boolean;
+  sort_order: number;
+  options: EvaluationOption[];
 }
 
 interface ExpenseRow {
