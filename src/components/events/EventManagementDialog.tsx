@@ -530,6 +530,38 @@ export function EventManagementDialog({ open, onOpenChange, hubspotDealId, dealN
                             />
                           </div>
                         </div>
+                        {(evaluationItems ?? []).length > 0 && (
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            {(evaluationItems ?? []).map(item => {
+                              const selectedId = row.evaluations[item.id] ?? '';
+                              const selectedOpt = item.options.find(o => o.id === selectedId);
+                              return (
+                                <div key={item.id} className="space-y-1">
+                                  <label className="text-xs text-muted-foreground">{item.name}</label>
+                                  <div className="flex gap-2">
+                                    <Select
+                                      value={selectedId}
+                                      disabled={isClosed}
+                                      onValueChange={(v) => setAttendanceRows(prev => prev.map(r => r.userId === row.userId ? { ...r, evaluations: { ...r.evaluations, [item.id]: v } } : r))}
+                                    >
+                                      <SelectTrigger className="h-8 text-xs flex-1">
+                                        <SelectValue placeholder="Seleccionar..." />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        {item.options.map(o => (
+                                          <SelectItem key={o.id} value={o.id}>{o.label} ({o.points} pts)</SelectItem>
+                                        ))}
+                                      </SelectContent>
+                                    </Select>
+                                    <div className="h-8 flex items-center text-sm font-semibold px-2 border rounded-md bg-muted/50 min-w-[3rem] justify-center">
+                                      {selectedOpt ? selectedOpt.points : '-'}
+                                    </div>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
                         <Textarea
                           placeholder="Comentario..."
                           value={row.comment}
