@@ -256,8 +256,8 @@ export function EventManagementDialog({ open, onOpenChange, hubspotDealId, dealN
       const record = {
         event_id: eventId!,
         user_id: row.userId,
-        status: row.status as any,
-        ranking_points: POINTS_MAP[row.status],
+        status: 'presente' as any,
+        ranking_points: 0,
         attendance_date: row.attendanceDate,
         check_in_time: row.checkInTime || null,
         recorded_by: user!.id,
@@ -485,30 +485,8 @@ export function EventManagementDialog({ open, onOpenChange, hubspotDealId, dealN
                             </Button>
                           )}
                         </div>
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                          <div className="space-y-1">
-                            <label className="text-xs text-muted-foreground">Asistencia</label>
-                            <Select
-                              value={row.status}
-                              disabled={isClosed}
-                              onValueChange={(v) => updateAttendanceRow(row.userId, 'status', v)}
-                            >
-                              <SelectTrigger className="h-8 text-xs">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="presente">Presente</SelectItem>
-                                <SelectItem value="atrasado">Atrasado</SelectItem>
-                                <SelectItem value="ausente">Ausente</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          <div className="space-y-1">
-                            <label className="text-xs text-muted-foreground">Puntos</label>
-                            <div className="h-8 flex items-center text-sm font-semibold px-2 border rounded-md bg-muted/50">
-                              {POINTS_MAP[row.status]}
-                            </div>
-                          </div>
+                        <div className="grid grid-cols-2 gap-2">
+
                           <div className="space-y-1">
                             <label className="text-xs text-muted-foreground">Fecha</label>
                             <Input
