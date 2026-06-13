@@ -134,6 +134,129 @@ export type Database = {
           },
         ]
       }
+      evaluation_items: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          name: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      evaluation_options: {
+        Row: {
+          created_at: string
+          id: string
+          item_id: string
+          label: string
+          points: number
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          item_id: string
+          label: string
+          points?: number
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          item_id?: string
+          label?: string
+          points?: number
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "evaluation_options_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "evaluation_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      evaluation_records: {
+        Row: {
+          created_at: string
+          event_id: string
+          id: string
+          item_id: string
+          option_id: string
+          points: number
+          recorded_by: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          event_id: string
+          id?: string
+          item_id: string
+          option_id: string
+          points?: number
+          recorded_by?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          event_id?: string
+          id?: string
+          item_id?: string
+          option_id?: string
+          points?: number
+          recorded_by?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "evaluation_records_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "evaluation_records_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "evaluation_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "evaluation_records_option_id_fkey"
+            columns: ["option_id"]
+            isOneToOne: false
+            referencedRelation: "evaluation_options"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       event_accreditors: {
         Row: {
           application_status: Database["public"]["Enums"]["application_status"]

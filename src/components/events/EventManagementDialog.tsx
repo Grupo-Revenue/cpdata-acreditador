@@ -42,6 +42,22 @@ interface AttendanceRow {
   checkInTime: string;
   comment: string;
   saved: boolean;
+  evaluations: Record<string, string>;
+}
+
+interface EvaluationOption {
+  id: string;
+  item_id: string;
+  label: string;
+  points: number;
+  sort_order: number;
+}
+interface EvaluationItem {
+  id: string;
+  name: string;
+  is_active: boolean;
+  sort_order: number;
+  options: EvaluationOption[];
 }
 
 interface ExpenseRow {
@@ -167,6 +183,46 @@ export function EventManagementDialog({ open, onOpenChange, hubspotDealId, dealN
     },
   });
 
+  // Fetch evaluation items + options
+  const { data: evaluationItems } = useQuery({
+    queryKey: ['evaluation-items-active'],
+    enabled: !!eventId,
+    queryFn: async () => {
+      const { data: items, error } = await supabase
+        .from('evaluation_items')
+        .select('*')
+        .eq('is_active', true)
+        .order('sort_order');
+      if (error) throw error;
+      const itemIds = (items ?? []).map((i: any) => i.id);
+      if (itemIds.length === 0) return [] as EvaluationItem[];
+      const { data: opts, error: oErr } = await supabase
+        .from('evaluation_options')
+        .select('*')
+        .in('item_id', itemIds)
+        .order('sort_order');
+      if (oErr) throw oErr;
+      return (items ?? []).map((it: any) => ({
+        ...it,
+        options: (opts ?? []).filter((o: any) => o.item_id === it.id),
+      })) as EvaluationItem[];
+    },
+  });
+
+  // Fetch existing evaluation records
+  const { data: existingEvaluations } = useQuery({
+    queryKey: ['evaluation-records', eventId],
+    enabled: !!eventId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('evaluation_records')
+        .select('*')
+        .eq('event_id', eventId!);
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
   // Initialize attendance rows from accreditors + existing records
   useEffect(() => {
     if (!accreditors) return;
@@ -174,6 +230,9 @@ export function EventManagementDialog({ open, onOpenChange, hubspotDealId, dealN
     const rows: AttendanceRow[] = accreditors.map(acc => {
       const existing = existingAttendance?.find(a => a.user_id === acc.id);
       const existingComment = existingComments?.find(c => c.user_id_from_record === acc.id);
+      const userEvals = (existingEvaluations ?? []).filter((e: any) => e.user_id === acc.id);
+      const evaluations: Record<string, string> = {};
+      userEvals.forEach((e: any) => { evaluations[e.item_id] = e.option_id; });
       return {
         userId: acc.id,
         nombre: acc.nombre,
@@ -185,10 +244,11 @@ export function EventManagementDialog({ open, onOpenChange, hubspotDealId, dealN
         checkInTime: existing?.check_in_time?.substring(0, 5) ?? '',
         comment: existingComment?.comment ?? '',
         saved: !!existing,
+        evaluations,
       };
     });
     setAttendanceRows(rows);
-  }, [accreditors, existingAttendance, existingComments]);
+  }, [accreditors, existingAttendance, existingComments, existingEvaluations]);
 
   // Save attendance
   const saveAttendance = useMutation({
@@ -229,11 +289,28 @@ export function EventManagementDialog({ open, onOpenChange, hubspotDealId, dealN
           });
         if (commentError) console.error('Error saving comment:', commentError);
       }
+
+      // Save evaluations
+      for (const item of evaluationItems ?? []) {
+        const optionId = row.evaluations[item.id];
+        if (!optionId) continue;
+        const opt = item.options.find(o => o.id === optionId);
+        if (!opt) continue;
+        await supabase.from('evaluation_records').upsert({
+          event_id: eventId!,
+          user_id: row.userId,
+          item_id: item.id,
+          option_id: optionId,
+          points: opt.points,
+          recorded_by: user!.id,
+        }, { onConflict: 'event_id,user_id,item_id' });
+      }
     },
     onSuccess: () => {
       toast({ title: 'Asistencia guardada' });
       queryClient.invalidateQueries({ queryKey: ['attendance-records', eventId] });
       queryClient.invalidateQueries({ queryKey: ['attendance-comments-event', eventId] });
+      queryClient.invalidateQueries({ queryKey: ['evaluation-records', eventId] });
     },
     onError: () => {
       toast({ title: 'Error', description: 'No se pudo guardar la asistencia.', variant: 'destructive' });
@@ -453,6 +530,38 @@ export function EventManagementDialog({ open, onOpenChange, hubspotDealId, dealN
                             />
                           </div>
                         </div>
+                        {(evaluationItems ?? []).length > 0 && (
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            {(evaluationItems ?? []).map(item => {
+                              const selectedId = row.evaluations[item.id] ?? '';
+                              const selectedOpt = item.options.find(o => o.id === selectedId);
+                              return (
+                                <div key={item.id} className="space-y-1">
+                                  <label className="text-xs text-muted-foreground">{item.name}</label>
+                                  <div className="flex gap-2">
+                                    <Select
+                                      value={selectedId}
+                                      disabled={isClosed}
+                                      onValueChange={(v) => setAttendanceRows(prev => prev.map(r => r.userId === row.userId ? { ...r, evaluations: { ...r.evaluations, [item.id]: v } } : r))}
+                                    >
+                                      <SelectTrigger className="h-8 text-xs flex-1">
+                                        <SelectValue placeholder="Seleccionar..." />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        {item.options.map(o => (
+                                          <SelectItem key={o.id} value={o.id}>{o.label} ({o.points} pts)</SelectItem>
+                                        ))}
+                                      </SelectContent>
+                                    </Select>
+                                    <div className="h-8 flex items-center text-sm font-semibold px-2 border rounded-md bg-muted/50 min-w-[3rem] justify-center">
+                                      {selectedOpt ? selectedOpt.points : '-'}
+                                    </div>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
                         <Textarea
                           placeholder="Comentario..."
                           value={row.comment}
