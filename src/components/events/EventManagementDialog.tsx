@@ -256,8 +256,8 @@ export function EventManagementDialog({ open, onOpenChange, hubspotDealId, dealN
       const record = {
         event_id: eventId!,
         user_id: row.userId,
-        status: row.status as any,
-        ranking_points: POINTS_MAP[row.status],
+        status: 'presente' as any,
+        ranking_points: 0,
         attendance_date: row.attendanceDate,
         check_in_time: row.checkInTime || null,
         recorded_by: user!.id,
