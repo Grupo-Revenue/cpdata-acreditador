@@ -41,6 +41,7 @@ export default function SettingsPage() {
         <TabsContent value="general" className="space-y-6">
           <PaymentDaySettings />
           <GlosaModelSettings />
+          <EvaluationItemsSettings />
           <RolesManager />
         </TabsContent>
 
