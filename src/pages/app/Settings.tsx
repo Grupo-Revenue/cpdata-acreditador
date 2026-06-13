@@ -11,6 +11,7 @@ import { DigitalSignatureSettings } from '@/components/settings/DigitalSignature
 import { PermissionsSettings } from '@/components/settings/PermissionsSettings';
 import { ProfileFieldsSettings } from '@/components/settings/ProfileFieldsSettings';
 import { TicketCategoriesSettings } from '@/components/settings/TicketCategoriesSettings';
+import { EvaluationItemsSettings } from '@/components/settings/EvaluationItemsSettings';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 export default function SettingsPage() {
