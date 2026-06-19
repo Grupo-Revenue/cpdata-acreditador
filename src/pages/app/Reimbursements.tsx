@@ -1022,9 +1022,9 @@ export default function ReimbursementsPage() {
               {selectedExpensesData.map(e => {
                 const ev = events?.find(x => x.id === e.event_id);
                 return (
-                  <div key={e.id} className="flex justify-between gap-2">
-                    <span className="truncate">{ev?.name ?? '—'} · {getProfileName(e.user_id)} · {e.name}</span>
-                    <span className="font-medium whitespace-nowrap">${e.amount.toLocaleString('es-CL')}</span>
+                  <div key={e.id} className="flex justify-between gap-2 min-w-0">
+                    <span className="truncate min-w-0 flex-1">{ev?.name ?? '—'} · {getProfileName(e.user_id)} · {e.name}</span>
+                    <span className="font-medium whitespace-nowrap shrink-0">${e.amount.toLocaleString('es-CL')}</span>
                   </div>
                 );
               })}
