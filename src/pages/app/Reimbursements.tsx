@@ -1010,7 +1010,7 @@ export default function ReimbursementsPage() {
       </Dialog>
 
       <Dialog open={showPayDialog} onOpenChange={setShowPayDialog}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Registrar pago</DialogTitle>
             <DialogDescription>
@@ -1018,22 +1018,22 @@ export default function ReimbursementsPage() {
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
-            <div className="rounded-md border p-3 max-h-[200px] overflow-y-auto space-y-1 text-sm">
+            <div className="rounded-md border p-3 max-h-[200px] overflow-y-auto space-y-2 text-sm">
               {selectedExpensesData.map(e => {
                 const ev = events?.find(x => x.id === e.event_id);
                 return (
                   <div key={e.id} className="flex justify-between gap-2 min-w-0">
-                    <span className="truncate min-w-0 flex-1">{ev?.name ?? '—'} · {getProfileName(e.user_id)} · {e.name}</span>
+                    <span className="min-w-0 flex-1 break-words">{ev?.name ?? '—'} · {getProfileName(e.user_id)} · {e.name}</span>
                     <span className="font-medium whitespace-nowrap shrink-0">${e.amount.toLocaleString('es-CL')}</span>
                   </div>
                 );
               })}
-              <div className="flex justify-between pt-2 mt-2 border-t font-semibold">
+              <div className="flex justify-between gap-2 pt-2 mt-2 border-t font-semibold">
                 <span>Total</span>
-                <span>${selectedTotal.toLocaleString('es-CL')}</span>
+                <span className="whitespace-nowrap shrink-0">${selectedTotal.toLocaleString('es-CL')}</span>
               </div>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3">
               <div>
                 <label className="text-sm font-medium mb-1 block">Fecha de pago</label>
                 <Popover>
@@ -1050,9 +1050,9 @@ export default function ReimbursementsPage() {
               </div>
               <div>
                 <label className="text-sm font-medium mb-1 block">Comprobante (opcional)</label>
-                <label className="cursor-pointer flex items-center gap-1 text-sm border rounded-md px-3 py-2 hover:bg-accent">
-                  <Upload className="h-4 w-4" />
-                  <span className="truncate">{payFile ? payFile.name : 'Subir archivo'}</span>
+                <label className="cursor-pointer flex items-center gap-1 text-sm border rounded-md px-3 py-2 hover:bg-accent w-full">
+                  <Upload className="h-4 w-4 shrink-0" />
+                  <span className="truncate min-w-0 flex-1">{payFile ? payFile.name : 'Subir archivo'}</span>
                   <input type="file" className="hidden" accept="image/*,.pdf" onChange={e => setPayFile(e.target.files?.[0] ?? null)} />
                 </label>
               </div>

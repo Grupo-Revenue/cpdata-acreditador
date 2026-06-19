@@ -1,26 +1,18 @@
-# Plan: eliminar "Asistencia" del diálogo de gestión de evento
+## Arreglar diálogo "Registrar pago" en Rendiciones
 
-## Cambios
+El popup se ve mal porque el contenido excede el ancho del cuadro: el texto de cada gasto no se ajusta y los campos de "Fecha de pago" y "Comprobante" quedan apretados/sobresalen.
 
-### 1) `src/components/events/EventManagementDialog.tsx`
-- Eliminar el `<Select>` "Asistencia" (presente / atrasado / ausente) y la cajita de puntos asociada.
-- Mantener "Fecha" y "Hora de llegada" en su mismo lugar.
-- En `saveAttendance`: seguir guardando el registro en `attendance_records` (para conservar fecha/hora/comentario), pero con `status = 'presente'` fijo y `ranking_points = 0` para que no aporte al ranking.
-- Eliminar el uso de `POINTS_MAP` para el cálculo de puntos (queda en 0). La constante puede borrarse.
-- `Puntualidad` sigue funcionando vía `evaluation_records` (ya existe, suma 7/5/0).
+### Cambios en `src/pages/app/Reimbursements.tsx` (bloque del diálogo, líneas ~1012-1069)
 
-### 2) `get_accreditor_ranking` (migration SQL)
-Actualizar el RPC para que el total ya no sume `attendance_records.ranking_points` y sume únicamente `evaluation_records.points`:
+1. **Resumen de gastos (líneas 1021-1035)**
+   - Quitar `truncate` y `whitespace-nowrap` del texto principal.
+   - Permitir wrap en varias líneas con `break-words` y `flex-wrap` para que el nombre del evento + usuario + gasto se ajuste completo dentro del cuadro.
+   - Mantener el monto alineado a la derecha con `shrink-0`.
 
-```sql
-total_points = COALESCE(SUM(evaluation_records.points), 0)
-events_count = COUNT(*) FROM attendance_records  -- se mantiene como conteo de eventos asistidos
-```
+2. **Grid de campos (línea 1036)**
+   - Cambiar a una sola columna en todos los tamaños (`grid-cols-1`) para evitar que los inputs se compriman dentro de un diálogo `max-w-lg`. Así "Fecha de pago" y "Comprobante" tendrán ancho completo y se verán cómodos.
 
-### 3) Memoria de proyecto
-Actualizar `mem://logica/ranking-puntos-asistencia` para reflejar que los puntos provienen de Puntualidad (ítem de evaluación), no de `attendance_records.ranking_points`.
+3. **DialogContent**
+   - Asegurar buen comportamiento en móvil añadiendo `max-h-[90vh] overflow-y-auto` para que nada se corte si el listado crece.
 
-## Fuera de alcance
-- No se tocan tablas `attendance_records` ni `evaluation_*` (estructura).
-- No se modifica Configuración → Ítems de Evaluación (Puntualidad ya está creada con 7/5/0).
-- No se borran registros históricos: los `ranking_points` viejos quedan en la tabla pero dejan de contar en el ranking.
+No se cambia lógica de pago, sólo la presentación del diálogo.
