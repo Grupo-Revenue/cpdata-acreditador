@@ -34,7 +34,6 @@ export default function SettingsPage() {
           <TabsTrigger value="whatsapp">Plantillas WhatsApp</TabsTrigger>
           <TabsTrigger value="faqs">FAQs</TabsTrigger>
           <TabsTrigger value="firma-digital">Firma Digital</TabsTrigger>
-          <TabsTrigger value="firma-digital">Firma Digital</TabsTrigger>
           <TabsTrigger value="tickets">Tickets</TabsTrigger>
         </TabsList>
 
